@@ -1,4 +1,5 @@
 ﻿using Ninject;
+using Ninject.Parameters;
 namespace PhotoLabel
 {
     public static class NinjectKernel
@@ -19,6 +20,11 @@ namespace PhotoLabel
         public static T Get<T>()
         {
             return kernel.Get<T>();
+        }
+
+        public static T Get<T>(params IParameter[] parameters)
+        {
+            return kernel.Get<T>(parameters);
         }
     }
 }
