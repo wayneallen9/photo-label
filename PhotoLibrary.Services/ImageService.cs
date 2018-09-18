@@ -1,17 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using PhotoLabel.Services.Models;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Media.Imaging;
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public class ImageService : IImageService
     {
         #region variables
-        private string _filenameCache;
-        private Image _imageCache;
+        private ImageCache _imageCache;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
         #endregion
@@ -29,25 +29,20 @@ namespace PhotoLibrary.Services
             _logService.TraceEnter();
             try
             {
-                // has this file been cached previously?
-                _logService.Trace($"Checking if \"{filename}\" is already cached...");
-                if (filename != _filenameCache)
+                _logService.Trace($"Checking if \"{filename}\" is cached...");
+                if (_imageCache?.Filename == filename) return _imageCache.Image;
+
+                _logService.Trace($"Getting \"{filename}\"...");
+                using (var imageFileStream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    _logService.Trace($"File \"{filename}\" needs to be loaded from disk");
-
-                    // load the file from disk and make a copy of it so that the
-                    // file can be closed
-                    using (var imageFromFile = Image.FromFile(filename))
+                    _imageCache = new ImageCache
                     {
-                        // cache the image
-                        _imageCache = new Bitmap(imageFromFile);
-                    }
+                        Filename = filename,
+                        Image = Image.FromStream(imageFileStream)
+                    };
 
-                    // cache the filename
-                    _filenameCache = filename;
+                    return _imageCache.Image;
                 }
-
-                return _imageCache;
             }
             finally
             {
@@ -57,49 +52,41 @@ namespace PhotoLibrary.Services
 
         public Image Get(string filename, int maxWidth, int maxHeight)
         {
-            Image original;
-
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Checking if \"{filename}\" is already cached...");
-                if (_filenameCache == filename)
+                using (var imageFileStream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    _logService.Trace($"\"{filename}\" is already cached");
-                    original = _imageCache;
+                    _logService.Trace($"Getting \"{filename}\"...");
+                    var original = Image.FromStream(imageFileStream);
+
+                    _logService.Trace($"Resizing to fit {maxWidth}px x{maxHeight}px canvas...");
+                    var canvas = new Bitmap(maxWidth, maxHeight);
+
+                    _logService.Trace($"Calculating size of resized image...");
+                    var aspectRatio = Math.Min(maxWidth / (float)original.Width, maxHeight / (float)original.Height);
+                    var newWidth = original.Width * aspectRatio;
+                    var newHeight = original.Height * aspectRatio;
+                    var newX = (maxWidth - newWidth) / 2;
+                    var newY = (maxHeight - newHeight) / 2;
+
+                    _logService.Trace($"Drawing resized image...");
+                    using (var graphics = Graphics.FromImage(canvas))
+                    {
+                        // initialise the pen
+                        graphics.SmoothingMode = SmoothingMode.HighQuality;
+                        graphics.CompositingQuality = CompositingQuality.HighQuality;
+                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                        // draw the black background
+                        graphics.FillRectangle(new SolidBrush(Color.Black), 0, 0, maxWidth, maxHeight);
+
+                        // now draw the image over the top
+                        graphics.DrawImage(original, newX, newY, newWidth, newHeight);
+                    }
+
+                    return canvas;
                 }
-                else
-                {
-                    _logService.Trace($"\"{filename}\" is not cached.  Retrieving from disk...");
-                    original = Get(filename);
-                }
-
-                _logService.Trace($"Resizing to fit {maxWidth}px x{maxHeight}px canvas...");
-                var canvas = new Bitmap(maxWidth, maxHeight);
-
-                _logService.Trace($"Calculating size of resized image...");
-                var aspectRatio = Math.Min(maxWidth / (float)original.Width, maxHeight / (float)original.Height);
-                var newWidth = original.Width * aspectRatio;
-                var newHeight = original.Height * aspectRatio;
-                var newX = (maxWidth - newWidth) / 2;
-                var newY = (maxHeight - newHeight) / 2;
-
-                _logService.Trace($"Drawing resized image...");
-                using (var graphics = Graphics.FromImage(canvas))
-                {
-                    // initialise the pen
-                    graphics.SmoothingMode = SmoothingMode.HighQuality;
-                    graphics.CompositingQuality = CompositingQuality.HighQuality;
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
-                    // draw the black background
-                    graphics.FillRectangle(new SolidBrush(Color.Black), 0, 0, maxWidth, maxHeight);
-
-                    // now draw the image over the top
-                    graphics.DrawImage(original, newX, newY, newWidth, newHeight);
-                }
-
-                return canvas;
             }
             finally
             {
@@ -107,21 +94,95 @@ namespace PhotoLibrary.Services
             }
         }
 
-        public string GetDateTaken(string filename)
+        public ExifData GetExifData(string filename)
         {
             _logService.TraceEnter();
             try
             {
+                // create the object to return
+                var exifData = new ExifData();
+
                 using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    BitmapSource img = BitmapFrame.Create(fs);
-                    BitmapMetadata md = (BitmapMetadata)img.Metadata;
+                    var bitmapSource = BitmapFrame.Create(fs);
+                    var bitmapMetadata = (BitmapMetadata)bitmapSource.Metadata;
 
                     // try and parse the date
-                    if (!DateTime.TryParse(md.DateTaken, out DateTime dateTaken)) return md.DateTaken;
+                    if (!DateTime.TryParse(bitmapMetadata.DateTaken, out DateTime dateTaken))
+                        exifData.DateTaken = bitmapMetadata.DateTaken;
+                    else
+                        exifData.DateTaken = dateTaken.Date.ToShortDateString();
 
-                    return dateTaken.Date.ToShortDateString();
+                    // is there a latitude on the image
+                    exifData.Latitude = GetLatitude(bitmapMetadata);
+                    if (exifData.Latitude.HasValue) exifData.Longitude = GetLongitude(bitmapMetadata);
                 }
+
+                return exifData;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private float? GetLatitude(BitmapMetadata bitmapMetadata)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if file has latitude information...");
+                if (!(bitmapMetadata.GetQuery("System.GPS.Latitude.Proxy") is string latitudeRef))
+                {
+                    _logService.Trace("File does not have latitude information.  Exiting...");
+                    return null;
+                }
+
+                _logService.Trace($"Parsing latitude information \"{latitudeRef}\"...");
+                var latitudeMatch = Regex.Match(latitudeRef, @"^(\d+),([0123456789.]+)([SN])");
+                if (!latitudeMatch.Success)
+                {
+                    _logService.Trace($"Unable to parse \"{latitudeRef}\".  Exiting...");
+                    return null;
+                }
+
+                _logService.Trace("Converting to a float...");
+                var latitudeDecimal = float.Parse(latitudeMatch.Groups[1].Value) + float.Parse(latitudeMatch.Groups[2].Value) / 60;
+                if (latitudeMatch.Groups[3].Value == "S") latitudeDecimal *= -1;
+
+                return latitudeDecimal;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private float? GetLongitude(BitmapMetadata bitmapMetadata)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if file has longitude information...");
+                if (!(bitmapMetadata.GetQuery("System.GPS.Longitude.Proxy") is string longitudeRef))
+                {
+                    _logService.Trace("File does not have longitude information.  Exiting...");
+                    return null;
+                }
+
+                _logService.Trace($"Parsing longitude information \"{longitudeRef}\"...");
+                var longitudeMatch = Regex.Match(longitudeRef, @"^(\d+),([0123456789.]+)([EW])");
+                if (!longitudeMatch.Success)
+                {
+                    _logService.Trace($"Unable to parse \"{longitudeRef}\".  Exiting...");
+                    return null;
+                }
+
+                _logService.Trace("Converting to a float...");
+                var longitudeDecimal = float.Parse(longitudeMatch.Groups[1].Value) + float.Parse(longitudeMatch.Groups[2].Value) / 60;
+                if (longitudeMatch.Groups[3].Value == "W") longitudeDecimal *= -1;
+
+                return longitudeDecimal;
             }
             finally
             {
@@ -131,8 +192,6 @@ namespace PhotoLibrary.Services
 
         public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
         {
-            List<string> lines;
-
             _logService.TraceEnter();
             try
             {
@@ -563,6 +622,12 @@ namespace PhotoLibrary.Services
             {
                 _logService.TraceExit();
             }
+        }
+
+        private class ImageCache
+        {
+            public string Filename { get; set; }
+            public Image Image { get; set; }
         }
     }
 }

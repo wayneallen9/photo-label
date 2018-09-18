@@ -95,12 +95,36 @@ namespace PhotoLabel.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("BottomRight")]
-        public global::PhotoLibrary.Services.CaptionAlignments CaptionAlignment {
+        public global::PhotoLabel.Services.CaptionAlignments CaptionAlignment {
             get {
-                return ((global::PhotoLibrary.Services.CaptionAlignments)(this["CaptionAlignment"]));
+                return ((global::PhotoLabel.Services.CaptionAlignments)(this["CaptionAlignment"]));
             }
             set {
                 this["CaptionAlignment"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://www.google.com/maps/place/{0},{1}")]
+        public string MapsURL {
+            get {
+                return ((string)(this["MapsURL"]));
+            }
+            set {
+                this["MapsURL"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("128, 128")]
+        public global::System.Drawing.Size PreviewSize {
+            get {
+                return ((global::System.Drawing.Size)(this["PreviewSize"]));
+            }
+            set {
+                this["PreviewSize"] = value;
             }
         }
     }

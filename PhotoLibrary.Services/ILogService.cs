@@ -1,5 +1,5 @@
 ﻿using System;
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public interface ILogService
     {

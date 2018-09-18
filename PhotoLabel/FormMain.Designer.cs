@@ -43,6 +43,7 @@
             this.colourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.rotateLeftToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rotateRightToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.folderBrowserDialogImages = new System.Windows.Forms.FolderBrowserDialog();
             this.toolStripToolbar = new System.Windows.Forms.ToolStrip();
             this.toolStripButtonOpen = new System.Windows.Forms.ToolStripButton();
@@ -58,6 +59,8 @@
             this.toolStripButtonSave = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonSaveAs = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDontSave = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
+            this.toolStripButtonLocation = new System.Windows.Forms.ToolStripButton();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabelOutputDirectory = new System.Windows.Forms.ToolStripStatusLabel();
@@ -84,7 +87,6 @@
             this.fontDialog = new System.Windows.Forms.FontDialog();
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
             this.bindingSourceMain = new System.Windows.Forms.BindingSource(this.components);
-            this.rotateRightToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
@@ -185,7 +187,7 @@
             this.fontToolStripMenuItem.Enabled = false;
             this.fontToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.font;
             this.fontToolStripMenuItem.Name = "fontToolStripMenuItem";
-            this.fontToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.fontToolStripMenuItem.Size = new System.Drawing.Size(139, 22);
             this.fontToolStripMenuItem.Text = "&Font...";
             this.fontToolStripMenuItem.Click += new System.EventHandler(this.FontToolStripMenuItem_Click);
             // 
@@ -194,23 +196,32 @@
             this.colourToolStripMenuItem.Enabled = false;
             this.colourToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.colour;
             this.colourToolStripMenuItem.Name = "colourToolStripMenuItem";
-            this.colourToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.colourToolStripMenuItem.Size = new System.Drawing.Size(139, 22);
             this.colourToolStripMenuItem.Text = "&Colour...";
             this.colourToolStripMenuItem.Click += new System.EventHandler(this.ColourToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(177, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(136, 6);
             // 
             // rotateLeftToolStripMenuItem
             // 
             this.rotateLeftToolStripMenuItem.Enabled = false;
             this.rotateLeftToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_left;
             this.rotateLeftToolStripMenuItem.Name = "rotateLeftToolStripMenuItem";
-            this.rotateLeftToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.rotateLeftToolStripMenuItem.Size = new System.Drawing.Size(139, 22);
             this.rotateLeftToolStripMenuItem.Text = "Rotate &Left";
             this.rotateLeftToolStripMenuItem.Click += new System.EventHandler(this.RotateLeftToolStripMenuItem_Click);
+            // 
+            // rotateRightToolStripMenuItem
+            // 
+            this.rotateRightToolStripMenuItem.Enabled = false;
+            this.rotateRightToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_right;
+            this.rotateRightToolStripMenuItem.Name = "rotateRightToolStripMenuItem";
+            this.rotateRightToolStripMenuItem.Size = new System.Drawing.Size(139, 22);
+            this.rotateRightToolStripMenuItem.Text = "Rotate &Right";
+            this.rotateRightToolStripMenuItem.Click += new System.EventHandler(this.RotateRightToolStripMenuItem_Click);
             // 
             // folderBrowserDialogImages
             // 
@@ -233,7 +244,9 @@
             this.toolStripSeparator3,
             this.toolStripButtonSave,
             this.toolStripButtonSaveAs,
-            this.toolStripButtonDontSave});
+            this.toolStripButtonDontSave,
+            this.toolStripSeparator5,
+            this.toolStripButtonLocation});
             this.toolStripToolbar.Location = new System.Drawing.Point(0, 24);
             this.toolStripToolbar.Name = "toolStripToolbar";
             this.toolStripToolbar.Size = new System.Drawing.Size(800, 25);
@@ -363,6 +376,22 @@
             this.toolStripButtonDontSave.Text = "Do not save";
             this.toolStripButtonDontSave.Click += new System.EventHandler(this.ToolStripButtonDontSave_Click);
             // 
+            // toolStripSeparator5
+            // 
+            this.toolStripSeparator5.Name = "toolStripSeparator5";
+            this.toolStripSeparator5.Size = new System.Drawing.Size(6, 25);
+            // 
+            // toolStripButtonLocation
+            // 
+            this.toolStripButtonLocation.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.toolStripButtonLocation.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonLocation.Enabled = false;
+            this.toolStripButtonLocation.Image = global::PhotoLabel.Properties.Resources.globe;
+            this.toolStripButtonLocation.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonLocation.Name = "toolStripButtonLocation";
+            this.toolStripButtonLocation.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonLocation.Click += new System.EventHandler(this.ToolStripButtonLocation_Click);
+            // 
             // statusStrip
             // 
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -427,7 +456,6 @@
             this.bindingSourceImages.DataMember = "Images";
             this.bindingSourceImages.DataSource = this.bindingSourceMain;
             this.bindingSourceImages.CurrentChanged += new System.EventHandler(this.BindingSourceImages_CurrentChanged);
-            this.bindingSourceImages.CurrentItemChanged += new System.EventHandler(this.BindingSourceImages_CurrentItemChanged);
             // 
             // panelSize
             // 
@@ -639,16 +667,7 @@
             // 
             this.bindingSourceMain.AllowNew = false;
             this.bindingSourceMain.DataSource = typeof(PhotoLabel.ViewModels.MainFormViewModel);
-            this.bindingSourceMain.CurrentItemChanged += new System.EventHandler(this.BindingSourceMain_CurrentItemChanged);
-            // 
-            // rotateRightToolStripMenuItem
-            // 
-            this.rotateRightToolStripMenuItem.Enabled = false;
-            this.rotateRightToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_right;
-            this.rotateRightToolStripMenuItem.Name = "rotateRightToolStripMenuItem";
-            this.rotateRightToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.rotateRightToolStripMenuItem.Text = "Rotate &Right";
-            this.rotateRightToolStripMenuItem.Click += new System.EventHandler(this.RotateRightToolStripMenuItem_Click);
+            this.bindingSourceMain.CurrentChanged += new System.EventHandler(this.BindingSourceMain_CurrentChanged);
             // 
             // FormMain
             // 
@@ -742,6 +761,8 @@
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem rotateLeftToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem rotateRightToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator5;
+        private System.Windows.Forms.ToolStripButton toolStripButtonLocation;
     }
 }
 

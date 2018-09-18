@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public class LineWrapService : ILineWrapService
     {

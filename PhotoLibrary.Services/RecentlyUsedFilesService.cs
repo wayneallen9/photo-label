@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public class RecentlyUsedFilesService : IRecentlyUsedFilesService
     {

@@ -1,6 +1,6 @@
 ﻿using NLog;
 using System;
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public class LogService : ILogService
     {

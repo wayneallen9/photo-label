@@ -1,5 +1,5 @@
 ﻿using System.Drawing;
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public interface IImageMetadataService
     {

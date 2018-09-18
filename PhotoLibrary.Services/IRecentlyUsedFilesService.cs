@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public interface IRecentlyUsedFilesService
     {

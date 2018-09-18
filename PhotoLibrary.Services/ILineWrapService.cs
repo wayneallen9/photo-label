@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
 
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public interface ILineWrapService
     {

@@ -1,8 +1,10 @@
-﻿using PhotoLabel.ViewModels;
-using PhotoLibrary.Services;
+﻿using PhotoLabel.Services;
+using PhotoLabel.ViewModels;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
-using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,14 +15,15 @@ namespace PhotoLabel
     {
         #region delegates
         private delegate void ActionDelegate(Action action);
+        private delegate void DefaultDelegate();
+        private delegate void ShowPictureDelegate(ImageViewModel imageViewModel);
         #endregion
 
         #region variables
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
-        private ImageViewModel _imageViewModel;
-        private volatile CancellationTokenSource _loadImageCancellationTokenSource;
-        private volatile bool _loading = false;
+        private readonly List<ImageViewModel> _loadPreviewImageQueue = new List<ImageViewModel>();
+        private readonly ILocaleService _localeService;
         private readonly ILogService _logService;
         private readonly MainFormViewModel _mainFormViewModel;
         private CancellationTokenSource _openFolderCancellationTokenSource;
@@ -29,6 +32,7 @@ namespace PhotoLabel
 
         public FormMain(
             IImageService imageService,
+            ILocaleService localeService,
             ILogService logService,
             MainFormViewModel mainFormViewModel,
             IImageMetadataService imageMetadataService,
@@ -37,6 +41,7 @@ namespace PhotoLabel
             // save dependencies
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
+            _localeService = localeService;
             _logService = logService;
             _recentlyUsedFilesService = recentlyUsedFilesService;
 
@@ -72,34 +77,6 @@ namespace PhotoLabel
             }
         }
 
-        private int GetZoomValue()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // get the current culture
-                var currentCulture = CultureInfo.CurrentCulture;
-
-                // get the current number formant
-                var numberFormatInfo = currentCulture.NumberFormat;
-
-                // get the percentage sign for that culture
-                var percentageSign = numberFormatInfo.PercentSymbol;
-
-                // remove the percentage sign
-                var valueAsNumber = toolStripComboBoxZoom.Text.Replace(percentageSign, string.Empty);
-
-                // get the new value
-                if (int.TryParse(valueAsNumber, out int value)) return value;
-
-                return 100;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         private void Invoke(Action action)
         {
             _logService.TraceEnter();
@@ -123,62 +100,55 @@ namespace PhotoLabel
             }
         }
 
-        private void LoadImage()
+        private void MainFormViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            // if an image load is in progress, cancel it
-            if (_loadImageCancellationTokenSource != null) _loadImageCancellationTokenSource.Cancel();
+            _logService.TraceEnter();
 
-            // load the new image
-            _loadImageCancellationTokenSource = new CancellationTokenSource();
-            Task.Factory.StartNew((parameters) =>
+            try
             {
-                LoadImageThread(_imageViewModel.Filename, _imageViewModel.Caption, _imageViewModel.CaptionAlignment.Value, _imageViewModel.Font, _imageViewModel.Color.Value, _imageViewModel.Rotation, _loadImageCancellationTokenSource.Token);
-            }, _loadImageCancellationTokenSource.Token, TaskCreationOptions.LongRunning);
+                _logService.Trace("Checking if running on UI thread...");
+                if (InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoke(new PropertyChangedEventHandler(MainFormViewModel_PropertyChanged), sender, e);
+
+                    return;
+                }
+
+                _logService.Trace("Running on UI thread.  Getting source object...");
+                var mainFormViewModel = sender as MainFormViewModel;
+
+                _logService.Trace("Checking which property has updated...");
+                switch (e.PropertyName)
+                {
+                    case "OutputPath":
+                        _logService.Trace("Output path has changed");
+                        ShowOutputPath();
+
+                        break;
+                    case "Zoom":
+                        _logService.Trace("Zoom has changed");
+
+                        // show the updated zoom
+                        ShowZoom();
+
+                        break;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
-        private void LoadImageThread(string filename, string caption, CaptionAlignments captionAlignment, Font font, Color color, Rotations rotation, CancellationToken cancellationToken)
+        private void OpenFolder()
         {
             _logService.TraceEnter();
             try
             {
-                // load the image
-                if (cancellationToken.IsCancellationRequested) return;
-                var image = _imageService.Get(filename);
-                lock (image)
-                {
-                    // add the caption
-                    if (cancellationToken.IsCancellationRequested) return;
-                    var captionedImage = _imageService.Caption(image, caption, captionAlignment, font, new SolidBrush(color), rotation);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    Invoke(() =>
-                    {
-                        if (cancellationToken.IsCancellationRequested) return;
-
-                        // set the image
-                        pictureBoxImage.Image = captionedImage;
-
-                        // zoom the image
-                        ZoomImage();
-
-                        if (cancellationToken.IsCancellationRequested) return;
-                        if (pictureBoxImage.Height < panelSize.Height)
-                            pictureBoxImage.Top = (panelSize.Height - pictureBoxImage.Height) / 2;
-                        else
-                            pictureBoxImage.Top = 0;
-
-                        if (pictureBoxImage.Width < panelSize.Width)
-                            pictureBoxImage.Left = (panelSize.Width - pictureBoxImage.Width) / 2;
-                        else
-                            pictureBoxImage.Left = 0;
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(FromHandle(Handle), Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // show the dialog
+                if (folderBrowserDialogImages.ShowDialog() == DialogResult.OK)
+                    OpenFolder(folderBrowserDialogImages.SelectedPath);
             }
             finally
             {
@@ -191,15 +161,12 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Checking if there is a current image...");
-                if (_imageViewModel == null)
+                _logService.Trace("Checking if there is a current image showing...");
+                if (pictureBoxImage.Image == null)
                 {
-                    _logService.Trace("There is no current image.  Exiting...");
+                    _logService.Trace("No image is showing.  Exiting...");
                     return;
                 }
-
-                _logService.Trace("Setting zoom text...");
-                toolStripComboBoxZoom.Text = string.Format("{0:P0}", _mainFormViewModel.Zoom / 100f);
 
                 _logService.Trace($"Zooming to {_mainFormViewModel.Zoom}%...");
                 pictureBoxImage.Height = pictureBoxImage.Image.Height * _mainFormViewModel.Zoom / 100;
@@ -229,21 +196,6 @@ namespace PhotoLabel
             }
         }
 
-        private void OpenFolder()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // show the dialog
-                if (folderBrowserDialogImages.ShowDialog() == DialogResult.OK)
-                    OpenFolder(folderBrowserDialogImages.SelectedPath);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         /// <summary>
         /// Cancels any in progress load then loads all images from the specified path.
         /// </summary>
@@ -253,9 +205,6 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                // flag that we are loading
-                _loading = true;
-
                 // cancel any in progress load
                 if (_openFolderCancellationTokenSource != null) _openFolderCancellationTokenSource.Cancel();
 
@@ -274,9 +223,34 @@ namespace PhotoLabel
 
                 // run the load on another thread
                 Task.Run(() => OpenFolderThread(folderPath, _openFolderCancellationTokenSource.Token), _openFolderCancellationTokenSource.Token);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
 
-                // we have finished loading
-                _loading = false;
+        private void SetToolbarStatus()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if there is a current image...");
+                var currentImageViewModel = bindingSourceImages.Position > -1 ? bindingSourceImages.Current as ImageViewModel : null;
+
+                colourToolStripMenuItem.Enabled =
+                    fontToolStripMenuItem.Enabled =
+                    rotateLeftToolStripMenuItem.Enabled =
+                    rotateRightToolStripMenuItem.Enabled =
+                    saveToolStripMenuItem.Enabled =
+                    saveAsToolStripMenuItem.Enabled = currentImageViewModel != null;
+                toolStripButtonColour.Enabled =
+                    toolStripButtonDontSave.Enabled =
+                    toolStripButtonFont.Enabled =
+                    toolStripButtonRotateLeft.Enabled =
+                    toolStripButtonRotateRight.Enabled =
+                    toolStripButtonSave.Enabled =
+                    toolStripButtonSaveAs.Enabled = currentImageViewModel != null;
             }
             finally
             {
@@ -294,8 +268,151 @@ namespace PhotoLabel
                 pictureBoxImage.Image = Properties.Resources.ajax;
                 pictureBoxImage.Height = Properties.Resources.ajax.Height;
                 pictureBoxImage.Width = Properties.Resources.ajax.Width;
-                pictureBoxImage.Left = (panelSize.Width - pictureBoxImage.Width) / 2;
-                pictureBoxImage.Top = (panelSize.Height - pictureBoxImage.Height) / 2;
+
+                _logService.Trace("Centering ajax resource...");
+                CentrePictureBox();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowLocation(ImageViewModel imageViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                toolStripButtonLocation.Enabled = imageViewModel?.Latitude != null && imageViewModel?.Longitude != null;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowOutputPath()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_mainFormViewModel.OutputPath))
+                {
+                    _logService.Trace("Clearing output directory display...");
+                    toolStripStatusLabelOutputDirectory.Text = string.Empty;
+                }
+                else
+                {
+                    _logService.Trace($"Showing output directory \"{_mainFormViewModel.OutputPath}\"...");
+                    toolStripStatusLabelOutputDirectory.Text = _mainFormViewModel.OutputPath;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowPicture(ImageViewModel imageViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoke(new ShowPictureDelegate(ShowPicture), imageViewModel);
+
+                    return;
+                }
+                _logService.Trace("Running on UI thread");
+
+                if (imageViewModel.Image != null)
+                {
+                    // show the image
+                    pictureBoxImage.Image = imageViewModel.Image;
+
+                    // zoom the image
+                    ZoomImage();
+
+                    // position it in the form
+                    CentrePictureBox();
+                }
+                else
+                {
+                    ShowAjaxImage();
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowPreview(ImageViewModel imageViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Updating preview image for \"{imageViewModel.Filename}\"...");
+
+                // if there is a preview queued to be loaded, cancel it
+                lock (_loadPreviewImageQueue)
+                {
+                    _loadPreviewImageQueue.RemoveAll(i => i.Filename == imageViewModel.Filename);
+                }
+
+                lock (imageListLarge)
+                {
+                    // remove the existing image
+                    imageListLarge.Images.RemoveByKey(imageViewModel.Filename);
+                    imageListLarge.Images.Add(imageViewModel.Filename, imageViewModel.Preview ?? Properties.Resources.loading);
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowProgress()
+        {
+            toolStripStatusLabelStatus.Text = $"{bindingSourceImages.Position + 1} of {bindingSourceImages.Count}";
+        }
+
+        private void ShowCaptionAlignment(ImageViewModel imageViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                checkBoxTopLeft.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.TopLeft;
+                checkBoxTopCentre.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.TopCentre;
+                checkBoxTopRight.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.TopRight;
+                checkBoxLeft.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleLeft;
+                checkBoxCentre.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleCentre;
+                checkBoxRight.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleRight;
+                checkBoxBottomLeft.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.BottomLeft;
+                checkBoxBottomCentre.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.BottomCentre;
+                checkBoxBottomRight.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.BottomRight;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowZoom()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Updating zoom to {_mainFormViewModel.Zoom}%...");
+                toolStripComboBoxZoom.Text = string.Format("{0:P0}", _mainFormViewModel.Zoom / 100f);
+
+
+                _logService.Trace("Resizing picture box...");
+                ZoomImage();
             }
             finally
             {
@@ -305,8 +422,6 @@ namespace PhotoLabel
 
         private void OpenFolderThread(string folderPath, CancellationToken cancellationToken)
         {
-            Image previewImage;
-
             _logService.TraceEnter();
 
             try
@@ -323,12 +438,6 @@ namespace PhotoLabel
                     _logService.Trace($"No images were found in \"{folderPath}\"");
                     Invoke(() =>
                     {
-                        // clear the active image
-                        _imageViewModel = null;
-
-                        // rebind to the UI
-                        RebindModel();
-
                         // let the user know that it failed
                         MessageBox.Show("No photos found", "Photo Label", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     });
@@ -355,50 +464,47 @@ namespace PhotoLabel
                         bindingSourceMain.ResetBindings(false);
                     }));
 
-                    // add the preview list items
-                    _logService.Trace("Creating preview list items...");
-                    foreach (var imageListModel in _mainFormViewModel.Images)
+                    Invoke(() =>
                     {
-                        // has the user cancelled the load?
-                        if (cancellationToken.IsCancellationRequested) break;
+                        // only update the display after they are all loaded
+                        listViewPreview.SuspendLayout();
 
-                        Invoke(() =>
+                        // add the preview list items
+                        _logService.Trace("Creating preview list items...");
+                        foreach (var imageListModel in _mainFormViewModel.Images)
                         {
+                            // has the user cancelled the load?
+                            if (cancellationToken.IsCancellationRequested) break;
+
+                            // add the event handling
+                            imageListModel.PropertyChanged += ImageViewModel_PropertyChanged;
+
+                            // add the preview image for this item
                             listViewPreview.Items.Add(new ListViewItem
                             {
                                 ImageKey = imageListModel.Filename,
                                 Selected = bindingSourceImages.Position == listViewPreview.Items.Count,
                                 ToolTipText = imageListModel.Filename
                             });
-                        });
 
-                        // don't overwhelm the UI
-                        Thread.Sleep(10);
-                    }
+                            // set a default image before the actual image is loaded
+                            imageListLarge.Images.Add(imageListModel.Filename, Properties.Resources.loading);
+                        }
 
-                    _logService.Trace("Loading preview images...");
-                    foreach (var imageListModel in _mainFormViewModel.Images)
+                        // now draw it
+                        listViewPreview.ResumeLayout();
+                    });
+
+                    lock (_loadPreviewImageQueue)
                     {
-                        // does this image have metadata?
-                        if (cancellationToken.IsCancellationRequested) break;
-                        _logService.Trace($"Checking if \"{imageListModel.Filename}\" has metadata...");
-                        var hasMetadata = _imageMetadataService.HasMetadata(imageListModel.Filename);
+                        // clear any existing loads
+                        _loadPreviewImageQueue.Clear();
 
-                        // load the preview image
-                        if (cancellationToken.IsCancellationRequested) break;
-                        if (hasMetadata)
-                            previewImage = _imageService.Overlay(imageListModel.Filename, imageListLarge.ImageSize.Width, imageListLarge.ImageSize.Height, Properties.Resources.metadata, imageListLarge.ImageSize.Width - Properties.Resources.metadata.Width - 4, 4);
-                        else
-                            previewImage = _imageService.Get(imageListModel.Filename, imageListLarge.ImageSize.Width, imageListLarge.ImageSize.Height);
+                        // add all of the images
+                        _loadPreviewImageQueue.AddRange(_mainFormViewModel.Images);
 
-                        // now display it
-                        if (cancellationToken.IsCancellationRequested) break;
-                        Invoke(() =>
-                        {
-                            // add the image to the image list
-                            if (cancellationToken.IsCancellationRequested) return;
-                            imageListLarge.Images.Add(imageListModel.Filename, previewImage);
-                        });
+                        // start loading on another thread
+                        Task.Factory.StartNew(() => LoadPreviewImages(), TaskCreationOptions.LongRunning);
                     }
                 }
             }
@@ -407,6 +513,78 @@ namespace PhotoLabel
                 _logService.Error(ex);
 
                 Invoke(() => MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error));
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ImageViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            _logService.TraceEnter();
+
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoke(new PropertyChangedEventHandler(ImageViewModel_PropertyChanged), sender, e);
+
+                    return;
+                }
+
+                _logService.Trace("Running on UI thread.  Getting source image...");
+                var imageViewModel = sender as ImageViewModel;
+
+                _logService.Trace("Checking if there is a current image...");
+                var currentImageViewModel = bindingSourceImages.Position != -1 ? bindingSourceImages.Current as ImageViewModel : null;
+
+                _logService.Trace("Checking which property has updated...");
+                switch (e.PropertyName)
+                {
+                    case "Caption":
+                        _logService.Trace("Caption has been updated");
+                        bindingSourceImages.ResetBindings(false);
+
+                        break;
+                    case "CaptionAlignment":
+                        _logService.Trace("Caption alignment has been updated");
+                        ShowCaptionAlignment(imageViewModel);
+
+                        break;
+                    case "Image":
+                        _logService.Trace("Image has been updated");
+                        _logService.Trace($"Checking if \"{imageViewModel.Filename}\" is current image...");
+                        if (imageViewModel.Filename != currentImageViewModel?.Filename)
+                        {
+                            _logService.Trace($"\"{imageViewModel.Filename}\" is not the current image.  Exiting...");
+                            return;
+                        }
+
+                        _logService.Trace($"Showing image for \"{imageViewModel.Filename}\"...");
+                        ShowPicture(imageViewModel);
+
+                        _logService.Trace("Setting toolbar status...");
+                        SetToolbarStatus();
+
+                        break;
+                    case "Latitude":
+                    case "Longitude":
+                        ShowLocation(imageViewModel);
+
+                        break;
+                    case "Preview":
+                        _logService.Trace("Preview image has been updated");
+                        ShowPreview(imageViewModel);
+
+                        break;
+                    case "Rotation":
+                        ShowCaptionAlignment(imageViewModel);
+
+                        break;
+                }
             }
             finally
             {
@@ -496,9 +674,12 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                // get the current image
+                var currentImageViewModel = bindingSourceImages.Position > -1 ? bindingSourceImages.Current as ImageViewModel : null;
+
                 // set the current font
-                _logService.Trace($"Defaulting to current image font \"{_imageViewModel.Font.Name}\"...");
-                fontDialog.Font = _imageViewModel.Font;
+                _logService.Trace($"Defaulting to current image font \"{currentImageViewModel.Font.Name}\"...");
+                fontDialog.Font = currentImageViewModel.Font;
 
                 // now show the dialog
                 if (fontDialog.ShowDialog() == DialogResult.OK)
@@ -509,10 +690,7 @@ namespace PhotoLabel
 
                     // update the font on the current image
                     _logService.Trace("Updating font on current image...");
-                    _imageViewModel.Font = fontDialog.Font;
-
-                    // update the display
-                    bindingSourceImages.ResetBindings(false);
+                    currentImageViewModel.Font = fontDialog.Font;
                 }
             }
             finally
@@ -574,14 +752,8 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                // get the zoom value
-                var zoom = GetZoomValue();
-
                 // set the new zoom
-                _mainFormViewModel.Zoom = GetZoomValue();
-
-                // zoom the image
-                ZoomImage();
+                _mainFormViewModel.Zoom = _localeService.PercentageTryParse(toolStripComboBoxZoom.Text, out decimal percentage) ? (int)percentage : 100;
             }
             catch (Exception ex)
             {
@@ -594,38 +766,6 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
         }
-
-        /*private void ToolStripComboBoxZoom_Validating(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // get the current culture
-                var currentCulture = CultureInfo.CurrentCulture;
-
-                // get the current number formant
-                var numberFormatInfo = currentCulture.NumberFormat;
-
-                // get the percentage sign for that culture
-                var percentageSign = numberFormatInfo.PercentSymbol;
-
-                // remove the percentage sign
-                var valueAsNumber = toolStripComboBoxZoom.Text.Replace(percentageSign, string.Empty);
-
-                // it must be an integer
-                e.Cancel = !int.TryParse(valueAsNumber, out int value);
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }*/
 
         private void ToolStripComboBoxZoom_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -671,9 +811,12 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                // get the current image
+                var currentImageViewModel = bindingSourceImages.Current as ImageViewModel;
+
                 // set the default color
                 _logService.Trace("Defaulting to current image colour...");
-                colorDialog.Color = _imageViewModel.Color.Value;
+                colorDialog.Color = currentImageViewModel.Color.Value;
 
                 if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
@@ -683,10 +826,7 @@ namespace PhotoLabel
 
                     // update the colour on any existing image
                     _logService.Trace("Updating colour on current image...");
-                    _imageViewModel.Color = colorDialog.Color;
-
-                    // now update the screen
-                    RebindModel();
+                    currentImageViewModel.Color = colorDialog.Color;
                 }
             }
             finally
@@ -738,67 +878,6 @@ namespace PhotoLabel
             }
         }
 
-        private void RebindModel()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Manually binding caption alignment buttons...");
-                checkBoxTopLeft.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.TopLeft;
-                checkBoxTopCentre.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.TopCentre;
-                checkBoxTopRight.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.TopRight;
-                checkBoxLeft.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleLeft;
-                checkBoxCentre.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleCentre;
-                checkBoxRight.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleRight;
-                checkBoxBottomLeft.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.BottomLeft;
-                checkBoxBottomCentre.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.BottomCentre;
-                checkBoxBottomRight.Checked = _imageViewModel?.CaptionAlignment == CaptionAlignments.BottomRight;
-
-                _logService.Trace("Manually binding default caption alignment...");
-                _mainFormViewModel.CaptionAlignment = _imageViewModel?.CaptionAlignment ?? CaptionAlignments.TopLeft;
-
-                _logService.Trace("Manually binding properties that cannot be bound automatically...");
-                colourToolStripMenuItem.Enabled = 
-                    fontToolStripMenuItem.Enabled = 
-                    rotateLeftToolStripMenuItem.Enabled =
-                    rotateRightToolStripMenuItem.Enabled =
-                    saveToolStripMenuItem.Enabled = 
-                    saveAsToolStripMenuItem.Enabled = _imageViewModel != null;
-                toolStripButtonColour.Enabled = 
-                    toolStripButtonDontSave.Enabled = 
-                    toolStripButtonFont.Enabled = 
-                    toolStripButtonRotateLeft.Enabled = 
-                    toolStripButtonRotateRight.Enabled =
-                    toolStripButtonSave.Enabled = 
-                    toolStripButtonSaveAs.Enabled = _imageViewModel != null;
-
-                _logService.Trace("Checking if there is a current image...");
-                if (_imageViewModel == null)
-                {
-                    _logService.Trace("There is no current image.");
-                    pictureBoxImage.Image = null;
-
-                    _logService.Trace("Clearing status bar position...");
-                    toolStripStatusLabelStatus.Text = string.Empty;
-                }
-                else
-                {
-                    _logService.Trace("Loading current image...");
-                    LoadImage();
-
-                    _logService.Trace("Updating position in status bar...");
-                    toolStripStatusLabelStatus.Text = $"{bindingSourceImages.Position + 1} of {bindingSourceImages.Count}";
-                }
-
-                toolStripComboBoxZoom.Text = string.Format("{0:P0}", _mainFormViewModel.Zoom / 100d);
-                toolStripStatusLabelOutputDirectory.Text = _mainFormViewModel.OutputPath;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         private void RecentlyUsedFile_Open(string filename)
         {
             _logService.TraceEnter();
@@ -809,7 +888,8 @@ namespace PhotoLabel
                 {
                     _logService.Trace($"Opening \"{filename}\" from recently used file list...");
                     OpenFolder(filename);
-                } else
+                }
+                else
                 {
                     _logService.Trace($"\"{filename}\" does not exist");
                     if (MessageBox.Show($"\"{filename}\" could not be found.  Do you wish to remove it from the list of recently used folders?", "Folder Not Found", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -819,7 +899,7 @@ namespace PhotoLabel
 
                         _logService.Trace("Redrawing list of recently used files...");
                         DrawRecentlyUsedFiles();
-                    }                        
+                    }
                 }
             }
             catch (Exception ex)
@@ -880,41 +960,30 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                // is there a current image?
-                _logService.Trace("Checking if there is a current image...");
-                if (_imageViewModel == null)
-                {
-                    _logService.Trace("There is no current image.  Exiting...");
-                    return;
-                }
+                // get the current image
+                var currentImageViewModel = bindingSourceImages.Current as ImageViewModel;
 
                 // are we overwriting the original?
-                var outputPath = Path.Combine(_mainFormViewModel.OutputPath, _imageViewModel.FilenameWithoutPath);
+                var outputPath = Path.Combine(_mainFormViewModel.OutputPath, currentImageViewModel.FilenameWithoutPath);
                 _logService.Trace($"Destination file is \"{outputPath}\"");
-                if (outputPath != _imageViewModel.Filename)
+                if (outputPath != currentImageViewModel.Filename)
                 {
                     // try and save the image
-                    if (_imageViewModel.Save(_mainFormViewModel.OutputPath, false))
+                    if (currentImageViewModel.Save(_mainFormViewModel.OutputPath, false))
                     {
                         // save the metadata
-                        _imageMetadataService.Save(_imageViewModel.Caption, _imageViewModel.CaptionAlignment.Value, _imageViewModel.Font, (Color)_imageViewModel.Color, _imageViewModel.Rotation, _imageViewModel.Filename);
-
-                        // show the saved preview image
-                        Task.Run(() => ShowSavedPreviewImageThread(_imageViewModel.Filename));
+                        _imageMetadataService.Save(currentImageViewModel.Caption, currentImageViewModel.CaptionAlignment.Value, currentImageViewModel.Font, (Color)currentImageViewModel.Color, currentImageViewModel.Rotation, currentImageViewModel.Filename);
 
                         // go to the next image
                         bindingSourceImages.MoveNext();
                     }
-                    else if (MessageBox.Show($"The file \"{_imageViewModel.FilenameWithoutPath}\" already exists.  Do you wish to overwrite it?", "Overwrite file?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    else if (MessageBox.Show($"The file \"{currentImageViewModel.FilenameWithoutPath}\" already exists.  Do you wish to overwrite it?", "Overwrite file?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         // overwrite the existing image
-                        _imageViewModel.Save(_mainFormViewModel.OutputPath, true);
+                        currentImageViewModel.Save(_mainFormViewModel.OutputPath, true);
 
                         // save the metadata
-                        _imageMetadataService.Save(_imageViewModel.Caption, _imageViewModel.CaptionAlignment.Value, _imageViewModel.Font, (Color)_imageViewModel.Color, _imageViewModel.Rotation, _imageViewModel.Filename);
-
-                        // show the saved preview image
-                        Task.Run(() => ShowSavedPreviewImageThread(_imageViewModel.Filename));
+                        _imageMetadataService.Save(currentImageViewModel.Caption, currentImageViewModel.CaptionAlignment.Value, currentImageViewModel.Font, (Color)currentImageViewModel.Color, currentImageViewModel.Rotation, currentImageViewModel.Filename);
 
                         // go to the next image
                         bindingSourceImages.MoveNext();
@@ -923,39 +992,14 @@ namespace PhotoLabel
                 else if (MessageBox.Show("This will overwrite the original file.  Are you sure?", "Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
                     // overwrite the existing image
-                    _imageViewModel.Save(_mainFormViewModel.OutputPath, true);
+                    currentImageViewModel.Save(_mainFormViewModel.OutputPath, true);
 
                     // save the metadata
-                    _imageMetadataService.Save(_imageViewModel.Caption, _imageViewModel.CaptionAlignment.Value, _imageViewModel.Font, (Color)_imageViewModel.Color, _imageViewModel.Rotation, _imageViewModel.Filename);
-
-                    // show the saved preview image
-                    Task.Run(() => ShowSavedPreviewImageThread(_imageViewModel.Filename));
+                    _imageMetadataService.Save(currentImageViewModel.Caption, currentImageViewModel.CaptionAlignment.Value, currentImageViewModel.Font, (Color)currentImageViewModel.Color, currentImageViewModel.Rotation, currentImageViewModel.Filename);
 
                     // go to the next image
                     bindingSourceImages.MoveNext();
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void ShowSavedPreviewImageThread(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // update the image
-                _logService.Trace($"Replacing the preview image for \"{filename}\"...");
-                var newImage = _imageService.Overlay(filename, imageListLarge.ImageSize.Width, imageListLarge.ImageSize.Height, Properties.Resources.saved, imageListLarge.ImageSize.Width - 20, 4);
-
-                Invoke(() =>
-                {
-                    // replace the old image with the new image
-                    imageListLarge.Images.RemoveByKey(filename);
-                    imageListLarge.Images.Add(filename, newImage);
-                });
             }
             finally
             {
@@ -969,13 +1013,13 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Checking for current image...");
-                if (_imageViewModel != null)
-                {
-                    _logService.Trace($"Setting caption alignment for \"{_imageViewModel.Filename}\" to {captionAlignment}...");
-                    _imageViewModel.CaptionAlignment = captionAlignment;
-                }
+                var currentImageViewModel = bindingSourceImages.Position > -1 ? bindingSourceImages.Current as ImageViewModel : null;
 
-                bindingSourceImages.ResetBindings(false);
+                if (currentImageViewModel != null)
+                {
+                    _logService.Trace($"Setting caption alignment for \"{currentImageViewModel.Filename}\" to {captionAlignment}...");
+                    currentImageViewModel.CaptionAlignment = captionAlignment;
+                }
             }
             finally
             {
@@ -1052,39 +1096,19 @@ namespace PhotoLabel
             }
         }
 
-        private void BindingSourceImages_CurrentItemChanged(object sender, EventArgs e)
+        private void BindingSourceMain_CurrentChanged(object sender, EventArgs e)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Checking if a load is in progress...");
-                if (_loading)
-                {
-                    _logService.Trace("A load is in progress.  Exiting...");
-                    return;
-                }
+                _logService.Trace("Watching for property changes to the main model...");
+                _mainFormViewModel.PropertyChanged += MainFormViewModel_PropertyChanged;
 
-                _logService.Trace("Binding model values to UI...");
-                RebindModel();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
+                // show the zoom
+                ShowZoom();
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void BindingSourceMain_CurrentItemChanged(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                RebindModel();
+                // show the default output folder
+                ShowOutputPath();
             }
             catch (Exception ex)
             {
@@ -1103,34 +1127,46 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Checking if a load is in progress...");
-                if (_loading)
+                _logService.Trace("Checking that there is a current image...");
+                if (bindingSourceImages.Position == -1)
                 {
-                    _logService.Trace("A load is in progress.  Exiting...");
+                    _logService.Trace("There is no current image.  Exiting...");
                     return;
                 }
 
-                _logService.Trace("Checking if there is a current image...");
-                _imageViewModel = bindingSourceImages.Current as ImageViewModel;
+                _logService.Trace("Getting current image...");
+                var imageViewModel = bindingSourceImages.Current as ImageViewModel;
 
                 // set the default values
-                if (string.IsNullOrWhiteSpace(_imageViewModel.Caption))
-                    _imageViewModel.Caption = _imageService.GetDateTaken(_imageViewModel.Filename) ?? _imageMetadataService.LoadCaption(_imageViewModel.Filename);
-                if (_imageViewModel.CaptionAlignment == null)
-                    _imageViewModel.CaptionAlignment = _mainFormViewModel.CaptionAlignment;
-                if (_imageViewModel.Color == null)
-                    _imageViewModel.Color = _mainFormViewModel.Color;
-                if (_imageViewModel.Font == null) _imageViewModel.Font = _mainFormViewModel.Font;
+                if (imageViewModel.CaptionAlignment == null)
+                    imageViewModel.CaptionAlignment = _mainFormViewModel.CaptionAlignment;
+                else
+                    _mainFormViewModel.CaptionAlignment = imageViewModel.CaptionAlignment.Value;
 
-                // update the selected preview image (if it is loaded)
-                if (listViewPreview.Items.Count > bindingSourceImages.Position)
-                {
-                    listViewPreview.Items[bindingSourceImages.Position].Selected = true;
-                    listViewPreview.Select();
-                }
+                if (imageViewModel.Color == null)
+                    imageViewModel.Color = _mainFormViewModel.Color;
+                else
+                    _mainFormViewModel.Color = imageViewModel.Color.Value;
 
-                // select the caption by default
-                textBoxCaption.Focus();
+                if (imageViewModel.Font == null)
+                    imageViewModel.Font = _mainFormViewModel.Font;
+                else
+                    _mainFormViewModel.Font = imageViewModel.Font;
+
+                // show the picture
+                ShowPicture(imageViewModel);
+
+                // show the progress
+                ShowProgress();
+
+                // show the rotation
+                ShowCaptionAlignment(imageViewModel);
+
+                // show the location
+                ShowLocation(imageViewModel);
+
+                // focus in the preview list
+                FocusPreviewList();
             }
             catch (Exception ex)
             {
@@ -1231,24 +1267,24 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                switch (_imageViewModel.Rotation)
+                // get the current image
+                var currentImageViewModel = bindingSourceImages.Current as ImageViewModel;
+
+                switch (currentImageViewModel.Rotation)
                 {
                     case Rotations.Ninety:
-                        _imageViewModel.Rotation = Rotations.Zero;
+                        currentImageViewModel.Rotation = Rotations.Zero;
                         break;
                     case Rotations.OneEighty:
-                        _imageViewModel.Rotation = Rotations.Ninety;
+                        currentImageViewModel.Rotation = Rotations.Ninety;
                         break;
                     case Rotations.TwoSeventy:
-                        _imageViewModel.Rotation = Rotations.OneEighty;
+                        currentImageViewModel.Rotation = Rotations.OneEighty;
                         break;
                     case Rotations.Zero:
-                        _imageViewModel.Rotation = Rotations.TwoSeventy;
+                        currentImageViewModel.Rotation = Rotations.TwoSeventy;
                         break;
                 }
-
-                // update the screen
-                RebindModel();
             }
             finally
             {
@@ -1323,19 +1359,21 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                switch (_imageViewModel.Rotation)
+                var currentImageViewModel = bindingSourceImages.Current as ImageViewModel;
+
+                switch (currentImageViewModel.Rotation)
                 {
                     case Rotations.Ninety:
-                        _imageViewModel.Rotation = Rotations.OneEighty;
+                        currentImageViewModel.Rotation = Rotations.OneEighty;
                         break;
                     case Rotations.OneEighty:
-                        _imageViewModel.Rotation = Rotations.TwoSeventy;
+                        currentImageViewModel.Rotation = Rotations.TwoSeventy;
                         break;
                     case Rotations.TwoSeventy:
-                        _imageViewModel.Rotation = Rotations.Zero;
+                        currentImageViewModel.Rotation = Rotations.Zero;
                         break;
                     case Rotations.Zero:
-                        _imageViewModel.Rotation = Rotations.Ninety;
+                        currentImageViewModel.Rotation = Rotations.Ninety;
                         break;
                 }
             }
@@ -1343,9 +1381,47 @@ namespace PhotoLabel
             {
                 _logService.TraceExit();
             }
+        }
 
-            // update the screen
-            RebindModel();
+        private void LoadPreviewImages()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                while (_loadPreviewImageQueue.Count > 0)
+                {
+                    // get the first image
+                    var imageViewModel = _loadPreviewImageQueue[0];
+
+                    // load the image
+                    var preview = imageViewModel.LoadPreview();
+
+                    // add it to the image list
+                    Invoke(() => {
+                        _logService.Trace($"Removing existing preview for \"{imageViewModel.Filename}\"...");
+                        imageListLarge.Images.RemoveByKey(imageViewModel.Filename);
+
+                        _logService.Trace($"Adding new preview for \"{imageViewModel.Filename}\"...");
+                        imageListLarge.Images.Add(imageViewModel.Filename, preview);
+                    });
+
+                    lock (_loadPreviewImageQueue)
+                    {
+                        // remove the image
+                        _loadPreviewImageQueue.RemoveAt(0);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                Invoke(() => MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error));
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
         private void ListViewPreview_SelectedIndexChanged(object sender, EventArgs e)
@@ -1537,6 +1613,36 @@ namespace PhotoLabel
             }
         }
 
+        private void FocusPreviewList()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoke(new DefaultDelegate(FocusPreviewList));
+
+                    return;
+                }
+                _logService.Trace("Running on UI thread");
+
+                if (bindingSourceImages.Position == -1)
+                {
+                    listViewPreview.SelectedIndices.Clear();
+                }
+                else if (listViewPreview.Items.Count > bindingSourceImages.Position)
+                {
+                    listViewPreview.Items[bindingSourceImages.Position].Selected = true;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private void FontToolStripMenuItem_Click(object sender, EventArgs e)
         {
             _logService.TraceEnter();
@@ -1604,6 +1710,29 @@ namespace PhotoLabel
             {
                 _logService.Trace("Rotating right...");
                 RotateRight();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripButtonLocation_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // get the current image
+                var currentImageViewModel = bindingSourceImages.Current as ImageViewModel;
+
+                _logService.Trace($"Opening Google maps at {currentImageViewModel.Latitude.Value},{currentImageViewModel.Longitude.Value}...");
+                Process.Start(string.Format(Properties.Settings.Default.MapsURL, currentImageViewModel.Latitude.Value, currentImageViewModel.Longitude.Value));
             }
             catch (Exception ex)
             {

@@ -1,11 +1,12 @@
-﻿using System.Drawing;
+﻿using PhotoLabel.Services.Models;
+using System.Drawing;
 
-namespace PhotoLibrary.Services
+namespace PhotoLabel.Services
 {
     public interface IImageService
     {
         Image Caption(Image original, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation);
-        string GetDateTaken(string filename);
+        ExifData GetExifData(string filename);
         Image Get(string filename);
         Image Get(string filename, int width, int height);
         Image Overlay(string filename, int width, int height, Image overlay, int x, int y);

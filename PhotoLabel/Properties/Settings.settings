@@ -20,8 +20,14 @@
     <Setting Name="Zoom" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="CaptionAlignment" Type="PhotoLibrary.Services.CaptionAlignments" Scope="User">
+    <Setting Name="CaptionAlignment" Type="PhotoLabel.Services.CaptionAlignments" Scope="User">
       <Value Profile="(Default)">BottomRight</Value>
+    </Setting>
+    <Setting Name="MapsURL" Type="System.String" Scope="User">
+      <Value Profile="(Default)">https://www.google.com/maps/place/{0},{1}</Value>
+    </Setting>
+    <Setting Name="PreviewSize" Type="System.Drawing.Size" Scope="User">
+      <Value Profile="(Default)">128, 128</Value>
     </Setting>
   </Settings>
 </SettingsFile>

@@ -1,18 +1,25 @@
-﻿using PhotoLibrary.Services;
+﻿using PhotoLabel.Services;
 using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Runtime.CompilerServices;
 namespace PhotoLabel.ViewModels
 {
-    public class MainFormViewModel
+    public class MainFormViewModel : INotifyPropertyChanged
     {
+        #region events
+        public event PropertyChangedEventHandler PropertyChanged;
+        #endregion
+
         #region variables
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
+        private string _outputPath;
+        private int _zoom;
         #endregion
 
         public MainFormViewModel(
@@ -24,6 +31,10 @@ namespace PhotoLabel.ViewModels
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logService = logService;
+
+            // initialise the properties from the application settings
+            _outputPath = Properties.Settings.Default.OutputPath;
+            _zoom = Properties.Settings.Default.Zoom > 0 ? Properties.Settings.Default.Zoom : 100;
         }
 
         public CaptionAlignments CaptionAlignment
@@ -39,6 +50,7 @@ namespace PhotoLabel.ViewModels
 
             }
         }
+
         public Color Color
         {
             get
@@ -74,6 +86,11 @@ namespace PhotoLabel.ViewModels
         }
 
         public BindingList<ImageViewModel> Images { get; set; }
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName="")
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
 
         public int Open(string folderPath)
         {
@@ -121,51 +138,19 @@ namespace PhotoLabel.ViewModels
 
         public string OutputPath
         {
-            get => Properties.Settings.Default.OutputPath;
+            get => _outputPath;
             set
             {
                 // save the new value
-                Properties.Settings.Default.OutputPath = value;
+                _outputPath = value;
 
-                // persist the change
+                // persist the new value
+                Properties.Settings.Default.OutputPath = value;
                 Properties.Settings.Default.Save();
+
+                OnPropertyChanged();
             }
         }
-
-        /*public bool Save(Image original, string caption, CaptionAlignments captionAlignment, Font font, Color color, string filename, bool overwriteIfExists)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Getting output filename...");
-
-                // does the file already exist?
-                var outputFilename = Path.Combine(OutputPath, Path.GetFileName(filename));
-                _logService.Trace($"Output filename is \"{outputFilename}\"");
-
-                _logService.Trace($"Checking if \"{outputFilename}\" exists...");
-                if (File.Exists(outputFilename))
-                {
-                    _logService.Trace($"\"{outputFilename}\" already exists");
-                    if (!overwriteIfExists) return false;
-                }
-
-                _logService.Trace("Creating image...");
-                var image = _imageService.Caption(original, caption, captionAlignment, font, new SolidBrush(color));
-
-                _logService.Trace($"Writing image to \"{outputFilename}\"...");
-                image.Save(outputFilename);
-
-                _logService.Trace($"Writing metadata for \"{outputFilename}\"...");
-                _imageMetadataService.Save(caption, captionAlignment, font, color, r, filename);
-
-                return true;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }*/
 
         public FormWindowState WindowState {
             get => Properties.Settings.Default.WindowState;
@@ -179,13 +164,16 @@ namespace PhotoLabel.ViewModels
         }
 
         public int Zoom {
-            get => Properties.Settings.Default.Zoom > 0 ? Properties.Settings.Default.Zoom :  100;
+            get => _zoom;
             set {
                 // save the new value
-                Properties.Settings.Default.Zoom = value;
+                _zoom = value;
 
-                // persist the changes
+                // persist the new value
+                Properties.Settings.Default.Zoom = value;
                 Properties.Settings.Default.Save();
+
+                OnPropertyChanged();
             }
         }
     }

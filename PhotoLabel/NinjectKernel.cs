@@ -14,7 +14,7 @@ namespace PhotoLabel
             kernel = new StandardKernel();
 
             // load the injections
-            kernel.Load("PhotoLibrary.*.dll");
+            kernel.Load("PhotoLabel.*.dll");
         }
 
         public static T Get<T>()
