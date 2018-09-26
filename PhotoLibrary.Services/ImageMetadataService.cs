@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Xml.Serialization;
 namespace PhotoLabel.Services
 {
     public class ImageMetadataService : IImageMetadataService
@@ -23,7 +24,7 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting metadata filename for \"{filename}\"...");
-                var metadataFilename = $"{Path.GetDirectoryName(filename)}\\{Path.GetFileNameWithoutExtension(filename)}.dat";
+                var metadataFilename = $"{Path.GetDirectoryName(filename)}\\{Path.GetFileNameWithoutExtension(filename)}.xml";
                 _logService.Trace($"Metadata filename for \"{filename}\" is \"{metadataFilename}\"");
 
                 return metadataFilename;
@@ -49,7 +50,7 @@ namespace PhotoLabel.Services
                 if (File.Exists(metadataFilename))
                 {
                     _logService.Trace($"File \"{metadataFilename}\" exists.  Deserialising...");
-                    var serializer = new BinaryFormatter();
+                    var serializer = new XmlSerializer(typeof(Metadata));
                     using (var fileStream = new FileStream(metadataFilename, FileMode.Open, FileAccess.Read))
                     {
                         try
@@ -87,7 +88,7 @@ namespace PhotoLabel.Services
                 var metadataFilename = GetMetadataFilename(filename);
 
                 // now save it
-                var serializer = new BinaryFormatter();
+                var serializer = new XmlSerializer(metadata.GetType());
                 using (var writer = new FileStream(metadataFilename, FileMode.Create, FileAccess.Write))
                 {
                     serializer.Serialize(writer, metadata);

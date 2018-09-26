@@ -49,10 +49,7 @@ namespace PhotoLabel.Services
                 _logService.Trace($"Getting \"{filename}\"...");
                 var image = _imageLoaderService.Load(filename);
 
-                lock (image)
-                {
-                    return Resize(image, width, height);
-                }
+                return Resize(image, width, height);
             }
             finally
             {

@@ -79,12 +79,16 @@ namespace PhotoLabel
                 {
                     _logService.Trace("Not running on the UI thread");
                     Invoke(new ActionDelegate(Invoke), action);
+
+                    return;
                 }
-                else
-                {
-                    _logService.Trace("Running on the UI thread.  Executing action...");
-                    action();
-                }
+
+                _logService.Trace("Running on the UI thread.  Executing action...");
+                action();
+            }
+            catch (ObjectDisposedException)
+            {
+                // ignore this error - the form has been closed
             }
             finally
             {
@@ -433,15 +437,15 @@ namespace PhotoLabel
                 }
                 _logService.Trace("Running on UI thread");
 
-                checkBoxTopLeft.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.TopLeft;
-                checkBoxTopCentre.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.TopCentre;
-                checkBoxTopRight.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.TopRight;
-                checkBoxLeft.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleLeft;
-                checkBoxCentre.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleCentre;
-                checkBoxRight.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.MiddleRight;
-                checkBoxBottomLeft.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.BottomLeft;
-                checkBoxBottomCentre.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.BottomCentre;
-                checkBoxBottomRight.Checked = imageViewModel?.CaptionAlignment == CaptionAlignments.BottomRight;
+                checkBoxTopLeft.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.TopLeft;
+                checkBoxTopCentre.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.TopCentre;
+                checkBoxTopRight.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.TopRight;
+                checkBoxLeft.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.MiddleLeft;
+                checkBoxCentre.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.MiddleCentre;
+                checkBoxRight.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.MiddleRight;
+                checkBoxBottomLeft.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.BottomLeft;
+                checkBoxBottomCentre.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.BottomCentre;
+                checkBoxBottomRight.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.BottomRight;
             }
             finally
             {
@@ -576,7 +580,11 @@ namespace PhotoLabel
                         // only update the caption if this is the current image
                         if (!IsCurrentImage(imageViewModel)) return;
 
+                        // show the new caption
                         ShowCaption();
+
+                        // redraw the image
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
 
                         break;
                     case "CaptionAlignment":
@@ -589,7 +597,18 @@ namespace PhotoLabel
                         ShowCaptionAlignment(imageViewModel);
 
                         // save this as the default alignment
-                        _mainFormViewModel.CaptionAlignment = imageViewModel.CaptionAlignment;
+                        if (imageViewModel.CaptionAlignment.HasValue) _mainFormViewModel.CaptionAlignment = imageViewModel.CaptionAlignment.Value;
+
+                        // redraw the image
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+
+                        break;
+                    case "Colour":
+                    case "Font":
+                        _logService.Trace("Image needs to be reloaded...");
+
+                        // redraw the image
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
 
                         break;
                     case "Image":
@@ -627,6 +646,9 @@ namespace PhotoLabel
                         if (!IsCurrentImage(imageViewModel)) return;
 
                         ShowCaptionAlignment(imageViewModel);
+
+                        // redraw the image
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
 
                         break;
                 }
@@ -749,9 +771,17 @@ namespace PhotoLabel
                 // get the current image
                 var currentImageViewModel = bindingSourceImages.Position > -1 ? bindingSourceImages.Current as ImageViewModel : null;
 
+                _logService.Trace("Checking if current image has a font set...");
+                var font = currentImageViewModel.Font;
+                if (font == null)
+                {
+                    _logService.Trace("Current image does not have a font set.  Using the default font...");
+                    font = _mainFormViewModel.Font;
+                }
+
                 // set the current font
-                _logService.Trace($"Defaulting to current image font \"{currentImageViewModel.Font.Name}\"...");
-                fontDialog.Font = currentImageViewModel.Font;
+                _logService.Trace($"Defaulting to font \"{font.Name}\"...");
+                fontDialog.Font = font;
 
                 // now show the dialog
                 if (fontDialog.ShowDialog() == DialogResult.OK)
@@ -888,7 +918,7 @@ namespace PhotoLabel
 
                 // set the default color
                 _logService.Trace("Defaulting to current image colour...");
-                colorDialog.Color = currentImageViewModel.Color;
+                colorDialog.Color = currentImageViewModel.Colour ?? _mainFormViewModel.Color;
 
                 if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
@@ -898,7 +928,7 @@ namespace PhotoLabel
 
                     // update the colour on any existing image
                     _logService.Trace("Updating colour on current image...");
-                    currentImageViewModel.Color = colorDialog.Color;
+                    currentImageViewModel.Colour = colorDialog.Color;
                 }
             }
             finally
@@ -1041,7 +1071,7 @@ namespace PhotoLabel
                 if (outputPath != currentImageViewModel.Filename)
                 {
                     // try and save the image
-                    if (currentImageViewModel.Save(_mainFormViewModel.OutputPath, false))
+                    if (currentImageViewModel.Save(_mainFormViewModel.OutputPath, false, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font))
                     {
                         // go to the next image
                         bindingSourceImages.MoveNext();
@@ -1049,7 +1079,7 @@ namespace PhotoLabel
                     else if (MessageBox.Show($"The file \"{currentImageViewModel.FilenameWithoutPath}\" already exists.  Do you wish to overwrite it?", "Overwrite file?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         // overwrite the existing image
-                        currentImageViewModel.Save(_mainFormViewModel.OutputPath, true);
+                        currentImageViewModel.Save(_mainFormViewModel.OutputPath, true, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
 
                         // go to the next image
                         bindingSourceImages.MoveNext();
@@ -1058,7 +1088,7 @@ namespace PhotoLabel
                 else if (MessageBox.Show("This will overwrite the original file.  Are you sure?", "Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
                     // overwrite the existing image
-                    currentImageViewModel.Save(_mainFormViewModel.OutputPath, true);
+                    currentImageViewModel.Save(_mainFormViewModel.OutputPath, true, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
 
                     // go to the next image
                     bindingSourceImages.MoveNext();
@@ -1200,8 +1230,13 @@ namespace PhotoLabel
                 _logService.Trace("Getting current image...");
                 var imageViewModel = bindingSourceImages.Current as ImageViewModel;
 
+                _logService.Trace("Setting default values for current image...");
+
+                // reload the image to pick up any changes in the default values
+                imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+
                 // show the picture
-                ShowPicture(imageViewModel);
+                ShowAjaxImage();
 
                 // show the progress
                 ShowProgress();
