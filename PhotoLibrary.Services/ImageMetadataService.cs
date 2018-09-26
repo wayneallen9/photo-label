@@ -1,5 +1,4 @@
-﻿using System;
-using System.Drawing;
+﻿using PhotoLabel.Services.Models;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -8,9 +7,7 @@ namespace PhotoLabel.Services
     public class ImageMetadataService : IImageMetadataService
     {
         #region private properties
-        private string _filename;
         private readonly ILogService _logService;
-        private ImageMetadata _imageMetadata;
         #endregion
 
         public ImageMetadataService(
@@ -18,24 +15,6 @@ namespace PhotoLabel.Services
         {
             // save dependency injections
             _logService = logService;
-        }
-
-        public bool HasMetadata(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Loading metadata for \"{filename}\"...");
-
-                // load the metadata
-                var metadata = LoadMetadata(filename);
-
-                return metadata != null;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
         }
 
         private string GetMetadataFilename(string filename)
@@ -55,133 +34,42 @@ namespace PhotoLabel.Services
             }
         }
 
-        public string LoadCaption(string filename)
+        public Metadata Load(string filename)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Loading metadata for \"{filename}\"...");
-
-                // load the metadata
-                var metadata = LoadMetadata(filename);
-
-                if (metadata != null) return metadata.Caption;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
-            return null;
-        }
-
-        public CaptionAlignments? LoadCaptionAlignment(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Loading metadata for \"{filename}\"...");
-
-                // load the metadata
-                var metadata = LoadMetadata(filename);
-
-                if (metadata != null) return metadata.CaptionAlignment;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
-            return null;
-        }
-
-        public Color? LoadColor(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Loading metadata for \"{filename}\"...");
-
-                // load the metadata
-                var metadata = LoadMetadata(filename);
-
-                if (metadata != null) return metadata.Color;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
-            return null;
-        }
-
-        public Font LoadFont(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Loading metadata for \"{filename}\"...");
-
-                // load the metadata
-                var metadata = LoadMetadata(filename);
-
-                if (metadata != null) return metadata.Font;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
-            return null;
-        }
-
-        private ImageMetadata LoadMetadata(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Checking if metadata for \"{filename}\" has been cached...");
-                if (_filename == filename)
-                {
-                    _logService.Trace($"Metadata for \"{filename}\" has been cached");
-                    return _imageMetadata;
-                }
-
-                _logService.Trace($"Metadata for \"{filename}\" has not been cached");
-
                 // get the name of the metadata file
+                _logService.Trace($"Getting metadata filename for image \"{filename}\"...");
                 var metadataFilename = GetMetadataFilename(filename);
+                _logService.Trace($"Metadata filename is \"{metadataFilename}\"");
 
                 // does the metadata exist?
+                _logService.Trace($"Checking if file \"{metadataFilename}\" exists...");
                 if (File.Exists(metadataFilename))
                 {
+                    _logService.Trace($"File \"{metadataFilename}\" exists.  Deserialising...");
                     var serializer = new BinaryFormatter();
                     using (var fileStream = new FileStream(metadataFilename, FileMode.Open, FileAccess.Read))
                     {
                         try
                         {
-                            _imageMetadata = serializer.Deserialize(fileStream) as ImageMetadata;
+                            return serializer.Deserialize(fileStream) as Metadata;
                         }
                         catch (SerializationException)
                         {
                             // ignore serialization errors
+                            _logService.Trace($"Unable to deserialise \"{metadataFilename}\".  Ignoring.");
                         }
                     }
-
-                    // save the filename as the cache
-                    _filename = filename;
                 }
                 else
                 {
                     _logService.Trace($"Metadata file not found for \"{filename}\"");
-
-                    // save the filename as the cache
-                    _filename = filename;
-                    _imageMetadata = null;
                 }
 
                 // return the metadata
-                return _imageMetadata;
+                return null;
             }
             finally
             {
@@ -189,27 +77,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Rotations? LoadRotation(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Loading metadata for \"{filename}\"...");
-
-                // load the metadata
-                var metadata = LoadMetadata(filename);
-
-                if (metadata != null) return metadata.Rotation;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
-            return null;
-        }
-
-        public void Save(string caption, CaptionAlignments captionAlignment, Font font, Color color, Rotations rotation, string filename)
+        public void Save(Metadata metadata, string filename)
         {
             _logService.TraceEnter();
             try {
@@ -222,30 +90,13 @@ namespace PhotoLabel.Services
                 var serializer = new BinaryFormatter();
                 using (var writer = new FileStream(metadataFilename, FileMode.Create, FileAccess.Write))
                 {
-                    serializer.Serialize(writer, new ImageMetadata
-                    {
-                        Caption=caption,
-                        CaptionAlignment=captionAlignment,
-                        Font=font,
-                        Color=color,
-                        Rotation=rotation
-                    });
+                    serializer.Serialize(writer, metadata);
                 }
             }
             finally
             {
                 _logService.TraceExit();
             }
-        }
-
-        [Serializable]
-        private class ImageMetadata
-        {
-            public Color Color { get; set; }
-            public string Caption { get; set; }
-            public CaptionAlignments CaptionAlignment { get; set; }
-            public Font Font { get; set; }
-            public Rotations Rotation { get; set; }
         }
     }
 }

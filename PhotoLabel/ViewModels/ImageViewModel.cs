@@ -25,24 +25,27 @@ namespace PhotoLabel.ViewModels
         #endregion
 
         #region variables
-        private CancellationTokenSource _imageCancellationTokenSource;
         private string _caption;
-        private CaptionAlignments? _captionAlignment = CaptionAlignments.TopLeft;
+        private CaptionAlignments? _captionAlignment;
         private Color? _color;
-        private volatile bool _exifLoaded = false;
-        private string _filename;
+        private ExifData _exifData;
+        private volatile bool _exifLoading = false;
+        private readonly object _exifLock = new object();
         private Font _font;
-        private bool _hasMetadata = false;
         private Image _image;
+        private readonly object _imageLock = new object();
+        private CancellationTokenSource _imageCancellationTokenSource;
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
-        private float? _latitude;
-        private float? _longitude;
+        private Exception _lastException;
         private readonly ILogService _logService;
-        private volatile bool _metadataLoaded = false;
+        private Metadata _metadata;
+        private volatile bool _metadataLoading = false;
+        private readonly object _metadataLock = new object();
         private Image _preview;
+        private readonly object _previewLock = new object();
         private CancellationTokenSource _previewCancellationTokenSource;
-        private Rotations _rotation = Rotations.Zero;
+        private Rotations? _rotation;
         private bool _saved = false;
         #endregion
 
@@ -57,31 +60,29 @@ namespace PhotoLabel.ViewModels
             _logService = logService;
         }
 
-        public Color? Color
-        {
-            get => _color;
-            set
-            {
-                // save the new value
-                _color = value;
-
-                // clear the image cache
-                _image = null;
-
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(Image));
-            }
-        }
-
         public string Caption
         {
-            get => _caption;
+            get
+            {
+                // is there a custom caption?
+                if (_caption != null) return _caption;
+
+                // is there a caption in the metadata?
+                if (Metadata?.Caption != null) return Metadata.Caption;
+
+                if (ExifData?.DateTaken != null) return ExifData.DateTaken;
+
+                return string.Empty;
+            }
             set
             {
+                // ignore non-changes
+                if (_caption == value) return;
+
                 // save the new value
                 _caption = value;
 
-                // clear the image cache
+                // clear the cached image
                 _image = null;
 
                 // trigger the update
@@ -90,14 +91,27 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public CaptionAlignments? CaptionAlignment
+        public CaptionAlignments CaptionAlignment
         {
-            get => _captionAlignment;
+            get
+            {
+                // is there a custom alignment set?
+                if (_captionAlignment != null) return _captionAlignment.Value;
+
+                // return the value from the metadata
+                if (Metadata?.CaptionAlignment != null) return Metadata.CaptionAlignment;
+
+                return Properties.Settings.Default.CaptionAlignment;
+            }
             set
-            {// save the value
+            {
+                // ignore non-changes
+                if (_captionAlignment == value) return;
+
+                // save the value
                 _captionAlignment = value;
 
-                // clear the image cache
+                // clear the cached image
                 _image = null;
 
                 OnPropertyChanged();
@@ -105,18 +119,119 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public string Filename
+        public Color Color
         {
-            get => _filename; set
+            get
             {
+                // has a custom color been set?
+                if (_color != null) return _color.Value;
+
+                // use the color from the metadata
+                if (Metadata?.Color != null) return Metadata.Color;
+
+                return Properties.Settings.Default.Color;
+            }
+            set
+            {
+                // ignore non-changes
+                if (_color == value) return;
+
                 // save the new value
-                _filename = value;
+                _color = value;
+
+                // clear the cached image
+                _image = null;
 
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(FilenameWithoutPath));
                 OnPropertyChanged(nameof(Image));
             }
         }
+
+        private void ExceptionHandler(Task task)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Getting exception...");
+                _lastException = task.Exception;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private ExifData ExifData
+        {
+            get
+            {
+                // has the data already been loaded?
+                if (_exifData != null) return _exifData;
+
+                // is it already being loaded from disk?
+                if (_exifLoading) return null;
+
+                // flag that the exif is now loading
+                _exifLoading = true;
+
+                // load the data from disk on another thread
+                var task = new Task(ExifDataThread, TaskCreationOptions.LongRunning);
+                task.ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
+                task.Start();
+
+                return null;
+            }
+        }
+
+        private void ExifDataThread()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                LoadExifData();
+
+                // clear the cached image
+                _image = null;
+
+                // update the properties
+                OnPropertyChanged(nameof(Caption));
+                OnPropertyChanged(nameof(Image));
+                OnPropertyChanged(nameof(Latitude));
+                OnPropertyChanged(nameof(Longitude));
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void LoadExifData()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // this method needs to be thread safe
+                _logService.Trace("Creating a thread-safe lock for Exif data...");
+                lock (_exifLock)
+                {
+                    _logService.Trace($"Checking if another thread has loaded the Exif data for \"{Filename}\"...");
+                    if (_exifData != null)
+                    {
+                        _logService.Trace($"Exif data for \"{Filename}\" has been loaded on another thread.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Loading Exif data for \"{Filename}\"...");
+                    _exifData = _imageService.GetExifData(Filename);
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public string Filename { get; set; }
 
         public string FilenameWithoutPath
         {
@@ -125,12 +240,24 @@ namespace PhotoLabel.ViewModels
 
         public Font Font
         {
-            get => _font;
+            get
+            {
+                // has a custom font been set?
+                if (_font != null) return _font;
+
+                if (Metadata?.Font != null) return Metadata.Font;
+
+                return Properties.Settings.Default.Font;
+            }
             set
-            { //save the new value
+            {
+                // ignore non-changes
+                if (_font == value) return;
+
+                //save the new value
                 _font = value;
 
-                // clear the image cache
+                // clear the cached image
                 _image = null;
 
                 OnPropertyChanged();
@@ -138,27 +265,16 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Image LoadPreview()
+        public void GetPreview()
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Checking if \"{Filename}\" has a cached preview...");
-                if (_preview != null)
-                {
-                    _logService.Trace($"\"{Filename}\" has a cached preview");
-                    return _preview;
-                }
+                // create the cancellation token for this preview
+                var cancellationTokenSource = new CancellationTokenSource();
 
-                // which overlay do we use?
-                if (Saved)
-                    _preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.saved, PreviewWidth - Properties.Resources.saved.Width - 4, 4);
-                else if (_imageMetadataService.HasMetadata(Filename))
-                    _preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.metadata, PreviewWidth - Properties.Resources.metadata.Width - 4, 4);
-                else
-                    _preview = _imageService.Get(Filename, PreviewWidth, PreviewHeight);
-
-                return _preview;
+                // start loading the preview in the thread pool
+                ThreadPool.QueueUserWorkItem(PreviewThread, cancellationTokenSource.Token);
             }
             finally
             {
@@ -170,17 +286,21 @@ namespace PhotoLabel.ViewModels
         {
             get
             {
-                // is the image cached?
+                // if the image has been cached, return it
                 if (_image != null) return _image;
 
-                // if there is an existing load in progress, cancel it
-                if (_imageCancellationTokenSource != null) _imageCancellationTokenSource.Cancel();
+                lock (_imageLock)
+                {
+                    // is the image already loading?
+                    if (_imageCancellationTokenSource != null) _imageCancellationTokenSource.Cancel();
 
-                // create a new cancellation token
-                _imageCancellationTokenSource = new CancellationTokenSource();
+                    // create a new cancellation token
+                    _imageCancellationTokenSource = new CancellationTokenSource();
 
-                // load the image on a new thread (for performance)
-                Task.Factory.StartNew(() => ImageThread(_imageCancellationTokenSource.Token), TaskCreationOptions.LongRunning);
+                    // load the image on a new thread (for performance)
+                    var thread = new Thread(ImageThread);
+                    thread.Start(_imageCancellationTokenSource.Token);
+                }
 
                 return null;
             }
@@ -188,84 +308,32 @@ namespace PhotoLabel.ViewModels
 
         public float? Latitude
         {
-            get => _latitude;
-            set
-            {
-                // save the value
-                _latitude = value;
-
-                OnPropertyChanged();
-            }
+            get => ExifData?.Latitude;
         }
 
-        private void ImageThread(CancellationToken cancellationToken)
+        private void ImageThread(object state)
         {
             _logService.TraceEnter();
             try
             {
-                // load the Exif data for the image (if required)
+                if (!(state is CancellationToken cancellationToken)) return;
+
                 if (cancellationToken.IsCancellationRequested) return;
+                Thread.Sleep(100);
 
-                // we only want to load the Exif data once
-                lock (this)
-                {
-                    // do we need to load the metadata for the image?
-                    _logService.Trace($"Checking if metadata is loaded for image \"{Filename}\"...");
-                    if (!_metadataLoaded)
-                    {
-                        _logService.Trace($"Loading metadata for image \"{Filename}\"...");
-                        Caption = _imageMetadataService.LoadCaption(Filename);
-                        CaptionAlignment = _imageMetadataService.LoadCaptionAlignment(Filename);
-                        Color = _imageMetadataService.LoadColor(Filename);
-                        Font = _imageMetadataService.LoadFont(Filename);
-                        Rotation = _imageMetadataService.LoadRotation(Filename) ?? Rotations.Zero;
-
-                        // don't load it again
-                        _metadataLoaded = true;
-                    }
-
-                    // do we need to load the Exif data for the image?
-                    _logService.Trace("Checking if Exif data is loaded for image \"{Filename}\"...");
-                    if (!_exifLoaded)
-                    {
-                        _logService.Trace($"Loading Exif data for image \"{Filename}\"...");
-                        var exifData = _imageService.GetExifData(Filename);
-
-                        // set the caption (if it is not already set)
-                        if (Caption == null) Caption = exifData.DateTaken;
-
-                        // set the latitude and longitude (since we have just loaded them)
-                        Latitude = exifData.Latitude;
-                        Longitude = exifData.Longitude;
-
-                        // don't load it again
-                        _exifLoaded = true;
-                    }
-                }
-
-                // set the properties required to draw the image
                 if (cancellationToken.IsCancellationRequested) return;
-                var caption = Caption ?? string.Empty;
-                var captionAlignment = CaptionAlignment ?? CaptionAlignments.TopLeft;
-                var color = Color ?? System.Drawing.Color.White;
-                var font = Font ?? SystemFonts.DefaultFont;
+                LoadMetadata();
 
-                // load the image from disk
+                // we only need the Exif data if the metadata did not load
                 if (cancellationToken.IsCancellationRequested) return;
-                var originalImage = _imageService.Get(Filename);
+                if (_metadata == null) LoadExifData();
 
-                lock (originalImage)
-                {
-                    // now caption it
-                    if (cancellationToken.IsCancellationRequested) return;
-                    var image = _imageService.Caption(originalImage, caption, captionAlignment, font, new SolidBrush(color), Rotation);
-
-                    // now update the image
-                    if (cancellationToken.IsCancellationRequested) return;
-                    _image = image;
-                }
+                if (cancellationToken.IsCancellationRequested) return;
+                _logService.Trace($"Adding caption to \"{Filename}\"...");
+                _image = _imageService.Caption(Filename, Caption, CaptionAlignment, Font, new SolidBrush(Color), Rotation);
 
                 // the image has been updated
+                if (cancellationToken.IsCancellationRequested) return;
                 OnPropertyChanged(nameof(Image));
             }
             catch (Exception ex)
@@ -278,9 +346,59 @@ namespace PhotoLabel.ViewModels
             }
         }
 
+        private Metadata Metadata
+        {
+            get
+            {
+                // has it already been cached?
+                if (_metadata != null) return _metadata;
+
+                // is it already loading?
+                if (_metadataLoading) return null;
+
+                // flag that it is loading
+                _metadataLoading = true;
+
+                // load the metadata
+                var task = new Task(MetadataThread);
+                task.ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
+                task.Start();
+
+                return null;
+            }
+        }
+
+        private void LoadMetadata()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // this method needs to be thread safe
+                _logService.Trace("Creating a thread-safe lock for metadata...");
+                lock (_metadataLock)
+                {
+                    _logService.Trace($"Checking if another thread has loaded the metadata for \"{Filename}\"...");
+                    if (_metadata != null)
+                    {
+                        _logService.Trace($"Metadata for \"{Filename}\" has been loaded on another thread.  Exiting...");
+                        return;
+                    }
+
+                    // load the metadata
+                    _logService.Trace($"Loading metadata for \"{Filename}\" from disk...");
+                    _metadata = _imageMetadataService.Load(Filename);
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         public Image Preview
         {
-            get {
+            get
+            {
                 _logService.TraceEnter();
                 try
                 {
@@ -291,13 +409,18 @@ namespace PhotoLabel.ViewModels
                         return _preview;
                     }
 
-                    // is the preview already loading?
-                    if (_previewCancellationTokenSource != null) _previewCancellationTokenSource.Cancel();
+                    lock (_previewLock)
+                    {
+                        // is the preview already loading?
+                        if (_previewCancellationTokenSource != null) _previewCancellationTokenSource.Cancel();
 
-                    // create a new cancellation token
-                    _previewCancellationTokenSource = new CancellationTokenSource();
+                        // create a new cancellation token
+                        _previewCancellationTokenSource = new CancellationTokenSource();
 
-                    Task.Factory.StartNew(() => PreviewThread(_previewCancellationTokenSource.Token), TaskCreationOptions.LongRunning);
+                        // load it on a thread
+                        var thread = new Thread(PreviewThread);
+                        thread.Start(_previewCancellationTokenSource.Token);
+                    }
 
                     return null;
                 }
@@ -308,20 +431,28 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        private void PreviewThread(CancellationToken cancellationToken)
+        private void PreviewThread(object state)
         {
             _logService.TraceEnter();
             try
             {
+                if (!(state is CancellationToken cancellationToken)) return;
+
                 if (cancellationToken.IsCancellationRequested) return;
+                Thread.Sleep(100);
+
+                // load the metadata from the disk
+                if (cancellationToken.IsCancellationRequested) return;
+                LoadMetadata();
 
                 // which overlay do we use?
+                if (cancellationToken.IsCancellationRequested) return;
                 if (Saved)
                 {
                     _logService.Trace($"\"{Filename}\" has been saved.  Rendering preview with saved overlay...");
                     _preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.saved, PreviewWidth - Properties.Resources.saved.Width - 4, 4);
-                } 
-                else if (_imageMetadataService.HasMetadata(Filename))
+                }
+                else if (_metadata != null)
                     _preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.metadata, PreviewWidth - Properties.Resources.metadata.Width - 4, 4);
                 else
                     _preview = _imageService.Get(Filename, PreviewWidth, PreviewHeight);
@@ -337,12 +468,34 @@ namespace PhotoLabel.ViewModels
 
         public float? Longitude
         {
-            get => _longitude; set
-            {
-                // save the new value
-                _longitude = value;
+            get => ExifData?.Longitude;
+        }
 
-                OnPropertyChanged();
+        private void MetadataThread()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // load the metadata
+                LoadMetadata();
+
+                // update the properties
+                OnPropertyChanged(nameof(Caption));
+                OnPropertyChanged(nameof(CaptionAlignment));
+                OnPropertyChanged(nameof(Color));
+                OnPropertyChanged(nameof(Font));
+
+                // clear the image cache
+                _image = null;
+                OnPropertyChanged(nameof(Image));
+
+                // clear the preview cache
+                _preview = null;
+                OnPropertyChanged(nameof(Preview));
+            }
+            finally
+            {
+                _logService.TraceExit();
             }
         }
 
@@ -353,12 +506,24 @@ namespace PhotoLabel.ViewModels
 
         public Rotations Rotation
         {
-            get => _rotation; set
+            get
             {
+                // has a custom rotation been set?
+                if (_rotation != null) return _rotation.Value;
+
+                if (Metadata?.Rotation != null) return Metadata.Rotation;
+
+                return Rotations.Zero;
+            }
+            set
+            {
+                // ignore non-changes
+                if (_rotation == value) return;
+
                 // save the new value
                 _rotation = value;
 
-                // invalidate the image
+                // clear the cached image
                 _image = null;
 
                 OnPropertyChanged();
@@ -383,15 +548,37 @@ namespace PhotoLabel.ViewModels
                 }
                 _logService.Trace($"\"{targetFilename}\" will be overwritten");
 
-                var original = _imageService.Get(Filename);
-                lock (original)
+                // make the save thread safe
+                lock (this)
                 {
-                    // create the image to save
-                    var captioned = _imageService.Caption(original, Caption, CaptionAlignment.Value, Font, new SolidBrush(Color.Value), Rotation);
+                    // draw the caption on it
+                    var captioned = _imageService.Caption(Filename, Caption, CaptionAlignment, Font, new SolidBrush(Color), Rotation);
 
                     // save the image to the file
                     _logService.Trace($"Saving \"{targetFilename}\"...");
                     captioned.Save(targetFilename, ImageFormat.Jpeg);
+
+                    // do we need to create a new metadata file?
+                    if (_metadata == null)
+                        _metadata = new Metadata
+                        {
+                            Caption = Caption,
+                            CaptionAlignment = CaptionAlignment,
+                            Color = Color,
+                            Font = Font,
+                            Rotation = Rotation
+                        };
+                    else
+                    {
+                        _metadata.Caption = Caption;
+                        _metadata.CaptionAlignment = CaptionAlignment;
+                        _metadata.Color = Color;
+                        _metadata.Font = Font;
+                        _metadata.Rotation = Rotation;
+                    }
+
+                    _logService.Trace($"Saving metadata for \"{Filename}\"...");
+                    _imageMetadataService.Save(_metadata, Filename);
                 }
 
                 // flag that the image has been saved

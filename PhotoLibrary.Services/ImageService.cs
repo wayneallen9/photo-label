@@ -11,15 +11,18 @@ namespace PhotoLabel.Services
     public class ImageService : IImageService
     {
         #region variables
-        private ImageCache _imageCache;
+        private readonly IImageLoaderService _imageLoaderService;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
         #endregion
 
         public ImageService(
+            IImageLoaderService imageLoaderService,
             ILineWrapService lineWrapService,
             ILogService logService)
         {
+            // save the dependency injections
+            _imageLoaderService = imageLoaderService;
             _lineWrapService = lineWrapService;
             _logService = logService;
         }
@@ -29,20 +32,8 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Checking if \"{filename}\" is cached...");
-                if (_imageCache?.Filename == filename) return _imageCache.Image;
-
                 _logService.Trace($"Getting \"{filename}\"...");
-                using (var imageFileStream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
-                {
-                    _imageCache = new ImageCache
-                    {
-                        Filename = filename,
-                        Image = Image.FromStream(imageFileStream)
-                    };
-
-                    return _imageCache.Image;
-                }
+                return _imageLoaderService.Load(filename);
             }
             finally
             {
@@ -50,42 +41,17 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Get(string filename, int maxWidth, int maxHeight)
+        public Image Get(string filename, int width, int height)
         {
             _logService.TraceEnter();
             try
             {
-                using (var imageFileStream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                _logService.Trace($"Getting \"{filename}\"...");
+                var image = _imageLoaderService.Load(filename);
+
+                lock (image)
                 {
-                    _logService.Trace($"Getting \"{filename}\"...");
-                    var original = Image.FromStream(imageFileStream);
-
-                    _logService.Trace($"Resizing to fit {maxWidth}px x{maxHeight}px canvas...");
-                    var canvas = new Bitmap(maxWidth, maxHeight);
-
-                    _logService.Trace($"Calculating size of resized image...");
-                    var aspectRatio = Math.Min(maxWidth / (float)original.Width, maxHeight / (float)original.Height);
-                    var newWidth = original.Width * aspectRatio;
-                    var newHeight = original.Height * aspectRatio;
-                    var newX = (maxWidth - newWidth) / 2;
-                    var newY = (maxHeight - newHeight) / 2;
-
-                    _logService.Trace($"Drawing resized image...");
-                    using (var graphics = Graphics.FromImage(canvas))
-                    {
-                        // initialise the pen
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
-                        // draw the black background
-                        graphics.FillRectangle(new SolidBrush(Color.Black), 0, 0, maxWidth, maxHeight);
-
-                        // now draw the image over the top
-                        graphics.DrawImage(original, newX, newY, newWidth, newHeight);
-                    }
-
-                    return canvas;
+                    return Resize(image, width, height);
                 }
             }
             finally
@@ -190,13 +156,21 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
+        public Image Caption(string filename, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
         {
+            Bitmap image;
+
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Creating a copy of the original image...");
-                var image = new Bitmap(original);
+                _logService.Trace($"Getting \"{filename}\"...");
+                var original = _imageLoaderService.Load(filename);
+
+                lock (original)
+                {
+                    _logService.Trace("Creating a copy of the original image...");
+                    image = new Bitmap(original);
+                }
 
                 _logService.Trace($"Rotating copy to {rotation}...");
                 switch (rotation)
@@ -601,8 +575,11 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
+                _logService.Trace($"Getting \"{filename}\"...");
+                var original = _imageLoaderService.Load(filename);
+
                 _logService.Trace("Creating base image...");
-                var baseImage = Get(filename, width, height);
+                var baseImage = Resize(original, width, height);
 
                 _logService.Trace("Getting graphics manager for new image...");
                 using (var graphics = Graphics.FromImage(baseImage))
@@ -624,10 +601,42 @@ namespace PhotoLabel.Services
             }
         }
 
-        private class ImageCache
+        private Image Resize(Image image, int width, int height)
         {
-            public string Filename { get; set; }
-            public Image Image { get; set; }
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Resizing to fit {width}px x{height}px canvas...");
+                var canvas = new Bitmap(width, height);
+
+                _logService.Trace($"Calculating size of resized image...");
+                var aspectRatio = Math.Min(width / (float)image.Width, height / (float)image.Height);
+                var newWidth = image.Width * aspectRatio;
+                var newHeight = image.Height * aspectRatio;
+                var newX = (width - newWidth) / 2;
+                var newY = (height - newHeight) / 2;
+
+                _logService.Trace($"Drawing resized image...");
+                using (var graphics = Graphics.FromImage(canvas))
+                {
+                    // initialise the pen
+                    graphics.SmoothingMode = SmoothingMode.HighQuality;
+                    graphics.CompositingQuality = CompositingQuality.HighQuality;
+                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                    // draw the black background
+                    graphics.FillRectangle(new SolidBrush(Color.Black), 0, 0, width, height);
+
+                    // now draw the image over the top
+                    graphics.DrawImage(image, newX, newY, newWidth, newHeight);
+                }
+
+                return canvas;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
     }
 }

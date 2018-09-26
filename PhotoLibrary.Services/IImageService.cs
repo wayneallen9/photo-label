@@ -5,7 +5,7 @@ namespace PhotoLabel.Services
 {
     public interface IImageService
     {
-        Image Caption(Image original, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation);
+        Image Caption(string filename, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation);
         ExifData GetExifData(string filename);
         Image Get(string filename);
         Image Get(string filename, int width, int height);

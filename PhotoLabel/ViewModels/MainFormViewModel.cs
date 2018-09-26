@@ -1,4 +1,5 @@
-﻿using PhotoLabel.Services;
+﻿using Ninject.Parameters;
+using PhotoLabel.Services;
 using System;
 using System.ComponentModel;
 using System.Drawing;
@@ -15,6 +16,7 @@ namespace PhotoLabel.ViewModels
         #endregion
 
         #region variables
+        private CaptionAlignments _captionAlignment;
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
@@ -33,21 +35,24 @@ namespace PhotoLabel.ViewModels
             _logService = logService;
 
             // initialise the properties from the application settings
+            _captionAlignment = Properties.Settings.Default.CaptionAlignment;
             _outputPath = Properties.Settings.Default.OutputPath;
             _zoom = Properties.Settings.Default.Zoom > 0 ? Properties.Settings.Default.Zoom : 100;
         }
 
         public CaptionAlignments CaptionAlignment
         {
-            get => Properties.Settings.Default.CaptionAlignment;
+            get => _captionAlignment;
             set
             {
-                // update the value
-                Properties.Settings.Default.CaptionAlignment = value;
+                // set the value
+                _captionAlignment = value;
 
-                // persist the changes
+                // persist the value
+                Properties.Settings.Default.CaptionAlignment = value;
                 Properties.Settings.Default.Save();
 
+                OnPropertyChanged();
             }
         }
 
@@ -113,14 +118,7 @@ namespace PhotoLabel.ViewModels
                         // get the image
                         var imageViewModel = NinjectKernel.Get<ImageViewModel>();
 
-                        // try and load it's metadata
-                        imageViewModel.Caption = _imageMetadataService.LoadCaption(s);
-                        imageViewModel.CaptionAlignment = _imageMetadataService.LoadCaptionAlignment(s);
-                        imageViewModel.Color = _imageMetadataService.LoadColor(s);
-                        imageViewModel.Font = _imageMetadataService.LoadFont(s);
-                        imageViewModel.Rotation = _imageMetadataService.LoadRotation(s) ?? Rotations.Zero;
-
-                        // save the filename
+                        // set the filename
                         imageViewModel.Filename = s;
 
                         return imageViewModel;

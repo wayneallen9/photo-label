@@ -68,6 +68,7 @@
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.textBoxCaption = new System.Windows.Forms.TextBox();
             this.bindingSourceImages = new System.Windows.Forms.BindingSource(this.components);
+            this.bindingSourceMain = new System.Windows.Forms.BindingSource(this.components);
             this.panelSize = new System.Windows.Forms.Panel();
             this.panelCanvas = new System.Windows.Forms.Panel();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
@@ -86,17 +87,16 @@
             this.imageListLarge = new System.Windows.Forms.ImageList(this.components);
             this.fontDialog = new System.Windows.Forms.FontDialog();
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
-            this.bindingSourceMain = new System.Windows.Forms.BindingSource(this.components);
             this.menuStrip1.SuspendLayout();
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSourceImages)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).BeginInit();
             this.panelSize.SuspendLayout();
             this.panelCanvas.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).BeginInit();
             this.panel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).BeginInit();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -457,6 +457,12 @@
             this.bindingSourceImages.DataSource = this.bindingSourceMain;
             this.bindingSourceImages.CurrentChanged += new System.EventHandler(this.BindingSourceImages_CurrentChanged);
             // 
+            // bindingSourceMain
+            // 
+            this.bindingSourceMain.AllowNew = false;
+            this.bindingSourceMain.DataSource = typeof(PhotoLabel.ViewModels.MainFormViewModel);
+            this.bindingSourceMain.CurrentChanged += new System.EventHandler(this.BindingSourceMain_CurrentChanged);
+            // 
             // panelSize
             // 
             this.tableLayoutPanel1.SetColumnSpan(this.panelSize, 2);
@@ -663,12 +669,6 @@
             // 
             this.folderBrowserDialogSave.Description = "Where should the file be saved to?";
             // 
-            // bindingSourceMain
-            // 
-            this.bindingSourceMain.AllowNew = false;
-            this.bindingSourceMain.DataSource = typeof(PhotoLabel.ViewModels.MainFormViewModel);
-            this.bindingSourceMain.CurrentChanged += new System.EventHandler(this.BindingSourceMain_CurrentChanged);
-            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -693,12 +693,12 @@
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSourceImages)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).EndInit();
             this.panelSize.ResumeLayout(false);
             this.panelCanvas.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).EndInit();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

@@ -42,6 +42,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Transactions" />
@@ -55,11 +56,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CaptionAlignments.cs" />
+    <Compile Include="IImageLoaderService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageService.cs" />
     <Compile Include="ILineWrapService.cs" />
     <Compile Include="ILocaleService.cs" />
     <Compile Include="ILogService.cs" />
+    <Compile Include="ImageLoaderService.cs" />
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="IRecentlyUsedFilesService.cs" />
@@ -67,6 +70,7 @@
     <Compile Include="LocaleService.cs" />
     <Compile Include="LogService.cs" />
     <Compile Include="Models\ExifData.cs" />
+    <Compile Include="Models\Metadata.cs" />
     <Compile Include="NinjectModule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
