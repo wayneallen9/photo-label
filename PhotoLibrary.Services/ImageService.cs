@@ -11,7 +11,7 @@ namespace PhotoLabel.Services
     public class ImageService : IImageService
     {
         #region variables
-        private readonly IImageLoaderService _imageLoaderService;
+        private IImageLoaderService _imageLoaderService;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
         #endregion
@@ -32,7 +32,6 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Getting \"{filename}\"...");
                 return _imageLoaderService.Load(filename);
             }
             finally
@@ -47,7 +46,7 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
-                var image = _imageLoaderService.Load(filename);
+                var image = Image.FromFile(filename);
 
                 return Resize(image, width, height);
             }
@@ -161,7 +160,7 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
-                var original = _imageLoaderService.Load(filename);
+                var original = Get(filename);
 
                 lock (original)
                 {
@@ -573,13 +572,13 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
-                var original = _imageLoaderService.Load(filename);
+                var image = Image.FromFile(filename);
 
                 _logService.Trace("Creating base image...");
-                var baseImage = Resize(original, width, height);
+                var resizedImage = Resize(image, width, height);
 
                 _logService.Trace("Getting graphics manager for new image...");
-                using (var graphics = Graphics.FromImage(baseImage))
+                using (var graphics = Graphics.FromImage(resizedImage))
                 {
                     _logService.Trace("Setting up graphics manager...");
                     graphics.SmoothingMode = SmoothingMode.HighQuality;
@@ -590,7 +589,7 @@ namespace PhotoLabel.Services
                     graphics.DrawImage(overlay, new Point(x, y));
                 }
 
-                return baseImage;
+                return resizedImage;
             }
             finally
             {
@@ -634,6 +633,12 @@ namespace PhotoLabel.Services
             {
                 _logService.TraceExit();
             }
+        }
+
+        private class ImageCache
+        {
+            public string Filename { get; set; }
+            public Image Image { get; set; }
         }
     }
 }

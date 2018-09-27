@@ -26,7 +26,6 @@ namespace PhotoLabel
         #endregion
 
         public FormMain(
-            IImageLoaderService imageLoaderService,
             ILocaleService localeService,
             ILogService logService,
             MainFormViewModel mainFormViewModel,
@@ -218,7 +217,9 @@ namespace PhotoLabel
                 bindingSourceImages.MoveFirst();
 
                 // run the load on another thread
-                Task.Run(() => OpenFolderThread(folderPath, _openFolderCancellationTokenSource.Token), _openFolderCancellationTokenSource.Token);
+                var task = new Task(() => OpenFolderThread(folderPath, _openFolderCancellationTokenSource.Token), _openFolderCancellationTokenSource.Token, TaskCreationOptions.LongRunning);
+                task.ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
+                task.Start();
             }
             finally
             {
@@ -518,17 +519,24 @@ namespace PhotoLabel
                         bindingSourceMain.ResetBindings(false);
                     }));
 
-                    Invoke(() =>
+                    // add the preview list items
+                    _logService.Trace("Creating preview list items...");
+                    foreach (var imageListViewModel in _mainFormViewModel.Images)
                     {
-                        // only update the display after they are all loaded
-                        listViewPreview.SuspendLayout();
+                        // has the user cancelled the load?
+                        if (cancellationToken.IsCancellationRequested) break;
 
-                        // add the preview list items
-                        _logService.Trace("Creating preview list items...");
-                        foreach (var imageListViewModel in _mainFormViewModel.Images)
+                        // load the preview image on the threadpool
+                        imageListViewModel.LoadPreview(cancellationToken, TaskCreationOptions.None);
+
+                        // has the user cancelled the load?
+                        if (cancellationToken.IsCancellationRequested) break;
+
+                        // update the form
+                        Invoke(() =>
                         {
-                            // has the user cancelled the load?
-                            if (cancellationToken.IsCancellationRequested) break;
+                            // only update the display after they are all loaded
+                            listViewPreview.SuspendLayout();
 
                             // add the preview image for this item
                             listViewPreview.Items.Add(new ListViewItem
@@ -538,16 +546,16 @@ namespace PhotoLabel
                                 ToolTipText = imageListViewModel.Filename
                             });
 
-                            // load the preview image on the threadpool
-                            imageListViewModel.GetPreview();
-
                             // set a default image before the actual image is loaded
                             imageListLarge.Images.Add(imageListViewModel.Filename, Properties.Resources.loading);
-                        }
 
-                        // now draw it
-                        listViewPreview.ResumeLayout();
-                    });
+                            // now draw it
+                            listViewPreview.ResumeLayout();
+                        });
+
+                        // don't lock up the UI thread
+                        Thread.Sleep(150);
+                    }
                 }
             }
             catch (Exception ex)
@@ -649,6 +657,14 @@ namespace PhotoLabel
 
                         // redraw the image
                         imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+
+                        break;
+                    case "Saved":
+                        _logService.Trace($"The saved property has changed for \"{imageViewModel.Filename}\"...");
+
+                        // redraw the preview
+                        var cancellationTokenSource = new CancellationTokenSource();
+                        imageViewModel.LoadPreview(cancellationTokenSource.Token, TaskCreationOptions.LongRunning);
 
                         break;
                 }
@@ -1249,6 +1265,10 @@ namespace PhotoLabel
 
                 // focus in the preview list
                 FocusPreviewList();
+
+                // cache the image for the next
+                if (bindingSourceImages.Position < bindingSourceImages.Count - 1)
+                    _mainFormViewModel.Images[bindingSourceImages.Position + 1].LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
             }
             catch (Exception ex)
             {
@@ -1507,6 +1527,9 @@ namespace PhotoLabel
 
                 _logService.Trace($"Preview image {selectedIndex} selected.  Updating image position...");
                 bindingSourceImages.Position = selectedIndex;
+
+                // make sure the selected preview is visible
+                listViewPreview.Items[selectedIndex].EnsureVisible();
             }
             catch (Exception ex)
             {

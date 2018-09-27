@@ -390,6 +390,7 @@
             this.toolStripButtonLocation.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonLocation.Name = "toolStripButtonLocation";
             this.toolStripButtonLocation.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonLocation.ToolTipText = "Where was this taken?";
             this.toolStripButtonLocation.Click += new System.EventHandler(this.ToolStripButtonLocation_Click);
             // 
             // statusStrip

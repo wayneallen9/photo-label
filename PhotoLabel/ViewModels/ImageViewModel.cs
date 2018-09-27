@@ -137,50 +137,6 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        /*private ExifData ExifData
-        {
-            get
-            {
-                // has the data already been loaded?
-                if (_exifData != null) return _exifData;
-
-                // is it already being loaded from disk?
-                if (_exifLoading) return null;
-
-                // flag that the exif is now loading
-                _exifLoading = true;
-
-                // load the data from disk on another thread
-                var task = new Task(ExifDataThread, TaskCreationOptions.LongRunning);
-                task.ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
-                task.Start();
-
-                return null;
-            }
-        }*/
-
-        /*private void ExifDataThread()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                LoadExifData();
-
-                // clear the cached image
-                Image = null;
-
-                // update the properties
-                OnPropertyChanged(nameof(Caption));
-                OnPropertyChanged(nameof(Image));
-                OnPropertyChanged(nameof(Latitude));
-                OnPropertyChanged(nameof(Longitude));
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }*/
-
         private void LoadExifData()
         {
             _logService.TraceEnter();
@@ -246,16 +202,14 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public void GetPreview()
+        public void LoadPreview(CancellationToken cancellationToken, TaskCreationOptions taskCreationOptions)
         {
             _logService.TraceEnter();
             try
             {
-                // create the cancellation token for this preview
-                var cancellationTokenSource = new CancellationTokenSource();
-
                 // start loading the preview in the thread pool
-                ThreadPool.QueueUserWorkItem(PreviewThread, cancellationTokenSource.Token);
+                var task = new Task(PreviewThread, cancellationToken, taskCreationOptions);
+                task.Start();
             }
             finally
             {
@@ -337,28 +291,6 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        /*private Metadata Metadata
-        {
-            get
-            {
-                // has it already been cached?
-                if (_metadata != null) return _metadata;
-
-                // is it already loading?
-                if (_metadataLoading) return null;
-
-                // flag that it is loading
-                _metadataLoading = true;
-
-                // load the metadata
-                var task = new Task(MetadataThread);
-                task.ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
-                task.Start();
-
-                return null;
-            }
-        }*/
-
         private void LoadMetadata()
         {
             _logService.TraceEnter();
@@ -417,7 +349,7 @@ namespace PhotoLabel.ViewModels
                     OnPropertyChanged(nameof(Longitude));
 
                     lock (_rotationLock)
-                        if (_rotationLock == null)
+                        if (_rotation == null)
                         {
                             _rotation = _metadata.Rotation;
                             OnPropertyChanged(nameof(Rotation));
@@ -432,38 +364,7 @@ namespace PhotoLabel.ViewModels
 
         public Image Preview
         {
-            get
-            {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Checking if \"{Filename}\" has a cached preview...");
-                    if (_preview != null)
-                    {
-                        _logService.Trace($"\"{Filename}\" has a cached preview");
-                        return _preview;
-                    }
-
-                    lock (_previewLock)
-                    {
-                        // is the preview already loading?
-                        if (_previewCancellationTokenSource != null) _previewCancellationTokenSource.Cancel();
-
-                        // create a new cancellation token
-                        _previewCancellationTokenSource = new CancellationTokenSource();
-
-                        // load it on a thread
-                        var thread = new Thread(PreviewThread);
-                        thread.Start(_previewCancellationTokenSource.Token);
-                    }
-
-                    return null;
-                }
-                finally
-                {
-                    _logService.TraceExit();
-                }
-            }
+            get => _preview;
         }
 
         private void PreviewThread(object state)
@@ -505,34 +406,6 @@ namespace PhotoLabel.ViewModels
         }
 
         public float? Longitude { get; private set; }
-
-        private void MetadataThread()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // load the metadata
-                LoadMetadata();
-
-                // update the properties
-                OnPropertyChanged(nameof(Caption));
-                OnPropertyChanged(nameof(CaptionAlignment));
-                OnPropertyChanged(nameof(Colour));
-                OnPropertyChanged(nameof(Font));
-
-                // clear the image cache
-                Image = null;
-                OnPropertyChanged(nameof(Image));
-
-                // clear the preview cache
-                _preview = null;
-                OnPropertyChanged(nameof(Preview));
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
@@ -630,7 +503,6 @@ namespace PhotoLabel.ViewModels
                 _preview = null;
 
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(Preview));
             }
         }
     }
