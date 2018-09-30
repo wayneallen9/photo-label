@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ namespace PhotoLabel
         #endregion
 
         #region variables
+        private Color _currentColour;
         private readonly List<ImageViewModel> _loadPreviewImageQueue = new List<ImageViewModel>();
         private readonly ILocaleService _localeService;
         private readonly ILogService _logService;
@@ -41,8 +43,14 @@ namespace PhotoLabel
             // initialise the model binding
             bindingSourceMain.DataSource = _mainFormViewModel = mainFormViewModel;
 
+            // add the event handling
+            _mainFormViewModel.PropertyChanged += MainFormViewModel_PropertyChanged;
+
             // initialise the recently used files
             DrawRecentlyUsedFiles();
+
+            // save the start colour
+            _currentColour = _mainFormViewModel.Colour;
         }
 
         private void CentrePictureBox()
@@ -116,9 +124,23 @@ namespace PhotoLabel
                 _logService.Trace("Checking which property has updated...");
                 switch (e.PropertyName)
                 {
+                    case "Color":
+                        _logService.Trace($"The default colour has been changed to {_mainFormViewModel.Colour.ToArgb()}");
+
+                        break;
+                    case "Count":
+                        _logService.Trace("The count of images has changed");
+                        ShowProgress();
+
+                        break;
                     case "OutputPath":
                         _logService.Trace("Output path has changed");
                         ShowOutputPath();
+
+                        break;
+                    case "SecondColour":
+                        _logService.Trace("The second colour has changed");
+                        ShowSecondColour();
 
                         break;
                     case "Zoom":
@@ -397,7 +419,17 @@ namespace PhotoLabel
 
         private void ShowProgress()
         {
-            toolStripStatusLabelStatus.Text = $"{bindingSourceImages.Position + 1} of {bindingSourceImages.Count}";
+            _logService.Trace("Checking if running on UI thread...");
+            if (InvokeRequired)
+            {
+                _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                Invoke(ShowProgress);
+
+                return;
+            }
+            _logService.Trace("Running on UI thread");
+
+            toolStripStatusLabelStatus.Text = $"{bindingSourceImages.Position + 1} of {_mainFormViewModel.Count}";
         }
 
         private void ShowCaption()
@@ -447,6 +479,31 @@ namespace PhotoLabel
                 checkBoxBottomLeft.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.BottomLeft;
                 checkBoxBottomCentre.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.BottomCentre;
                 checkBoxBottomRight.Checked = (imageViewModel?.CaptionAlignment ?? _mainFormViewModel.CaptionAlignment) == CaptionAlignments.BottomRight;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowSecondColour()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoke(ShowSecondColour);
+
+                    return;
+                }
+                _logService.Trace("Running on UI thread");
+
+                _logService.Trace($"Second colour is {_mainFormViewModel.SecondColour.Value.ToArgb()}");
+                toolStripButtonSecondColour.BackColor = _mainFormViewModel.SecondColour.Value;
+                toolStripButtonSecondColour.Visible = true;
             }
             finally
             {
@@ -592,7 +649,7 @@ namespace PhotoLabel
                         ShowCaption();
 
                         // redraw the image
-                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                         break;
                     case "CaptionAlignment":
@@ -608,7 +665,7 @@ namespace PhotoLabel
                         if (imageViewModel.CaptionAlignment.HasValue) _mainFormViewModel.CaptionAlignment = imageViewModel.CaptionAlignment.Value;
 
                         // redraw the image
-                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                         break;
                     case "Colour":
@@ -616,7 +673,7 @@ namespace PhotoLabel
                         _logService.Trace("Image needs to be reloaded...");
 
                         // redraw the image
-                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                         break;
                     case "Image":
@@ -656,7 +713,7 @@ namespace PhotoLabel
                         ShowCaptionAlignment(imageViewModel);
 
                         // redraw the image
-                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                        imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                         break;
                     case "Saved":
@@ -740,6 +797,7 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
         }
+
         private void ExitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             _logService.TraceEnter();
@@ -934,13 +992,16 @@ namespace PhotoLabel
 
                 // set the default color
                 _logService.Trace("Defaulting to current image colour...");
-                colorDialog.Color = currentImageViewModel.Colour ?? _mainFormViewModel.Color;
+                colorDialog.Color = currentImageViewModel.Colour ?? _mainFormViewModel.Colour;
 
                 if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
+                    // save the current colour
+                    _mainFormViewModel.SecondColour = _mainFormViewModel.Colour;
+
                     // update the color
                     _logService.Trace("Updating default colour...");
-                    _mainFormViewModel.Color = colorDialog.Color;
+                    _mainFormViewModel.Colour = _currentColour = colorDialog.Color;
 
                     // update the colour on any existing image
                     _logService.Trace("Updating colour on current image...");
@@ -1087,7 +1148,7 @@ namespace PhotoLabel
                 if (outputPath != currentImageViewModel.Filename)
                 {
                     // try and save the image
-                    if (currentImageViewModel.Save(_mainFormViewModel.OutputPath, false, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font))
+                    if (currentImageViewModel.Save(_mainFormViewModel.OutputPath, false, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font))
                     {
                         // go to the next image
                         bindingSourceImages.MoveNext();
@@ -1095,7 +1156,7 @@ namespace PhotoLabel
                     else if (MessageBox.Show($"The file \"{currentImageViewModel.FilenameWithoutPath}\" already exists.  Do you wish to overwrite it?", "Overwrite file?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         // overwrite the existing image
-                        currentImageViewModel.Save(_mainFormViewModel.OutputPath, true, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                        currentImageViewModel.Save(_mainFormViewModel.OutputPath, true, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                         // go to the next image
                         bindingSourceImages.MoveNext();
@@ -1104,7 +1165,7 @@ namespace PhotoLabel
                 else if (MessageBox.Show("This will overwrite the original file.  Are you sure?", "Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
                     // overwrite the existing image
-                    currentImageViewModel.Save(_mainFormViewModel.OutputPath, true, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                    currentImageViewModel.Save(_mainFormViewModel.OutputPath, true, _mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                     // go to the next image
                     bindingSourceImages.MoveNext();
@@ -1210,9 +1271,6 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Watching for property changes to the main model...");
-                _mainFormViewModel.PropertyChanged += MainFormViewModel_PropertyChanged;
-
                 // show the zoom
                 ShowZoom();
 
@@ -1249,7 +1307,7 @@ namespace PhotoLabel
                 _logService.Trace("Setting default values for current image...");
 
                 // reload the image to pick up any changes in the default values
-                imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                imageViewModel.LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
 
                 // show the picture
                 ShowAjaxImage();
@@ -1268,7 +1326,7 @@ namespace PhotoLabel
 
                 // cache the image for the next
                 if (bindingSourceImages.Position < bindingSourceImages.Count - 1)
-                    _mainFormViewModel.Images[bindingSourceImages.Position + 1].LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Color, _mainFormViewModel.Font);
+                    _mainFormViewModel.Images[bindingSourceImages.Position + 1].LoadImage(_mainFormViewModel.CaptionAlignment, _mainFormViewModel.Colour, _mainFormViewModel.Font);
             }
             catch (Exception ex)
             {
@@ -1822,6 +1880,33 @@ namespace PhotoLabel
 
                 _logService.Trace($"Opening Google maps at {currentImageViewModel.Latitude.Value},{currentImageViewModel.Longitude.Value}...");
                 Process.Start(string.Format(Properties.Settings.Default.MapsURL, currentImageViewModel.Latitude.Value, currentImageViewModel.Longitude.Value));
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripButtonSecondColour_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // use the secondary colour as the primary colour
+                _mainFormViewModel.Colour = _mainFormViewModel.SecondColour.Value;
+
+                // save the primary colour as the secondary colour
+                _mainFormViewModel.SecondColour = _currentColour;
+
+                // set the colour on the current image
+                var currentImageViewModel = bindingSourceImages.Current as ImageViewModel;
+                currentImageViewModel.Colour = _currentColour = _mainFormViewModel.Colour;
             }
             catch (Exception ex)
             {

@@ -1,12 +1,11 @@
-﻿using Ninject.Parameters;
-using PhotoLabel.Services;
+﻿using PhotoLabel.Services;
 using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Windows.Forms;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 namespace PhotoLabel.ViewModels
 {
     public class MainFormViewModel : INotifyPropertyChanged
@@ -17,10 +16,12 @@ namespace PhotoLabel.ViewModels
 
         #region variables
         private CaptionAlignments _captionAlignment;
+        private int _count;
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
         private string _outputPath;
+        private Color? _secondColour;
         private int _zoom;
         #endregion
 
@@ -56,7 +57,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Color Color
+        public Color Colour
         {
             get
             {
@@ -76,9 +77,25 @@ namespace PhotoLabel.ViewModels
 
                 // persist the changes
                 Properties.Settings.Default.Save();
+
+                OnPropertyChanged();
             }
         }
 
+        public int Count
+        {
+            get => _count;
+            set
+            {
+                // only process changes
+                if (_count == value) return;
+
+                // save the new value
+                _count = value;
+
+                OnPropertyChanged();
+            }
+        }
         public Font Font {
             get => Properties.Settings.Default.Font ?? SystemFonts.DefaultFont;
             set {
@@ -122,9 +139,12 @@ namespace PhotoLabel.ViewModels
                         imageViewModel.Filename = s;
 
                         return imageViewModel;
-                    }).ToList();
+                    });
 
-                Images = new BindingList<ImageViewModel>(images);
+                // update the count
+                Count = images.Count();
+
+                Images = new BindingList<ImageViewModel>(images.ToList());
 
                 return Images.Count;
             }
@@ -145,6 +165,19 @@ namespace PhotoLabel.ViewModels
                 // persist the new value
                 Properties.Settings.Default.OutputPath = value;
                 Properties.Settings.Default.Save();
+
+                OnPropertyChanged();
+            }
+        }
+
+        public Color? SecondColour {
+            get => _secondColour;
+            set {
+                // only process changes
+                if (_secondColour == value) return;
+
+                // save the new colour
+                _secondColour = value;
 
                 OnPropertyChanged();
             }

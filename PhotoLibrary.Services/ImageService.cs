@@ -46,9 +46,10 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
-                var image = Image.FromFile(filename);
-
-                return Resize(image, width, height);
+                using (var image = Image.FromFile(filename))
+                {
+                    return Resize(image, width, height);
+                }
             }
             finally
             {
@@ -572,24 +573,25 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
-                var image = Image.FromFile(filename);
-
-                _logService.Trace("Creating base image...");
-                var resizedImage = Resize(image, width, height);
-
-                _logService.Trace("Getting graphics manager for new image...");
-                using (var graphics = Graphics.FromImage(resizedImage))
+                using (var image = Image.FromFile(filename))
                 {
-                    _logService.Trace("Setting up graphics manager...");
-                    graphics.SmoothingMode = SmoothingMode.HighQuality;
-                    graphics.CompositingQuality = CompositingQuality.HighQuality;
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    _logService.Trace("Creating base image...");
+                    var resizedImage = Resize(image, width, height);
 
-                    _logService.Trace("Drawing overlay...");
-                    graphics.DrawImage(overlay, new Point(x, y));
+                    _logService.Trace("Getting graphics manager for new image...");
+                    using (var graphics = Graphics.FromImage(resizedImage))
+                    {
+                        _logService.Trace("Setting up graphics manager...");
+                        graphics.SmoothingMode = SmoothingMode.HighQuality;
+                        graphics.CompositingQuality = CompositingQuality.HighQuality;
+                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                        _logService.Trace("Drawing overlay...");
+                        graphics.DrawImage(overlay, new Point(x, y));
+                    }
+
+                    return resizedImage;
                 }
-
-                return resizedImage;
             }
             finally
             {

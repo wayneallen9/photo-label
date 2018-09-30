@@ -250,7 +250,7 @@ namespace PhotoLabel.ViewModels
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     _logService.Trace($"Adding caption to \"{Filename}\"...");
-                    Image = _imageService.Caption(Filename, _caption, _captionAlignment ?? defaultCaptionAlignment, _font ?? defaultFont, new SolidBrush(_colour ?? defaultColour), Rotation);
+                    Image = _imageService.Caption(Filename, _caption ?? string.Empty, _captionAlignment ?? defaultCaptionAlignment, _font ?? defaultFont, new SolidBrush(_colour ?? defaultColour), Rotation);
                 }
 
                 // the image has been updated
@@ -281,8 +281,8 @@ namespace PhotoLabel.ViewModels
                     _imageCancellationTokenSource = new CancellationTokenSource();
 
                     // load the image on a new thread (for performance)
-                    var thread = new Thread(ImageThread);
-                    thread.Start(new object[] { _imageCancellationTokenSource.Token, defaultCaptionAlignment, defaultColor, defaultFont });
+                    Task.Delay(100, _imageCancellationTokenSource.Token)
+                        .ContinueWith((t, o) => ImageThread(new object[] { _imageCancellationTokenSource.Token, defaultCaptionAlignment, defaultColor, defaultFont }), _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning);
                 }
             }
             finally
@@ -362,10 +362,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Image Preview
-        {
-            get => _preview;
-        }
+        public Image Preview => _preview;
 
         private void PreviewThread(object state)
         {
@@ -463,22 +460,25 @@ namespace PhotoLabel.ViewModels
                     _logService.Trace($"Saving \"{targetFilename}\"...");
                     captioned.Save(targetFilename, ImageFormat.Jpeg);
 
-                    // do we need to create a new metadata file?
-                    if (_metadata == null) _metadata = new Metadata();
+                    lock (_metadataLock)
+                    {
+                        // do we need to create a new metadata file?
+                        if (_metadata == null) _metadata = new Metadata();
 
-                    // set the properties
-                    _metadata.Caption = _caption;
-                    _metadata.CaptionAlignment = _captionAlignment.Value;
-                    _metadata.Color = _colour.Value.ToArgb();
-                    _metadata.FontBold = _font.Bold;
-                    _metadata.FontFamily = _font.FontFamily.Name;
-                    _metadata.FontSize = _font.Size;
-                    _metadata.Latitude = Latitude;
-                    _metadata.Longitude = Longitude;
-                    _metadata.Rotation = Rotation;
+                        // set the properties
+                        _metadata.Caption = _caption;
+                        _metadata.CaptionAlignment = _captionAlignment.Value;
+                        _metadata.Color = _colour.Value.ToArgb();
+                        _metadata.FontBold = _font.Bold;
+                        _metadata.FontFamily = _font.FontFamily.Name;
+                        _metadata.FontSize = _font.Size;
+                        _metadata.Latitude = Latitude;
+                        _metadata.Longitude = Longitude;
+                        _metadata.Rotation = Rotation;
 
-                    _logService.Trace($"Saving metadata for \"{Filename}\"...");
-                    _imageMetadataService.Save(_metadata, Filename);
+                        _logService.Trace($"Saving metadata for \"{Filename}\"...");
+                        _imageMetadataService.Save(_metadata, Filename);
+                    }
                 }
 
                 // flag that the image has been saved

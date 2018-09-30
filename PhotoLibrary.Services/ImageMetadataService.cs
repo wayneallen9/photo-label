@@ -24,7 +24,7 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting metadata filename for \"{filename}\"...");
-                var metadataFilename = $"{Path.GetDirectoryName(filename)}\\{Path.GetFileNameWithoutExtension(filename)}.xml";
+                var metadataFilename = $"{filename}.xml";
                 _logService.Trace($"Metadata filename for \"{filename}\" is \"{metadataFilename}\"");
 
                 return metadataFilename;
