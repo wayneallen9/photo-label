@@ -1,5 +1,6 @@
 ﻿using PhotoLabel.Services.Models;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -155,14 +156,28 @@ namespace PhotoLabel.Services
 
         public Image Caption(string filename, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
         {
-            Bitmap image;
-
             _logService.TraceEnter();
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
                 var original = Get(filename);
 
+                _logService.Trace($"Adding caption to \"{filename}\"...");
+                return Caption(original, caption, captionAlignment, font, brush, rotation);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
+        {
+            Bitmap image;
+
+            _logService.TraceEnter();
+            try
+            {
                 lock (original)
                 {
                     _logService.Trace("Creating a copy of the original image...");
@@ -575,23 +590,33 @@ namespace PhotoLabel.Services
                 _logService.Trace($"Getting \"{filename}\"...");
                 using (var image = Image.FromFile(filename))
                 {
-                    _logService.Trace("Creating base image...");
-                    var resizedImage = Resize(image, width, height);
-
-                    _logService.Trace("Getting graphics manager for new image...");
-                    using (var graphics = Graphics.FromImage(resizedImage))
-                    {
-                        _logService.Trace("Setting up graphics manager...");
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
-                        _logService.Trace("Drawing overlay...");
-                        graphics.DrawImage(overlay, new Point(x, y));
-                    }
-
-                    return resizedImage;
+                    return Overlay(image, overlay, x, y);
                 }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public Image Overlay(Image image, Image overlay, int x, int y)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Getting graphics manager for new image...");
+                using (var graphics = Graphics.FromImage(image))
+                {
+                    _logService.Trace("Setting up graphics manager...");
+                    graphics.SmoothingMode = SmoothingMode.HighQuality;
+                    graphics.CompositingQuality = CompositingQuality.HighQuality;
+                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                    _logService.Trace("Drawing overlay...");
+                    graphics.DrawImage(overlay, new Point(x, y));
+                }
+
+                return image;
             }
             finally
             {
@@ -630,6 +655,29 @@ namespace PhotoLabel.Services
                 }
 
                 return canvas;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public IList<string> Find(string directory)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                return Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories)
+                    .Where(s =>
+                        (
+                            s.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith("*.jpeg", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith("*.gif", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith("*.bmp", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith("*.png", StringComparison.CurrentCultureIgnoreCase)
+                        ) &&
+                        (File.GetAttributes(s) & FileAttributes.Hidden) == 0)
+                    .ToList();
             }
             finally
             {

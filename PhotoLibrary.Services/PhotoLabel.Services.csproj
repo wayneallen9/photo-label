@@ -34,7 +34,7 @@
       <HintPath>..\packages\Ninject.3.3.4\lib\net45\Ninject.dll</HintPath>
     </Reference>
     <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>..\packages\NLog.4.5.9\lib\net45\NLog.dll</HintPath>
+      <HintPath>..\packages\NLog.4.5.10\lib\net45\NLog.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
@@ -66,6 +66,7 @@
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="IRecentlyUsedFilesService.cs" />
+    <Compile Include="ITimerService.cs" />
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LocaleService.cs" />
     <Compile Include="LogService.cs" />
@@ -80,6 +81,7 @@
     </Compile>
     <Compile Include="RecentlyUsedFilesService.cs" />
     <Compile Include="Rotations.cs" />
+    <Compile Include="TimerService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

@@ -1,6 +1,7 @@
 ﻿using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -10,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace PhotoLabel.ViewModels
 {
-    public class ImageViewModel : INotifyPropertyChanged
+    public class ImageViewModel : IDisposable, IObservable<ImageViewModel>
     {
         #region constants
         private const int PreviewHeight = 128;
@@ -32,23 +33,23 @@ namespace PhotoLabel.ViewModels
         private Color? _colour;
         private readonly object _colourLock = new object();
         private ExifData _exifData;
-        private volatile bool _exifLoading = false;
+        private bool _exifLoaded;
         private readonly object _exifLock = new object();
         private Font _font;
         private readonly object _fontLock = new object();
+        private Image _image;
         private readonly object _imageLock = new object();
         private CancellationTokenSource _imageCancellationTokenSource;
         private readonly object _imageLoaderLock = new object();
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
-        private Exception _lastException;
+        private float? _latitude;
         private readonly ILogService _logService;
         private Metadata _metadata;
-        private volatile bool _metadataLoading = false;
+        private bool _metadataLoaded;
         private readonly object _metadataLock = new object();
-        private Image _preview;
+        private readonly IList<IObserver<ImageViewModel>> _observers;
         private readonly object _previewLock = new object();
-        private CancellationTokenSource _previewCancellationTokenSource;
         private Rotations? _rotation;
         private readonly object _rotationLock = new object();
         private bool _saved = false;
@@ -63,6 +64,31 @@ namespace PhotoLabel.ViewModels
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logService = logService;
+
+            // initialise variables
+            _exifLoaded = false;
+            _metadataLoaded = false;
+            _observers = new List<IObserver<ImageViewModel>>();
+        }
+
+        private void CancelLoadImage()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                lock (_imageLock) { 
+                    _logService.Trace("Cancelling any in progress image load...");
+                    _imageCancellationTokenSource?.Cancel();
+
+                    _logService.Trace("Releasing existing image memory...");
+                    _image?.Dispose();
+                    _image = null;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
         public string Caption
@@ -77,11 +103,11 @@ namespace PhotoLabel.ViewModels
                 lock (_metadataLock)
                     _caption = value;
 
-                // clear the cached image
-                Image = null;
+                // reload the image
+                _image = null;
 
                 // trigger the update
-                OnPropertyChanged();
+                Notify();
             }
         }
 
@@ -98,9 +124,9 @@ namespace PhotoLabel.ViewModels
                     _captionAlignment = value;
 
                 // clear the cached image
-                Image = null;
+                _image = null;
 
-                OnPropertyChanged();
+                Notify();
             }
         }
 
@@ -117,9 +143,9 @@ namespace PhotoLabel.ViewModels
                     _colour = value;
 
                 // clear the cached image
-                Image = null;
+                _image = null;
 
-                OnPropertyChanged();
+                Notify();
             }
         }
 
@@ -128,47 +154,7 @@ namespace PhotoLabel.ViewModels
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Getting exception...");
-                _lastException = task.Exception;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void LoadExifData()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // this method needs to be thread safe
-                _logService.Trace("Creating a thread-safe lock for Exif data...");
-                lock (_exifLock)
-                {
-                    _logService.Trace($"Checking if another thread has loaded the Exif data for \"{Filename}\"...");
-                    if (_exifData != null)
-                    {
-                        _logService.Trace($"Exif data for \"{Filename}\" has been loaded on another thread.  Exiting...");
-                        return;
-                    }
-
-                    _logService.Trace($"Loading Exif data for \"{Filename}\"...");
-                    _exifData = _imageService.GetExifData(Filename);
-
-                    // populate the values
-                    lock (_captionLock)
-                        if (_caption == null)
-                        {
-                            _caption = _exifData.DateTaken;
-                            OnPropertyChanged(nameof(Caption));
-                        }
-
-                    Latitude = _exifData.Latitude;
-                    OnPropertyChanged(nameof(Latitude));
-                    Longitude = _exifData.Longitude;
-                    OnPropertyChanged(nameof(Longitude));
-                }
+                NotifyError(task.Exception);
             }
             finally
             {
@@ -188,17 +174,63 @@ namespace PhotoLabel.ViewModels
             get => _font;
             set
             {
-                // ignore non-changes
-                if (_font == value) return;
+                // only process changes
+                if (Font == value) return;
 
                 //save the new value in a thread safe manner
                 lock (_fontLock)
                     _font = value;
 
                 // clear the cached image
-                Image = null;
+                _image = null;
 
-                OnPropertyChanged();
+                Notify();
+            }
+        }
+
+        private void LoadExifData()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // this method needs to be thread safe
+                _logService.Trace("Creating a thread-safe lock for Exif data...");
+                lock (_exifLock)
+                {
+                    _logService.Trace("Checking if Exit data is already loaded...");
+                    if (_exifLoaded)
+                    {
+                        _logService.Trace("Exif data is already loaded.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Checking if another thread has loaded the Exif data for \"{Filename}\"...");
+                    if (_exifData != null)
+                    {
+                        _logService.Trace($"Exif data for \"{Filename}\" has been loaded on another thread.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Loading Exif data for \"{Filename}\"...");
+                    _exifData = _imageService.GetExifData(Filename);
+
+                    // flag that the Exif data is loaded
+                    _exifLoaded = true;
+
+                    // populate the values
+                    lock (_captionLock)
+                        if (Caption == null)
+                        {
+                            _caption = _exifData.DateTaken;
+                        }
+
+                    _latitude = _exifData.Latitude;
+                    Longitude = _exifData.Longitude;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
             }
         }
 
@@ -209,6 +241,7 @@ namespace PhotoLabel.ViewModels
             {
                 // start loading the preview in the thread pool
                 var task = new Task(PreviewThread, cancellationToken, taskCreationOptions);
+                task.ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
                 task.Start();
             }
             finally
@@ -217,49 +250,45 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Image Image { get; private set; }
+        public Image Image => _image;
 
-        public float? Latitude { get; private set; }
+        public float? Latitude => _latitude;
 
-        private void ImageThread(object state)
+        private void LoadImageThread(CancellationToken cancellationToken, CaptionAlignments defaultCaptionAlignment, Color defaultColour, Font defaultFont)
         {
             _logService.TraceEnter();
             try
             {
-                if (!(state is object[] stateParams)) return;
-
-                // get the parameters
-                if (!(stateParams[0] is CancellationToken cancellationToken)) return;
-                if (!(stateParams[2] is Color defaultColour)) return;
-                if (!(stateParams[3] is Font defaultFont)) return;
-
-                // get the default alignment
-                var defaultCaptionAlignment = (CaptionAlignments)stateParams[1];
-
-                if (cancellationToken.IsCancellationRequested) return;
-                Thread.Sleep(100);
-
                 if (cancellationToken.IsCancellationRequested) return;
                 LoadMetadata();
 
                 // we only need the Exif data if the metadata did not load
                 if (cancellationToken.IsCancellationRequested) return;
-                if (_metadata == null) LoadExifData();
+                if (_metadata != null)
+                    LoadFromMetadata();
+                else
+                    LoadExifData();
+                if (cancellationToken.IsCancellationRequested) return;
 
                 lock (_imageLoaderLock)
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     _logService.Trace($"Adding caption to \"{Filename}\"...");
-                    Image = _imageService.Caption(Filename, _caption ?? string.Empty, _captionAlignment ?? defaultCaptionAlignment, _font ?? defaultFont, new SolidBrush(_colour ?? defaultColour), Rotation);
+                    var image = _imageService.Caption(Filename, _caption ?? string.Empty, _captionAlignment ?? defaultCaptionAlignment, _font ?? defaultFont, new SolidBrush(_colour ?? defaultColour), Rotation);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _image = image;
                 }
 
-                // the image has been updated
-                if (cancellationToken.IsCancellationRequested) return;
-                OnPropertyChanged(nameof(Image));
+                Notify();
+                NotifyImage();
             }
             catch (Exception ex)
             {
+                // log the error
                 _logService.Error(ex);
+
+                NotifyError(ex);
             }
             finally
             {
@@ -275,14 +304,15 @@ namespace PhotoLabel.ViewModels
                 lock (_imageLock)
                 {
                     // is the image already loading?
-                    if (_imageCancellationTokenSource != null) _imageCancellationTokenSource.Cancel();
+                     _imageCancellationTokenSource?.Cancel();
 
                     // create a new cancellation token
                     _imageCancellationTokenSource = new CancellationTokenSource();
 
                     // load the image on a new thread (for performance)
                     Task.Delay(100, _imageCancellationTokenSource.Token)
-                        .ContinueWith((t, o) => ImageThread(new object[] { _imageCancellationTokenSource.Token, defaultCaptionAlignment, defaultColor, defaultFont }), _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning);
+                        .ContinueWith((t, o) => LoadImageThread(_imageCancellationTokenSource.Token, defaultCaptionAlignment, defaultColor, defaultFont), _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning)
+                        .ContinueWith(ExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
                 }
             }
             finally
@@ -300,6 +330,13 @@ namespace PhotoLabel.ViewModels
                 _logService.Trace("Creating a thread-safe lock for metadata...");
                 lock (_metadataLock)
                 {
+                    _logService.Trace("Checking if metadata is already loaded...");
+                    if (_metadataLoaded)
+                    {
+                        _logService.Trace("Metadata is already loaded.  Exiting...");
+                        return;
+                    }
+
                     _logService.Trace($"Checking if another thread has loaded the metadata for \"{Filename}\"...");
                     if (_metadata != null)
                     {
@@ -311,49 +348,8 @@ namespace PhotoLabel.ViewModels
                     _logService.Trace($"Loading metadata for \"{Filename}\" from disk...");
                     _metadata = _imageMetadataService.Load(Filename);
 
-                    // if it didn't load, there is nothing else
-                    if (_metadata == null) return;
-
-                    // populate the properties
-                    lock (_captionLock)
-                        if (_caption == null)
-                        {
-                            _caption = _metadata.Caption;
-                            OnPropertyChanged(nameof(Caption));
-                        }
-
-                    lock (_captionAlignmentLock)
-                        if (_captionAlignment == null)
-                        {
-                            _captionAlignment = _metadata.CaptionAlignment;
-                            OnPropertyChanged(nameof(CaptionAlignment));
-                        }
-
-                    lock (_colourLock)
-                        if (_colour == null)
-                        {
-                            _colour = Color.FromArgb(_metadata.Color);
-                            OnPropertyChanged(nameof(Colour));
-                        }
-
-                    lock (_fontLock)
-                        if (_font == null)
-                        {
-                            _font = new Font(_metadata.FontFamily, _metadata.FontSize, _metadata.FontBold ? FontStyle.Bold : FontStyle.Regular);
-                            OnPropertyChanged(nameof(Font));
-                        }
-
-                    Latitude = _metadata.Latitude;
-                    OnPropertyChanged(nameof(Latitude));
-                    Longitude = _metadata.Longitude;
-                    OnPropertyChanged(nameof(Longitude));
-
-                    lock (_rotationLock)
-                        if (_rotation == null)
-                        {
-                            _rotation = _metadata.Rotation;
-                            OnPropertyChanged(nameof(Rotation));
-                        }
+                    // flag that the metadata has already been loaded
+                    _metadataLoaded = true;
                 }
             }
             finally
@@ -362,7 +358,58 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Image Preview => _preview;
+        private void LoadFromMetadata()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // populate the properties
+                _logService.Trace($"Setting caption to \"{_metadata.Caption}\"...");
+                lock (_captionLock)
+                    if (Caption == null)
+                    {
+                        Caption = _metadata.Caption;
+                    }
+
+                lock (_captionAlignmentLock)
+                    if (_captionAlignment == null)
+                    {
+                        _captionAlignment = _metadata.CaptionAlignment;
+                        OnPropertyChanged(nameof(CaptionAlignment));
+                    }
+
+                lock (_colourLock)
+                    if (_colour == null)
+                    {
+                        _colour = Color.FromArgb(_metadata.Color);
+                        OnPropertyChanged(nameof(Colour));
+                    }
+
+                lock (_fontLock)
+                    if (_font == null)
+                    {
+                        _font = new Font(_metadata.FontFamily, _metadata.FontSize, _metadata.FontBold ? FontStyle.Bold : FontStyle.Regular);
+                        OnPropertyChanged(nameof(Font));
+                    }
+
+                _latitude = _metadata.Latitude;
+                Longitude = _metadata.Longitude;
+                OnPropertyChanged(nameof(Longitude));
+
+                lock (_rotationLock)
+                    if (_rotation == null)
+                    {
+                        _rotation = _metadata.Rotation;
+                        OnPropertyChanged(nameof(Rotation));
+                    }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public Image Preview { get; private set; }
 
         private void PreviewThread(object state)
         {
@@ -385,12 +432,12 @@ namespace PhotoLabel.ViewModels
                     if (Saved)
                     {
                         _logService.Trace($"\"{Filename}\" has been saved.  Rendering preview with saved overlay...");
-                        _preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.saved, PreviewWidth - Properties.Resources.saved.Width - 4, 4);
+                        Preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.saved, PreviewWidth - Properties.Resources.saved.Width - 4, 4);
                     }
                     else if (_metadata != null)
-                        _preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.metadata, PreviewWidth - Properties.Resources.metadata.Width - 4, 4);
+                        Preview = _imageService.Overlay(Filename, PreviewWidth, PreviewHeight, Properties.Resources.metadata, PreviewWidth - Properties.Resources.metadata.Width - 4, 4);
                     else
-                        _preview = _imageService.Get(Filename, PreviewWidth, PreviewHeight);
+                        Preview = _imageService.Get(Filename, PreviewWidth, PreviewHeight);
                 }
 
                 if (cancellationToken.IsCancellationRequested) return;
@@ -403,6 +450,62 @@ namespace PhotoLabel.ViewModels
         }
 
         public float? Longitude { get; private set; }
+
+        private void Notify()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                foreach (var observer in _observers)
+                    observer.OnUpdate(this);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void NotifyError(Exception ex)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                foreach (var observer in _observers)
+                    observer.OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void NotifyImage()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                foreach (var observer in _imageObservers)
+                    observer.OnImage(this);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void NotifyPrevie()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                foreach (var observer in _observers)
+                    observer.OnPreview(this);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
@@ -422,7 +525,7 @@ namespace PhotoLabel.ViewModels
                     _rotation = value;
 
                 // clear the cached image
-                Image = null;
+                _image = null;
 
                 OnPropertyChanged();
             }
@@ -500,10 +603,65 @@ namespace PhotoLabel.ViewModels
                 _saved = value;
 
                 // clear the preview
-                _preview = null;
+                Preview = null;
 
                 OnPropertyChanged();
             }
         }
+
+        #region IObservable support
+        public IDisposable Subscribe(IObserver<ImageViewModel> observer)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if observer is already observing...");
+                if (!_observers.Contains(observer))
+                {
+                    _logService.Trace("Observer is not already observing.  Adding observer...");
+                    _observers.Add(observer);
+
+                    // update with the initial values
+                    observer.OnImage(this);
+                    observer.OnPreview(this);
+                    observer.OnUpdate(this);
+                }
+
+                return new Unsubscriber<ImageViewModel>(_observers, observer);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+        #endregion
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    CancelLoadImage();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        public IDisposable Subscribe(IObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
     }
 }

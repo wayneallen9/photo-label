@@ -52,6 +52,7 @@
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonFont = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonColour = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButtonSecondColour = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonRotateLeft = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonRotateRight = new System.Windows.Forms.ToolStripButton();
@@ -67,7 +68,7 @@
             this.colorDialog = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.textBoxCaption = new System.Windows.Forms.TextBox();
-            this.bindingSourceImages = new System.Windows.Forms.BindingSource(this.components);
+            this.bindingSourceMain = new System.Windows.Forms.BindingSource(this.components);
             this.panelSize = new System.Windows.Forms.Panel();
             this.panelCanvas = new System.Windows.Forms.Panel();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
@@ -86,18 +87,20 @@
             this.imageListLarge = new System.Windows.Forms.ImageList(this.components);
             this.fontDialog = new System.Windows.Forms.FontDialog();
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
-            this.toolStripButtonSecondColour = new System.Windows.Forms.ToolStripButton();
-            this.bindingSourceMain = new System.Windows.Forms.BindingSource(this.components);
+            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.menuStrip1.SuspendLayout();
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceImages)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).BeginInit();
             this.panelSize.SuspendLayout();
             this.panelCanvas.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).BeginInit();
             this.panel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
+            this.splitContainer1.Panel1.SuspendLayout();
+            this.splitContainer1.Panel2.SuspendLayout();
+            this.splitContainer1.SuspendLayout();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -239,8 +242,8 @@
             this.toolStripComboBoxZoom,
             this.toolStripSeparator2,
             this.toolStripButtonFont,
-            this.toolStripButtonSecondColour,
             this.toolStripButtonColour,
+            this.toolStripButtonSecondColour,
             this.toolStripSeparator4,
             this.toolStripButtonRotateLeft,
             this.toolStripButtonRotateRight,
@@ -313,6 +316,20 @@
             this.toolStripButtonColour.Size = new System.Drawing.Size(23, 22);
             this.toolStripButtonColour.Text = "Colour";
             this.toolStripButtonColour.Click += new System.EventHandler(this.ToolStripButtonColour_Click);
+            // 
+            // toolStripButtonSecondColour
+            // 
+            this.toolStripButtonSecondColour.AutoSize = false;
+            this.toolStripButtonSecondColour.BackColor = System.Drawing.SystemColors.Control;
+            this.toolStripButtonSecondColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonSecondColour.ForeColor = System.Drawing.SystemColors.ControlLight;
+            this.toolStripButtonSecondColour.ImageTransparentColor = System.Drawing.SystemColors.Control;
+            this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.toolStripButtonSecondColour.Name = "toolStripButtonSecondColour";
+            this.toolStripButtonSecondColour.Size = new System.Drawing.Size(19, 19);
+            this.toolStripButtonSecondColour.ToolTipText = "Change colour";
+            this.toolStripButtonSecondColour.Visible = false;
+            this.toolStripButtonSecondColour.Click += new System.EventHandler(this.ToolStripButtonSecondColour_Click);
             // 
             // toolStripSeparator4
             // 
@@ -424,42 +441,40 @@
             // 
             // tableLayoutPanel1
             // 
-            this.tableLayoutPanel1.ColumnCount = 3;
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 75F));
+            this.tableLayoutPanel1.ColumnCount = 2;
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.textBoxCaption, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.panelSize, 0, 0);
             this.tableLayoutPanel1.Controls.Add(this.label1, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.panel1, 1, 2);
-            this.tableLayoutPanel1.Controls.Add(this.listViewPreview, 2, 0);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 49);
+            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
             this.tableLayoutPanel1.RowCount = 3;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 128F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(800, 379);
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(500, 379);
             this.tableLayoutPanel1.TabIndex = 4;
             // 
             // textBoxCaption
             // 
-            this.textBoxCaption.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.bindingSourceImages, "Caption", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.textBoxCaption.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.bindingSourceMain, "Caption", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxCaption.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxCaption.Location = new System.Drawing.Point(10, 261);
             this.textBoxCaption.Margin = new System.Windows.Forms.Padding(10);
             this.textBoxCaption.Multiline = true;
             this.textBoxCaption.Name = "textBoxCaption";
-            this.textBoxCaption.Size = new System.Drawing.Size(505, 108);
+            this.textBoxCaption.Size = new System.Drawing.Size(380, 108);
             this.textBoxCaption.TabIndex = 3;
             // 
-            // bindingSourceImages
+            // bindingSourceMain
             // 
-            this.bindingSourceImages.DataMember = "Images";
-            this.bindingSourceImages.DataSource = this.bindingSourceMain;
-            this.bindingSourceImages.CurrentChanged += new System.EventHandler(this.BindingSourceImages_CurrentChanged);
+            this.bindingSourceMain.AllowNew = false;
+            this.bindingSourceMain.DataSource = typeof(PhotoLabel.ViewModels.MainFormViewModel);
             // 
             // panelSize
             // 
@@ -469,7 +484,7 @@
             this.panelSize.Location = new System.Drawing.Point(10, 10);
             this.panelSize.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
             this.panelSize.Name = "panelSize";
-            this.panelSize.Size = new System.Drawing.Size(605, 209);
+            this.panelSize.Size = new System.Drawing.Size(480, 209);
             this.panelSize.TabIndex = 4;
             // 
             // panelCanvas
@@ -482,7 +497,7 @@
             this.panelCanvas.Location = new System.Drawing.Point(0, 0);
             this.panelCanvas.Margin = new System.Windows.Forms.Padding(0);
             this.panelCanvas.Name = "panelCanvas";
-            this.panelCanvas.Size = new System.Drawing.Size(605, 209);
+            this.panelCanvas.Size = new System.Drawing.Size(480, 209);
             this.panelCanvas.TabIndex = 3;
             // 
             // pictureBoxImage
@@ -499,12 +514,11 @@
             // 
             this.label1.AutoSize = true;
             this.tableLayoutPanel1.SetColumnSpan(this.label1, 2);
-            this.label1.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.bindingSourceImages, "Filename", true));
             this.label1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.label1.Location = new System.Drawing.Point(10, 219);
             this.label1.Margin = new System.Windows.Forms.Padding(10, 0, 10, 10);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(605, 22);
+            this.label1.Size = new System.Drawing.Size(480, 22);
             this.label1.TabIndex = 5;
             this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -520,7 +534,7 @@
             this.panel1.Controls.Add(this.checkBoxTopCentre);
             this.panel1.Controls.Add(this.checkBoxTopLeft);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(525, 261);
+            this.panel1.Location = new System.Drawing.Point(400, 261);
             this.panel1.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(90, 108);
@@ -645,14 +659,13 @@
             this.listViewPreview.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewPreview.HideSelection = false;
             this.listViewPreview.LargeImageList = this.imageListLarge;
-            this.listViewPreview.Location = new System.Drawing.Point(625, 10);
+            this.listViewPreview.Location = new System.Drawing.Point(0, 10);
             this.listViewPreview.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
             this.listViewPreview.MultiSelect = false;
             this.listViewPreview.Name = "listViewPreview";
-            this.tableLayoutPanel1.SetRowSpan(this.listViewPreview, 3);
             this.listViewPreview.ShowGroups = false;
             this.listViewPreview.ShowItemToolTips = true;
-            this.listViewPreview.Size = new System.Drawing.Size(165, 359);
+            this.listViewPreview.Size = new System.Drawing.Size(286, 359);
             this.listViewPreview.TabIndex = 8;
             this.listViewPreview.UseCompatibleStateImageBehavior = false;
             this.listViewPreview.SelectedIndexChanged += new System.EventHandler(this.ListViewPreview_SelectedIndexChanged);
@@ -667,32 +680,33 @@
             // 
             this.folderBrowserDialogSave.Description = "Where should the file be saved to?";
             // 
-            // toolStripButtonSecondColour
+            // splitContainer1
             // 
-            this.toolStripButtonSecondColour.AutoSize = false;
-            this.toolStripButtonSecondColour.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.toolStripButtonSecondColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.toolStripButtonSecondColour.ForeColor = System.Drawing.SystemColors.ControlLight;
-            this.toolStripButtonSecondColour.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
-            this.toolStripButtonSecondColour.Name = "toolStripButtonSecondColour";
-            this.toolStripButtonSecondColour.Size = new System.Drawing.Size(19, 19);
-            this.toolStripButtonSecondColour.ToolTipText = "Change colour";
-            this.toolStripButtonSecondColour.Visible = false;
-            this.toolStripButtonSecondColour.Click += new System.EventHandler(this.ToolStripButtonSecondColour_Click);
+            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer1.Location = new System.Drawing.Point(0, 49);
+            this.splitContainer1.Margin = new System.Windows.Forms.Padding(0);
+            this.splitContainer1.Name = "splitContainer1";
             // 
-            // bindingSourceMain
+            // splitContainer1.Panel1
             // 
-            this.bindingSourceMain.AllowNew = false;
-            this.bindingSourceMain.DataSource = typeof(PhotoLabel.ViewModels.MainFormViewModel);
-            this.bindingSourceMain.CurrentChanged += new System.EventHandler(this.BindingSourceMain_CurrentChanged);
+            this.splitContainer1.Panel1.Controls.Add(this.tableLayoutPanel1);
+            this.splitContainer1.Panel1MinSize = 300;
+            // 
+            // splitContainer1.Panel2
+            // 
+            this.splitContainer1.Panel2.Controls.Add(this.listViewPreview);
+            this.splitContainer1.Panel2.Padding = new System.Windows.Forms.Padding(0, 10, 10, 10);
+            this.splitContainer1.Panel2MinSize = 192;
+            this.splitContainer1.Size = new System.Drawing.Size(800, 379);
+            this.splitContainer1.SplitterDistance = 500;
+            this.splitContainer1.TabIndex = 0;
             // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.tableLayoutPanel1);
+            this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.statusStrip);
             this.Controls.Add(this.toolStripToolbar);
             this.Controls.Add(this.menuStrip1);
@@ -710,13 +724,16 @@
             this.statusStrip.PerformLayout();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceImages)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).EndInit();
             this.panelSize.ResumeLayout(false);
             this.panelCanvas.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).EndInit();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).EndInit();
+            this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
+            this.splitContainer1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -724,6 +741,7 @@
 
         #endregion
 
+        private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemFile;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemExit;
@@ -758,7 +776,6 @@
         private System.Windows.Forms.ToolStripButton toolStripButtonSaveAs;
         private System.Windows.Forms.ToolStripMenuItem saveAsToolStripMenuItem;
         private System.Windows.Forms.ImageList imageListLarge;
-        private System.Windows.Forms.BindingSource bindingSourceImages;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.CheckBox checkBoxTopLeft;
         private System.Windows.Forms.CheckBox checkBoxTopCentre;

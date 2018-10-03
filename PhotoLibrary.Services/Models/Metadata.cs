@@ -7,7 +7,7 @@ namespace PhotoLabel.Services.Models
     {
         public string Caption { get; set; }
         public CaptionAlignments CaptionAlignment { get; set; }
-        public int Color { get; set; }
+        public int Colour { get; set; }
         public bool FontBold { get; set; }
         public string FontFamily { get; set; }
         public float FontSize { get; set; }

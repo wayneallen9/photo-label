@@ -11,6 +11,7 @@
             Bind<ILogService>().To<LogService>().InSingletonScope();
             Bind<IRecentlyUsedFilesService>().To<RecentlyUsedFilesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
+            Bind<ITimerService>().To<TimerService>();
         }
     }
 }

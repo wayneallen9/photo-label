@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AutoMapper;
+using System;
 using System.Threading;
 using System.Windows.Forms;
 namespace PhotoLabel
@@ -13,6 +14,9 @@ namespace PhotoLabel
         {
             // restrict the size of the threadpool for loading the preview images
             ThreadPool.SetMaxThreads(Environment.ProcessorCount, Environment.ProcessorCount);
+
+            // initialise Automapper
+            Mapper.Initialize(cfg => cfg.AddProfiles(typeof(Models.ImageModel)));
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
