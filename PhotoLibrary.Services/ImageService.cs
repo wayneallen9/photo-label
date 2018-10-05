@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -26,6 +27,32 @@ namespace PhotoLabel.Services
             _imageLoaderService = imageLoaderService;
             _lineWrapService = lineWrapService;
             _logService = logService;
+        }
+
+        public Image Circle(Color color, int width, int height)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Creating a {color.ToArgb()} circle {width}x{height}...");
+
+                var brush = new SolidBrush(color);
+
+                var image = new Bitmap(width, height);
+                using (var graphics = Graphics.FromImage(image))
+                {
+                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+                    graphics.FillEllipse(brush, 1, 1, width-2, height-2);
+                }
+
+                return image;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
         public Image Get(string filename)

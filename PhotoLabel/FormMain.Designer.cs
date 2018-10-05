@@ -68,7 +68,6 @@
             this.colorDialog = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.textBoxCaption = new System.Windows.Forms.TextBox();
-            this.bindingSourceMain = new System.Windows.Forms.BindingSource(this.components);
             this.panelSize = new System.Windows.Forms.Panel();
             this.panelCanvas = new System.Windows.Forms.Panel();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
@@ -83,16 +82,15 @@
             this.checkBoxTopRight = new System.Windows.Forms.CheckBox();
             this.checkBoxTopCentre = new System.Windows.Forms.CheckBox();
             this.checkBoxTopLeft = new System.Windows.Forms.CheckBox();
-            this.listViewPreview = new System.Windows.Forms.ListView();
             this.imageListLarge = new System.Windows.Forms.ImageList(this.components);
             this.fontDialog = new System.Windows.Forms.FontDialog();
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.listViewPreview = new PhotoLabel.Controls.ListView();
             this.menuStrip1.SuspendLayout();
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).BeginInit();
             this.panelSize.SuspendLayout();
             this.panelCanvas.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).BeginInit();
@@ -319,14 +317,14 @@
             // 
             // toolStripButtonSecondColour
             // 
-            this.toolStripButtonSecondColour.AutoSize = false;
             this.toolStripButtonSecondColour.BackColor = System.Drawing.SystemColors.Control;
+            this.toolStripButtonSecondColour.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.toolStripButtonSecondColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.toolStripButtonSecondColour.ForeColor = System.Drawing.SystemColors.ControlLight;
+            this.toolStripButtonSecondColour.ForeColor = System.Drawing.SystemColors.ControlText;
             this.toolStripButtonSecondColour.ImageTransparentColor = System.Drawing.SystemColors.Control;
-            this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 0, 0, 2);
             this.toolStripButtonSecondColour.Name = "toolStripButtonSecondColour";
-            this.toolStripButtonSecondColour.Size = new System.Drawing.Size(19, 19);
+            this.toolStripButtonSecondColour.Size = new System.Drawing.Size(23, 23);
             this.toolStripButtonSecondColour.ToolTipText = "Change colour";
             this.toolStripButtonSecondColour.Visible = false;
             this.toolStripButtonSecondColour.Click += new System.EventHandler(this.ToolStripButtonSecondColour_Click);
@@ -407,7 +405,7 @@
             this.toolStripButtonLocation.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
             this.toolStripButtonLocation.Enabled = false;
             this.toolStripButtonLocation.Image = global::PhotoLabel.Properties.Resources.globe;
-            this.toolStripButtonLocation.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonLocation.ImageTransparentColor = System.Drawing.SystemColors.Control;
             this.toolStripButtonLocation.Name = "toolStripButtonLocation";
             this.toolStripButtonLocation.Size = new System.Drawing.Size(23, 22);
             this.toolStripButtonLocation.ToolTipText = "Where was this taken?";
@@ -462,7 +460,6 @@
             // 
             // textBoxCaption
             // 
-            this.textBoxCaption.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.bindingSourceMain, "Caption", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxCaption.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxCaption.Location = new System.Drawing.Point(10, 261);
             this.textBoxCaption.Margin = new System.Windows.Forms.Padding(10);
@@ -470,11 +467,7 @@
             this.textBoxCaption.Name = "textBoxCaption";
             this.textBoxCaption.Size = new System.Drawing.Size(380, 108);
             this.textBoxCaption.TabIndex = 3;
-            // 
-            // bindingSourceMain
-            // 
-            this.bindingSourceMain.AllowNew = false;
-            this.bindingSourceMain.DataSource = typeof(PhotoLabel.ViewModels.MainFormViewModel);
+            this.textBoxCaption.TextChanged += new System.EventHandler(this.TextBoxCaption_TextChanged);
             // 
             // panelSize
             // 
@@ -654,27 +647,11 @@
             this.checkBoxTopLeft.UseVisualStyleBackColor = true;
             this.checkBoxTopLeft.Click += new System.EventHandler(this.CheckBoxTopLeft_Click);
             // 
-            // listViewPreview
-            // 
-            this.listViewPreview.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listViewPreview.HideSelection = false;
-            this.listViewPreview.LargeImageList = this.imageListLarge;
-            this.listViewPreview.Location = new System.Drawing.Point(0, 10);
-            this.listViewPreview.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
-            this.listViewPreview.MultiSelect = false;
-            this.listViewPreview.Name = "listViewPreview";
-            this.listViewPreview.ShowGroups = false;
-            this.listViewPreview.ShowItemToolTips = true;
-            this.listViewPreview.Size = new System.Drawing.Size(286, 359);
-            this.listViewPreview.TabIndex = 8;
-            this.listViewPreview.UseCompatibleStateImageBehavior = false;
-            this.listViewPreview.SelectedIndexChanged += new System.EventHandler(this.ListViewPreview_SelectedIndexChanged);
-            // 
             // imageListLarge
             // 
-            this.imageListLarge.ColorDepth = System.Windows.Forms.ColorDepth.Depth32Bit;
-            this.imageListLarge.ImageSize = new System.Drawing.Size(128, 128);
+            this.imageListLarge.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageListLarge.ImageStream")));
             this.imageListLarge.TransparentColor = System.Drawing.Color.Transparent;
+            this.imageListLarge.Images.SetKeyName(0, "loading");
             // 
             // folderBrowserDialogSave
             // 
@@ -701,6 +678,24 @@
             this.splitContainer1.SplitterDistance = 500;
             this.splitContainer1.TabIndex = 0;
             // 
+            // listViewPreview
+            // 
+            this.listViewPreview.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listViewPreview.HideSelection = false;
+            this.listViewPreview.LargeImageList = this.imageListLarge;
+            this.listViewPreview.Location = new System.Drawing.Point(0, 10);
+            this.listViewPreview.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
+            this.listViewPreview.MultiSelect = false;
+            this.listViewPreview.Name = "listViewPreview";
+            this.listViewPreview.ShowGroups = false;
+            this.listViewPreview.ShowItemToolTips = true;
+            this.listViewPreview.Size = new System.Drawing.Size(286, 359);
+            this.listViewPreview.TabIndex = 8;
+            this.listViewPreview.UseCompatibleStateImageBehavior = false;
+            this.listViewPreview.Scroll += new System.Windows.Forms.ScrollEventHandler(this.ListViewPreview_Scroll);
+            this.listViewPreview.SelectedIndexChanged += new System.EventHandler(this.ListViewPreview_SelectedIndexChanged);
+            this.listViewPreview.SizeChanged += new System.EventHandler(this.ListViewPreview_SizeChanged);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -710,7 +705,6 @@
             this.Controls.Add(this.statusStrip);
             this.Controls.Add(this.toolStripToolbar);
             this.Controls.Add(this.menuStrip1);
-            this.DataBindings.Add(new System.Windows.Forms.Binding("WindowState", this.bindingSourceMain, "WindowState", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "FormMain";
@@ -724,7 +718,6 @@
             this.statusStrip.PerformLayout();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.bindingSourceMain)).EndInit();
             this.panelSize.ResumeLayout(false);
             this.panelCanvas.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).EndInit();
@@ -761,7 +754,6 @@
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripButton toolStripButtonColour;
         private System.Windows.Forms.TextBox textBoxCaption;
-        private System.Windows.Forms.BindingSource bindingSourceMain;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItemSeparator;
         private System.Windows.Forms.Panel panelSize;
         private System.Windows.Forms.Panel panelCanvas;
@@ -785,7 +777,7 @@
         private System.Windows.Forms.CheckBox checkBoxLeft;
         private System.Windows.Forms.CheckBox checkBoxCentre;
         private System.Windows.Forms.ToolStripButton toolStripButtonRotateRight;
-        private System.Windows.Forms.ListView listViewPreview;
+        private PhotoLabel.Controls.ListView listViewPreview;
         private System.Windows.Forms.CheckBox checkBoxRight;
         private System.Windows.Forms.CheckBox checkBoxBottomLeft;
         private System.Windows.Forms.CheckBox checkBoxBottomCentre;

@@ -65,11 +65,12 @@
     <Compile Include="ImageLoaderService.cs" />
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
-    <Compile Include="IRecentlyUsedFilesService.cs" />
+    <Compile Include="IRecentlyUsedFoldersService.cs" />
     <Compile Include="ITimerService.cs" />
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LocaleService.cs" />
     <Compile Include="LogService.cs" />
+    <Compile Include="Models\FolderModel.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />
     <Compile Include="NinjectModule.cs" />
@@ -79,7 +80,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="RecentlyUsedFilesService.cs" />
+    <Compile Include="RecentlyUsedFoldersService.cs" />
     <Compile Include="Rotations.cs" />
     <Compile Include="TimerService.cs" />
   </ItemGroup>
@@ -92,6 +93,8 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Extensions\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

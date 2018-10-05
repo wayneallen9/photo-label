@@ -8,6 +8,7 @@ namespace PhotoLabel.Services
     {
         Image Caption(Image image, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation);
         Image Caption(string filename, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation);
+        Image Circle(Color color, int width, int height);
         IList<string> Find(string directory);
         ExifData GetExifData(string filename);
         Image Get(string filename);

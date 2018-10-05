@@ -9,7 +9,7 @@
             Bind<IImageService>().To<ImageService>().InSingletonScope();
             Bind<ILocaleService>().To<LocaleService>().InSingletonScope();
             Bind<ILogService>().To<LogService>().InSingletonScope();
-            Bind<IRecentlyUsedFilesService>().To<RecentlyUsedFilesService>().InSingletonScope();
+            Bind<IRecentlyUsedFoldersService>().To<RecentlyUsedFoldersService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
             Bind<ITimerService>().To<TimerService>();
         }

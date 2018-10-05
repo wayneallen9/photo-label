@@ -14,6 +14,9 @@ namespace PhotoLabel
                 .ForMember(d => d.MetadataExists, o => o.UseValue(true))
                 .ForMember(d => d.MetadataLoaded, o => o.Ignore())
                 .ForMember(d => d.Saved, o => o.Ignore());
+
+            CreateMap<Models.DirectoryModel, Services.Models.FolderModel>()
+                .ReverseMap();
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace PhotoLabel
@@ -16,10 +17,11 @@ namespace PhotoLabel
         #endregion
 
         #region variables
+        private CancellationTokenSource _captionCancellationTokenSource;
         private readonly ILocaleService _localeService;
         private readonly ILogService _logService;
         private readonly MainFormViewModel _mainFormViewModel;
-        private readonly IRecentlyUsedFilesService _recentlyUsedFilesService;
+        private int _position = -1;
         private readonly ITimerService _timerService;
         #endregion
 
@@ -27,25 +29,20 @@ namespace PhotoLabel
             ILocaleService localeService,
             ILogService logService,
             MainFormViewModel mainFormViewModel,
-            IRecentlyUsedFilesService recentlyUsedFilesService,
             ITimerService timerService)
         {
             // save dependencies
             _localeService = localeService;
             _logService = logService;
-            _recentlyUsedFilesService = recentlyUsedFilesService;
             _timerService = timerService;
 
             InitializeComponent();
 
-            // initialise the model binding
-            bindingSourceMain.DataSource = _mainFormViewModel = mainFormViewModel;
+            // initialise the view model
+            _mainFormViewModel = mainFormViewModel;
 
             // add the event handling
             _mainFormViewModel.Subscribe(this);
-
-            // initialise the recently used files
-            DrawRecentlyUsedFiles();
         }
 
         private void CentrePictureBox()
@@ -104,8 +101,15 @@ namespace PhotoLabel
             try
             {
                 // show the dialog
-                if (folderBrowserDialogImages.ShowDialog() == DialogResult.OK)
-                    OpenFolder(folderBrowserDialogImages.SelectedPath);
+                _logService.Trace("Prompting user for folder to open...");
+                if (folderBrowserDialogImages.ShowDialog() != DialogResult.OK)
+                {
+                    _logService.Trace("User cancelled open dialog.  Exiting...");
+                    return;
+                }
+                
+                _logService.Trace($"Folder to open is \"{folderBrowserDialogImages.SelectedPath}\"");
+                OpenFolder(folderBrowserDialogImages.SelectedPath);
             }
             finally
             {
@@ -315,12 +319,16 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowCaption()
+        private void ShowCaption(MainFormViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
             {
-                bindingSourceMain.ResetBindings(false);
+                // if it is unchanged, don't do anything
+                if (textBoxCaption.Text == mainFormViewModel.Caption) return;
+
+                // save the update
+                textBoxCaption.Text = mainFormViewModel.Caption;
             }
             finally
             {
@@ -362,8 +370,7 @@ namespace PhotoLabel
                 }
                 else
                 {
-                    _logService.Trace($"Second colour is {mainFormViewModel.SecondColour.Value.ToArgb()}");
-                    toolStripButtonSecondColour.BackColor = mainFormViewModel.SecondColour.Value;
+                    toolStripButtonSecondColour.Image = _mainFormViewModel.SecondColourImage;
                     toolStripButtonSecondColour.Visible = true;
                 }
             }
@@ -438,6 +445,9 @@ namespace PhotoLabel
 
                     return;
                 }
+
+                // log the error message
+                _logService.Error(task.Exception);
 
                 MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -515,46 +525,55 @@ namespace PhotoLabel
             }
         }
 
-        private void DrawRecentlyUsedFiles()
+        private void ShowRecentlyUsedDirectories(MainFormViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Removing existing recently used file menu options...");
-
-                // reset and remove any already existing options
-                toolStripMenuItemSeparator.Visible = false;
-                for (var i = 0; i < toolStripMenuItemFile.DropDownItems.Count;)
+                // are there any recently used directories?
+                if (mainFormViewModel.Directories.Count == 0)
                 {
-                    // only recently used files have a tag
-                    if (toolStripMenuItemFile.DropDownItems[i].Tag != null)
-                        toolStripMenuItemFile.DropDownItems.RemoveAt(i);
-                    else
-                        i++;
+                    _logService.Trace("Removing existing recently used directory menu options...");
+
+                    // reset and remove any already existing options
+                    toolStripMenuItemSeparator.Visible = false;
+
+                    var menuPos = toolStripMenuItemFile.DropDownItems.IndexOf(toolStripMenuItemSeparator) + 1;
+                    while (toolStripMenuItemFile.DropDownItems[menuPos].ToolTipText != null)
+                        toolStripMenuItemFile.DropDownItems.RemoveAt(menuPos);
                 }
-
-                // set the recently used files
-                _logService.Trace($"Adding {_recentlyUsedFilesService.Filenames.Count} recently used file menu options...");
-                foreach (var recentlyUsedFile in _recentlyUsedFilesService.Filenames)
+                else
                 {
-                    // show the separator
-                    toolStripMenuItemSeparator.Visible = true;
-
-                    // create the new menu item
-                    var menuItem = new ToolStripMenuItem
+                    // set the recently used files
+                    _logService.Trace($"Adding {mainFormViewModel.Directories.Count} recently used directory menu options...");
+                    var menuPos = toolStripMenuItemFile.DropDownItems.IndexOf(toolStripMenuItemSeparator) + 1;
+                    foreach (var recentlyUsedDirectory in mainFormViewModel.Directories)
                     {
-                        Text = _recentlyUsedFilesService.GetCaption(recentlyUsedFile),
-                        ToolTipText = recentlyUsedFile,
-                        Tag = recentlyUsedFile
-                    };
+                        // show the separator
+                        toolStripMenuItemSeparator.Visible = true;
 
-                    menuItem.Click += (s, e) =>
-                    {
-                        RecentlyUsedFile_Open(recentlyUsedFile);
-                    };
+                        // is this a recently used directory menu option?
+                        if (toolStripMenuItemFile.DropDownItems[menuPos].ToolTipText != recentlyUsedDirectory.Path)
+                        {
+                            // create the item to insert
+                            var menuItem = new ToolStripMenuItem
+                            {
+                                Text = recentlyUsedDirectory.Caption,
+                                ToolTipText = recentlyUsedDirectory.Path
+                            };
+                            menuItem.Click += (sender, e) => RecentlyUsedFile_Open(recentlyUsedDirectory.Path);
 
-                    // add it to the menu
-                    toolStripMenuItemFile.DropDownItems.Insert(toolStripMenuItemFile.DropDownItems.Count - 2, menuItem);
+                            // now insert it
+                            toolStripMenuItemFile.DropDownItems.Insert(menuPos, menuItem);
+                        }
+
+                        // go to the next menu position
+                        menuPos++;
+                    }
+
+                    // clear any leftovers
+                    while (toolStripMenuItemFile.DropDownItems[menuPos].ToolTipText != null)
+                        toolStripMenuItemFile.DropDownItems.RemoveAt(menuPos);
                 }
             }
             finally
@@ -693,11 +712,6 @@ namespace PhotoLabel
                 {
                     _logService.Trace($"Opening \"{filename}\" from recently used file list...");
                     OpenFolder(filename);
-
-                    // move this file to the top of the recently used files
-                    _recentlyUsedFilesService.Open(filename);
-
-                    DrawRecentlyUsedFiles();
                 }
                 else
                 {
@@ -705,10 +719,7 @@ namespace PhotoLabel
                     if (MessageBox.Show($"\"{filename}\" could not be found.  Do you wish to remove it from the list of recently used folders?", "Folder Not Found", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         _logService.Trace($"Removing \"{filename}\" from list of recently used files...");
-                        _recentlyUsedFilesService.Remove(filename);
-
-                        _logService.Trace("Redrawing list of recently used files...");
-                        DrawRecentlyUsedFiles();
+                        //_recentlyUsedFilesService.Remove(filename);
                     }
                 }
             }
@@ -750,9 +761,6 @@ namespace PhotoLabel
 
                         // save the current image
                         SaveImage();
-
-                        // refresh the display
-                        bindingSourceMain.ResetBindings(false);
                     }
                 }
             }
@@ -796,7 +804,7 @@ namespace PhotoLabel
                 }
 
                 // go to the next image
-                SelectNextImage();
+                SelectImage();
             }
             finally
             {
@@ -804,16 +812,40 @@ namespace PhotoLabel
             }
         }
 
-        private void SelectNextImage()
+        private void SelectImage()
         {
             _logService.TraceEnter();
             try
             {
                 _logService.Trace($"The current position is {_mainFormViewModel.Position + 1} of {_mainFormViewModel.Count}");
 
-                // go to the next image
-                if (_mainFormViewModel.Position < listViewPreview.Items.Count - 1)
-                    listViewPreview.Items[_mainFormViewModel.Position + 1].Selected = true;
+                // if there is no currently selected list view item, select the default
+                _logService.Trace($"{listViewPreview.SelectedIndices.Count} item(s) selected");
+                if (listViewPreview.SelectedIndices.Count == 0)
+                {
+                    // is there a last selected file?
+                    var lastSelectedFilename = _mainFormViewModel.Directories[0].Filename;
+                    if (!string.IsNullOrWhiteSpace(lastSelectedFilename)) {
+                        var listViewItems = listViewPreview.Items.Find(lastSelectedFilename, true);
+                        if (listViewItems.Length > 0)
+                            listViewItems[0].Selected = true;
+                        else
+                            listViewPreview.Items[0].Selected = true;
+                    }
+                    else
+                    {
+                        listViewPreview.Items[0].Selected = true;
+                    }
+                }
+                else
+                {
+                    // get the selected index
+                    var selectedIndex = listViewPreview.SelectedIndices[0];
+
+                    // if this is not the last image, go to the next image
+                    if (selectedIndex < listViewPreview.Items.Count - 1)
+                        listViewPreview.Items[selectedIndex + 1].Selected = true;
+                }
             }
             finally
             {
@@ -841,7 +873,7 @@ namespace PhotoLabel
 
             try
             {
-                SelectNextImage();
+                SelectImage();
             }
             catch (Exception ex)
             {
@@ -893,9 +925,6 @@ namespace PhotoLabel
                 // now save the current image
                 _logService.Trace("Saving current image...");
                 SaveImage();
-
-                // refresh the display
-                bindingSourceMain.ResetBindings(false);
             }
             finally
             {
@@ -1465,20 +1494,35 @@ namespace PhotoLabel
 
                     _logService.Trace($"Populating list with {filenames.Count} images...");
                     imageListLarge.Images.Clear();
+                    imageListLarge.Images.Add(Properties.Resources.loading);
                     listViewPreview.Clear();
 
-                    for (var i = 0; i < filenames.Count; i++)
+                    if (filenames.Count > 0)
                     {
-                        imageListLarge.Images.Add(filenames[i], Properties.Resources.loading);
-                        listViewPreview.Items.Add(new ListViewItem
+                        foreach (var filename in filenames)
                         {
-                            ImageKey = filenames[i],
-                            ToolTipText = filenames[i]
-                        });
+                            listViewPreview.Items.Add(new ListViewItem
+                            {
+                                ImageIndex = 0,
+                                Name=filename,
+                                ToolTipText = filename
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // hide the icon
+                        pictureBoxImage.Image = null;
+
+                        // let the user know what has happened
+                        MessageBox.Show("No image files found.", "Open Directory", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     }
 
+                    // load the first set of visible images
+                    LoadVisiblePreviews();
+
                     // select the first item
-                    SelectNextImage();
+                    SelectImage();
                 }
                 finally
                 {
@@ -1506,13 +1550,14 @@ namespace PhotoLabel
                 }
 
                 // perform the updates
+                ShowCaption(value);
                 SetWindowState(value);
-                ShowCaption();
                 ShowCaptionAlignment(value);
                 ShowLocation(value);
                 ShowOutputPath(value);
                 ShowPicture(value);
                 ShowProgress(value);
+                ShowRecentlyUsedDirectories(value);
                 ShowSecondColour(value);
                 SetToolbarStatus(value);
                 ShowZoom(value);
@@ -1558,7 +1603,7 @@ namespace PhotoLabel
                 if (InvokeRequired)
                 {
                     // prevent the UI from locking up
-                    _timerService.Pause(TimeSpan.FromMilliseconds(500));
+                    _timerService.Pause(TimeSpan.FromMilliseconds(250));
 
                     _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
                     Invoke(() => OnPreview(filename, image));
@@ -1572,6 +1617,97 @@ namespace PhotoLabel
 
                 _logService.Trace("Redrawing image list...");
                 listViewPreview.Invalidate();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ListViewPreview_SizeChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                LoadVisiblePreviews();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void LoadVisiblePreviews()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Processing {listViewPreview.Items.Count}...");
+                foreach (ListViewItem item in listViewPreview.Items)
+                {
+                    if (listViewPreview.ClientRectangle.IntersectsWith(item.GetBounds(ItemBoundsPortion.Entire)))
+                    {
+                        // has this preview already been loaded?
+                        if (imageListLarge.Images.ContainsKey(item.Name)) continue;
+
+                        // add a placeholder for this image
+                        imageListLarge.Images.Add(item.Name, Properties.Resources.loading);
+
+                        // point the item to the placeholder
+                        item.ImageKey = item.Name;
+
+                        // and load the preview
+                        _mainFormViewModel.LoadPreview(item.Name);
+                    }
+                }
+            }
+            catch (ArgumentException)
+            {
+                // ignore this error - the form is closing
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ListViewPreview_Scroll(object sender, ScrollEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                LoadVisiblePreviews();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void TextBoxCaption_TextChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _mainFormViewModel.Caption = textBoxCaption.Text;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {

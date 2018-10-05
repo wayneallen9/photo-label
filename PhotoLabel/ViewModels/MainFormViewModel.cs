@@ -14,8 +14,11 @@ namespace PhotoLabel.ViewModels
 {
     public class MainFormViewModel : IObservable
     {
+        #region events
+        #endregion
+
         #region variables
-        private System.Drawing.Image _image;
+        private List<DirectoryModel> _folders;
         private CancellationTokenSource _imageCancellationTokenSource;
         private readonly object _imageLock = new object();
         private readonly IImageMetadataService _imageMetadataService;
@@ -28,18 +31,25 @@ namespace PhotoLabel.ViewModels
         private readonly object _openLock = new object();
         private int _position = -1;
         private readonly object _previewLock = new object();
+        private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
         private Color? _secondColour;
+        private Image _secondColourImage;
         #endregion
 
         public MainFormViewModel(
             IImageMetadataService imageMetadataService,
             IImageService imageService,
-            ILogService logService)
+            ILogService logService,
+            IRecentlyUsedFoldersService recentlyUsedDirectoriesService)
         {
             // save dependency injections
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logService = logService;
+            _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
+
+            // load the list of recently used directories
+            _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
         }
 
         private void CacheImage()
@@ -83,8 +93,6 @@ namespace PhotoLabel.ViewModels
 
                     // redraw the image
                     LoadImage();
-
-                    Notify();
                 }
             }
         }
@@ -170,6 +178,7 @@ namespace PhotoLabel.ViewModels
 
                 // save the current default as the new default
                 _secondColour = Properties.Settings.Default.Color;
+                _secondColourImage = _imageService.Circle(Properties.Settings.Default.Color, 19, 19);
 
                 // save the new value
                 Properties.Settings.Default.Color = value;
@@ -190,6 +199,8 @@ namespace PhotoLabel.ViewModels
                 Properties.Settings.Default.Save();
             }
         }
+
+        public IList<DirectoryModel> Directories => _folders;
 
         private void ExceptionHandler(Task task, object state)
         {
@@ -231,7 +242,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Image Image => _image;
+        public Image Image { get; private set; }
 
         public float? Latitude => Current?.Latitude;
 
@@ -276,7 +287,7 @@ namespace PhotoLabel.ViewModels
                     _imageCancellationTokenSource?.Cancel();
 
                     // clear the image
-                    _image = null;
+                    Image = null;
 
                     // load the image on a background thread
                     _imageCancellationTokenSource = new CancellationTokenSource();
@@ -337,7 +348,7 @@ namespace PhotoLabel.ViewModels
                 var captionedImage = _imageService.Caption(image, Caption, CaptionAlignment, Font, new SolidBrush(Colour), Rotation);
 
                 // update the image in a thread safe manner
-                lock (_imageLock) _image = captionedImage;
+                lock (_imageLock) Image = captionedImage;
 
                 if (cancellationToken.IsCancellationRequested) return;
                 Notify();
@@ -377,6 +388,30 @@ namespace PhotoLabel.ViewModels
 
                 // flag that we have loaded
                 manualResetEvent.Set();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public void LoadPreview(string filename)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // find the image being previewed
+                _logService.Trace($"Finding image \"{filename}\"...");
+                var imageModel = _images.FirstOrDefault(i => i.Filename == filename);
+                if (imageModel == null)
+                {
+                    _logService.Trace($"Image \"{filename}\" does not exist.  Exiting...");
+                    return;
+                }
+
+                _logService.Trace($"Loading preview for \"{filename}\" on a background thread...");
+                Task.Factory.StartNew(() => PreviewThread(imageModel, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token)
+                    .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -477,6 +512,7 @@ namespace PhotoLabel.ViewModels
                 _logService.TraceExit();
             }
         }
+
         public void Open(string directory)
         {
             _logService.TraceEnter();
@@ -517,22 +553,30 @@ namespace PhotoLabel.ViewModels
                     var filenames = _imageService.Find(directory);
                     _logService.Trace($"{filenames.Count} image files found");
 
-                    if (_openCancellationTokenSource.IsCancellationRequested) return;
-                    _logService.Trace("Building images...");
-                    for (var i = 0; i < filenames.Count; i++)
+                    // only add this directory to the recently used directories list
+                    // if it contains images
+                    if (filenames.Count > 0)
                     {
-                        if (_openCancellationTokenSource.IsCancellationRequested) break;
-                        var imageMetadata = new ImageModel
+                        if (_openCancellationTokenSource.IsCancellationRequested) return;
+                        _logService.Trace("Building images...");
+                        for (var i = 0; i < filenames.Count; i++)
                         {
-                            Filename = filenames[i]
+                            if (_openCancellationTokenSource.IsCancellationRequested) break;
+                            var imageMetadata = new ImageModel
+                            {
+                                Filename = filenames[i]
+                            };
+
+                            if (_openCancellationTokenSource.IsCancellationRequested) break;
+                            _images.Add(imageMetadata);
                         };
 
-                        if (_openCancellationTokenSource.IsCancellationRequested) break;
-                        _images.Add(imageMetadata);
+                        if (_openCancellationTokenSource.IsCancellationRequested) return;
+                        _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Add(directory, Mapper.Map<List<Services.Models.FolderModel>>(_folders)));
 
-                        if (_openCancellationTokenSource.IsCancellationRequested) break;
-                        Task.Run(() => PreviewThread(imageMetadata, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token);
-                    };
+                        if (_openCancellationTokenSource.IsCancellationRequested) return;
+                        Notify();
+                    }
 
                     if (_openCancellationTokenSource.IsCancellationRequested) return;
                     NotifyOpen(filenames);
@@ -571,6 +615,9 @@ namespace PhotoLabel.ViewModels
                 // save the change
                 _position = value;
 
+                // save the last selected filename for this folder
+                SaveLastSelectedFilename();
+
                 // redraw the image on a background thread
                 LoadImage();
 
@@ -578,6 +625,30 @@ namespace PhotoLabel.ViewModels
                 CacheImage();
 
                 Notify();
+            }
+        }
+
+        private void SaveLastSelectedFilename()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Getting current folder...");
+                var folder = _folders[0];
+                _logService.Trace($"Current folder is \"{folder.Path}\"");
+
+                // save this file as the last used file for this folder
+                _logService.Trace($"Last selected file in folder \"{folder.Path}\" is \"{Current?.Filename}\"");
+                folder.Filename = Current?.Filename;
+
+                // map to the service layer
+                _logService.Trace("Saving recently used folder change...");
+                var folders = Mapper.Map<List<Services.Models.FolderModel>>(_folders);
+                _recentlyUsedDirectoriesService.Save(folders);
+            }
+            finally
+            {
+                _logService.TraceExit();
             }
         }
 
@@ -614,10 +685,10 @@ namespace PhotoLabel.ViewModels
                 // save the image
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
-                    lock (_image)
+                    lock (Image)
                     {
                         _logService.Trace($"Saving \"{Filename}\" to \"{filename}\"...");
-                        _image.Save(fileStream, ImageFormat.Jpeg);
+                        Image.Save(fileStream, ImageFormat.Jpeg);
                     }
                 }
 
@@ -655,11 +726,16 @@ namespace PhotoLabel.ViewModels
 
         public Color? SecondColour => _secondColour;
 
+        public Image SecondColourImage => _secondColourImage;
+
         public FormWindowState WindowState
         {
             get => Properties.Settings.Default.WindowState;
             set
             {
+                // ignore when the form is minimized
+                if (value == FormWindowState.Minimized) return;
+
                 // only process changes
                 if (Properties.Settings.Default.WindowState == value) return;
 

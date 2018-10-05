@@ -66,14 +66,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoMapperProfile.cs" />
+    <Compile Include="Controls\ListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormMain.Designer.cs">
       <DependentUpon>FormMain.cs</DependentUpon>
     </Compile>
+    <Compile Include="Models\DirectoryModel.cs" />
     <Compile Include="Models\ImageModel.cs" />
-    <Compile Include="Timer.cs" />
     <Compile Include="ViewModels\IObservable.cs" />
     <Compile Include="ViewModels\IObserver.cs" />
     <Compile Include="NinjectKernel.cs" />
@@ -95,6 +98,7 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="packages.config" />
+    <None Include="Properties\DataSources\PhotoLabel.ViewModels.MainFormViewModel.datasource" />
     <None Include="Properties\DataSources\PhotoLibrary.Models.MainFormViewModel.datasource" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
