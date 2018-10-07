@@ -346,12 +346,23 @@ namespace PhotoLabel.ViewModels
                 // create the caption
                 if (cancellationToken.IsCancellationRequested) return;
                 var captionedImage = _imageService.Caption(image, Caption, CaptionAlignment, Font, new SolidBrush(Colour), Rotation);
-
-                // update the image in a thread safe manner
-                lock (_imageLock) Image = captionedImage;
+                try
+                {
+                    // update the image in a thread safe manner
+                    if (cancellationToken.IsCancellationRequested) return;
+                    lock (_imageLock)
+                    {
+                        if (cancellationToken.IsCancellationRequested) return;
+                        Image = captionedImage;
+                    }
+                }
+                finally
+                {
+                    if (cancellationToken.IsCancellationRequested) captionedImage.Dispose();
+                }
 
                 if (cancellationToken.IsCancellationRequested) return;
-                Notify();
+                    Notify();
             }
             finally
             {

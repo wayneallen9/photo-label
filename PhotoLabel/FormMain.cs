@@ -17,11 +17,11 @@ namespace PhotoLabel
         #endregion
 
         #region variables
-        private CancellationTokenSource _captionCancellationTokenSource;
+        private readonly Image _ajaxImage = Properties.Resources.ajax;
+        private readonly Image _loadingImage = Properties.Resources.loading;
         private readonly ILocaleService _localeService;
         private readonly ILogService _logService;
         private readonly MainFormViewModel _mainFormViewModel;
-        private int _position = -1;
         private readonly ITimerService _timerService;
         #endregion
 
@@ -223,9 +223,9 @@ namespace PhotoLabel
             {
                 // show the Ajax icon
                 _logService.Trace("Displaying ajax resource...");
-                pictureBoxImage.Image = Properties.Resources.ajax;
-                pictureBoxImage.Height = Properties.Resources.ajax.Height;
-                pictureBoxImage.Width = Properties.Resources.ajax.Width;
+                pictureBoxImage.Image = _ajaxImage;
+                pictureBoxImage.Height = _ajaxImage.Height;
+                pictureBoxImage.Width = _ajaxImage.Width;
 
                 _logService.Trace("Centering ajax resource...");
                 CentrePictureBox();
@@ -1494,7 +1494,7 @@ namespace PhotoLabel
 
                     _logService.Trace($"Populating list with {filenames.Count} images...");
                     imageListLarge.Images.Clear();
-                    imageListLarge.Images.Add(Properties.Resources.loading);
+                    imageListLarge.Images.Add(_loadingImage);
                     listViewPreview.Clear();
 
                     if (filenames.Count > 0)
@@ -1657,7 +1657,7 @@ namespace PhotoLabel
                         if (imageListLarge.Images.ContainsKey(item.Name)) continue;
 
                         // add a placeholder for this image
-                        imageListLarge.Images.Add(item.Name, Properties.Resources.loading);
+                        imageListLarge.Images.Add(item.Name, _loadingImage);
 
                         // point the item to the placeholder
                         item.ImageKey = item.Name;
