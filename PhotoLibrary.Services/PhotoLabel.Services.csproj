@@ -56,6 +56,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CaptionAlignments.cs" />
+    <Compile Include="ConfigurationService.cs" />
+    <Compile Include="IConfigurationService.cs" />
     <Compile Include="IImageLoaderService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageService.cs" />
@@ -70,6 +72,7 @@
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LocaleService.cs" />
     <Compile Include="LogService.cs" />
+    <Compile Include="Models\ConfigurationModel.cs" />
     <Compile Include="Models\FolderModel.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />
@@ -93,8 +96,6 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Extensions\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -18,6 +18,8 @@ namespace PhotoLabel.ViewModels
         #endregion
 
         #region variables
+        private readonly IConfigurationService _configurationService;
+        private ImageModel _current;
         private List<DirectoryModel> _folders;
         private CancellationTokenSource _imageCancellationTokenSource;
         private readonly object _imageLock = new object();
@@ -37,12 +39,14 @@ namespace PhotoLabel.ViewModels
         #endregion
 
         public MainFormViewModel(
+            IConfigurationService configurationService,
             IImageMetadataService imageMetadataService,
             IImageService imageService,
             ILogService logService,
             IRecentlyUsedFoldersService recentlyUsedDirectoriesService)
         {
             // save dependency injections
+            _configurationService = configurationService;
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logService = logService;
@@ -52,20 +56,20 @@ namespace PhotoLabel.ViewModels
             _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
         }
 
-        private void CacheImage()
+        private void CacheImage(int position)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Current position is {_position + 1} of {_images.Count}");
-                if (_position > _images.Count - 2)
+                _logService.Trace($"Position to cache is {position}");
+                if (position > _images.Count - 2)
                 {
                     _logService.Trace("There is no image to cache.  Exiting...");
                     return;
                 }
 
                 // get the name of the file to be cached
-                var filename = _images[_position + 1].Filename;
+                var filename = _images[position].Filename;
 
                 _logService.Trace($"Caching \"{filename}\" on background thread...");
                 Task.Factory.StartNew(() => _imageService.Get(filename), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
@@ -79,44 +83,46 @@ namespace PhotoLabel.ViewModels
 
         public string Caption
         {
-            get => Current?.Caption ?? string.Empty;
+            get => _current?.Caption ?? string.Empty;
             set
             {
                 // only process changes
                 if (Caption == value) return;
 
                 // do we have an existing image?
-                if (Current != null)
+                if (_current != null)
                 {
                     // save the new value
-                    Current.Caption = value;
+                    _current.Caption = value;
 
                     // redraw the image
-                    LoadImage();
+                    LoadImage(_position);
+
+                    Notify();
                 }
             }
         }
 
         public CaptionAlignments CaptionAlignment
         {
-            get => Current?.CaptionAlignment ?? DefaultCaptionAlignment;
+            get => _current?.CaptionAlignment ?? _configurationService.CaptionAlignment;
             set
             {
                 // only process changes
                 if (CaptionAlignment == value) return;
 
                 // do we have an existing image?
-                if (Current != null)
+                if (_current != null)
                 {
                     // update the value on the image
-                    Current.CaptionAlignment = value;
+                    _current.CaptionAlignment = value;
 
                     // redraw the image
-                    LoadImage();
+                    LoadImage(_position);
                 }
 
                 // save this as the default caption alignment
-                DefaultCaptionAlignment = value;
+                _configurationService.CaptionAlignment = value;
 
                 Notify();
             }
@@ -124,81 +130,34 @@ namespace PhotoLabel.ViewModels
 
         public Color Colour
         {
-            get => Current?.Colour ?? DefaultColour;
+            get => _current?.Colour ?? _configurationService.Colour;
             set
             {
                 // only process changes
                 if (Colour == value) return;
 
+                // save the current colour as the secondary colour
+                _secondColour = Colour;
+                _secondColourImage = _imageService.Circle(Colour, 16, 16);
+
                 // save the colour to the image
-                if (Current != null)
+                if (_current != null)
                 {
                     // save the colour on the image
-                    Current.Colour = value;
+                    _current.Colour = value;
 
                     // redraw the image on a background thread
-                    LoadImage();
+                    LoadImage(_position);
                 }
 
                 // save the new default colour
-                DefaultColour = value;
+                _configurationService.Colour = value;
 
                 Notify();
             }
         }
 
         public int Count => _images.Count;
-
-        private ImageModel Current
-        {
-            get => _images.ElementAtOrDefault(_position);
-        }
-
-        private CaptionAlignments DefaultCaptionAlignment
-        {
-            get => Properties.Settings.Default.CaptionAlignment;
-            set
-            {
-                // only process changes
-                if (Properties.Settings.Default.CaptionAlignment == value) return;
-
-                // save the change
-                Properties.Settings.Default.CaptionAlignment = value;
-                Properties.Settings.Default.Save();
-            }
-        }
-
-        private Color DefaultColour
-        {
-            get => Properties.Settings.Default.Color;
-            set
-            {
-                // only process changes
-                if (Properties.Settings.Default.Color == value) return;
-
-                // save the current default as the new default
-                _secondColour = Properties.Settings.Default.Color;
-                _secondColourImage = _imageService.Circle(Properties.Settings.Default.Color, 19, 19);
-
-                // save the new value
-                Properties.Settings.Default.Color = value;
-                Properties.Settings.Default.Save();
-            }
-        }
-
-        private Font DefaultFont
-        {
-            get => Properties.Settings.Default.Font;
-            set
-            {
-                // only process changes
-                if (Properties.Settings.Default.Font == value) return;
-
-                // save the new value
-                Properties.Settings.Default.Font = value;
-                Properties.Settings.Default.Save();
-            }
-        }
 
         public IList<DirectoryModel> Directories => _folders;
 
@@ -216,27 +175,102 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public string Filename => Current?.Filename;
+        public string Filename => _current?.Filename;
 
-        public Font Font
+        public bool FontBold
         {
-            get => Current?.Font ?? DefaultFont ?? SystemFonts.DefaultFont;
+            get => _current?.FontBold ?? _configurationService.FontBold;
             set
             {
                 // only process changes
-                if (Font == value) return;
+                if (FontBold == value) return;
 
-                if (Current != null)
-                {
-                    // save the value to the image
-                    Current.Font = value;
+                // save as the default
+                _configurationService.FontBold = value;
 
-                    // redraw the image on a background thread
-                    LoadImage();
-                }
+                // is there a current image?
+                if (_current == null) return;
 
-                // update the default font
-                DefaultFont = value;
+                // update the font size on the image
+                _current.FontBold = value;
+
+                // reload the im
+                LoadImage(_position);
+
+                Notify();
+            }
+        }
+
+        public string FontName
+        {
+            get => _current?.FontName ?? _configurationService.FontName;
+            set
+            {
+                // only process changes
+                if (_configurationService.FontName == value) return;
+
+                // save the new value
+                _configurationService.FontName = value;
+
+                // is there a current image?
+                if (_current == null) return;
+
+                // update the value on the current image
+                _current.FontName = value;
+
+                // update the image
+                LoadImage(_position);
+
+                Notify();
+            }
+        }
+
+        public float FontSize
+        {
+            get => _current?.FontSize ?? _configurationService.FontSize;
+            set
+            {
+                // only process changes
+                if (FontSize == value) return;
+
+                // save the default value
+                _configurationService.FontSize = value;
+
+                // is there a current image?
+                if (_current == null) return;
+
+                // update the font size on the image
+                _current.FontSize = value;
+
+                // reload the image
+                LoadImage(_position);
+
+                Notify();
+            }
+        }
+
+        public string FontType
+        {
+            get => _current?.FontType ?? _configurationService.FontType;
+            set
+            {
+                // only process changes
+                if (FontType == value) return;
+
+                // validate that it is one of the available options
+                if (value != "%" && value != "pts") throw new ArgumentOutOfRangeException(nameof(FontType));
+
+                // save the new value
+                _configurationService.FontType = value;
+
+                // is there a current image?
+                if (_current == null) return;
+
+                // update the type on the image
+                _current.FontType = value;
+
+                // reload the image
+                LoadImage(_position);
 
                 Notify();
             }
@@ -244,28 +278,32 @@ namespace PhotoLabel.ViewModels
 
         public Image Image { get; private set; }
 
-        public float? Latitude => Current?.Latitude;
+        public float? Latitude => _current?.Latitude;
 
-        private void ExifDataThread(ImageModel imageMetadata, ManualResetEvent manualResetEvent)
+        private void ExifThread(ImageModel imageModel, ManualResetEvent manualResetEvent)
         {
             _logService.TraceEnter();
             try
             {
-                if (!imageMetadata.ExifLoaded)
+                _logService.Trace($"Checking if Exif data is already loaded for \"{imageModel.Filename}\"...");
+                if (!imageModel.ExifLoaded)
                 {
-                    _logService.Trace($"Loading Exif data for \"{imageMetadata.Filename}\"...");
-                    var exifData = _imageService.GetExifData(imageMetadata.Filename);
+                    _logService.Trace($"Loading Exif data for \"{imageModel.Filename}\"...");
+                    var exifData = _imageService.GetExifData(imageModel.Filename);
                     if (exifData != null)
                     {
-                        _logService.Trace($"Populating values from Exif data for \"{imageMetadata.Filename}\"...");
-                        imageMetadata.Caption = exifData.DateTaken;
-                        imageMetadata.Latitude = exifData.Latitude;
-                        imageMetadata.Longitude = exifData.Longitude;
+                        _logService.Trace($"Populating values from Exif data for \"{imageModel.Filename}\"...");
+                        _logService.Trace($"Date taken for \"{imageModel.Filename}\" is \"{exifData.DateTaken}\"");
+                        imageModel.Caption = exifData.DateTaken;
+                        imageModel.Latitude = exifData.Latitude;
+                        imageModel.Longitude = exifData.Longitude;
                     }
 
                     // flag that the Exif data is loaded
-                    imageMetadata.ExifLoaded = true;
+                    imageModel.ExifLoaded = true;
                 }
+                else
+                    _logService.Trace($"Exif data is already loaded for \"{imageModel.Filename}\".  Caption is \"{imageModel.Caption}\"");
 
                 // flag that the Exif is loaded
                 manualResetEvent.Set();
@@ -276,7 +314,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        private void LoadImage()
+        private void LoadImage(int position)
         {
             _logService.TraceEnter();
             try
@@ -289,9 +327,12 @@ namespace PhotoLabel.ViewModels
                     // clear the image
                     Image = null;
 
+                    // get the image to load
+                    var imageToLoad = _images[position];
+
                     // load the image on a background thread
                     _imageCancellationTokenSource = new CancellationTokenSource();
-                    Task.Factory.StartNew(() => ImageThread(Current, _imageCancellationTokenSource.Token), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    Task.Factory.StartNew(() => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(ExceptionHandler, _imageCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
                 }
             }
@@ -301,7 +342,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        private void ImageThread(ImageModel imageMetadata, CancellationToken cancellationToken)
+        private void ImageThread(ImageModel imageModel, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
@@ -310,12 +351,12 @@ namespace PhotoLabel.ViewModels
 
                 // load the image on another thread
                 if (cancellationToken.IsCancellationRequested) return;
-                var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageMetadata.Filename), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
+                var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageModel.Filename), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
                 task.ContinueWith(ExceptionHandler, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
 
                 // load the metadata on another thread
                 var metadataResetEvent = new ManualResetEvent(false);
-                Task.Factory.StartNew(() => LoadMetadata(imageMetadata, metadataResetEvent), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                Task.Factory.StartNew(() => MetadataThread(imageModel, metadataResetEvent), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                     .ContinueWith(ExceptionHandler, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
 
                 // wait for the metadata to load
@@ -325,14 +366,14 @@ namespace PhotoLabel.ViewModels
                 // if there was no metadata file, we need to load the Exif 
                 // data to get the default caption
                 var exifResetEvent = new ManualResetEvent(false);
-                if (imageMetadata.MetadataExists)
+                if (imageModel.MetadataExists)
                 {
                     // no need to load the Exif data
                     exifResetEvent.Set();
                 }
                 else
                 {
-                    Task.Factory.StartNew(() => ExifDataThread(Current, exifResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    Task.Factory.StartNew(() => ExifThread(imageModel, exifResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(ExceptionHandler, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
                 }
 
@@ -343,9 +384,19 @@ namespace PhotoLabel.ViewModels
                 // this will wait until the thread has completed
                 var image = task.Result;
 
+                // work out the values to use
+                var captionAlignment = imageModel.CaptionAlignment ?? _configurationService.CaptionAlignment;
+                var colour = imageModel.Colour ?? _configurationService.Colour;
+                var fontBold = imageModel.FontBold ?? _configurationService.FontBold;
+                var fontName = imageModel.FontName ?? _configurationService.FontName;
+                var fontSize = imageModel.FontSize ?? _configurationService.FontSize;
+                var fontType = imageModel.FontType ?? _configurationService.FontType;
+                var rotation = imageModel.Rotation ?? Rotations.Zero;
+
                 // create the caption
                 if (cancellationToken.IsCancellationRequested) return;
-                var captionedImage = _imageService.Caption(image, Caption, CaptionAlignment, Font, new SolidBrush(Colour), Rotation);
+                _logService.Trace($"Caption for \"{imageModel.Filename}\" is \"{imageModel.Caption}\".  Creating image...");
+                var captionedImage = _imageService.Caption(image, imageModel.Caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), rotation);
                 try
                 {
                     // update the image in a thread safe manner
@@ -353,6 +404,11 @@ namespace PhotoLabel.ViewModels
                     lock (_imageLock)
                     {
                         if (cancellationToken.IsCancellationRequested) return;
+
+                        _logService.Trace($"Setting \"{imageModel.Filename}\" as current image...");
+                        _current = imageModel;
+
+                        _logService.Trace($"Setting image for \"{imageModel.Filename}\"...");
                         Image = captionedImage;
                     }
                 }
@@ -362,7 +418,7 @@ namespace PhotoLabel.ViewModels
                 }
 
                 if (cancellationToken.IsCancellationRequested) return;
-                    Notify();
+                Notify();
             }
             finally
             {
@@ -370,7 +426,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        private void LoadMetadata(
+        private void MetadataThread(
             ImageModel imageMetadata,
             ManualResetEvent manualResetEvent)
         {
@@ -380,20 +436,25 @@ namespace PhotoLabel.ViewModels
                 _logService.Trace($"Checking if metadata is loaded for \"{imageMetadata.Filename}\"...");
                 if (!imageMetadata.MetadataLoaded)
                 {
-                    // only one thread can update the metadata at a time
+                    // only one thread can load the metadata
                     lock (imageMetadata)
                     {
-                        _logService.Trace($"Metadata is not loaded for \"{imageMetadata.Filename}\".  Loading...");
-                        var metadata = _imageMetadataService.Load(imageMetadata.Filename);
-
-                        if (metadata != null)
+                        // once we have the lock, make sure another thread didn't load
+                        // the metadata in the interim
+                        if (!imageMetadata.MetadataLoaded)
                         {
-                            _logService.Trace($"Populating values from metadata for \"{imageMetadata.Filename}\"...");
-                            Mapper.Map(metadata, imageMetadata);
-                        }
+                            _logService.Trace($"Metadata is not loaded for \"{imageMetadata.Filename}\".  Loading...");
+                            var metadata = _imageMetadataService.Load(imageMetadata.Filename);
 
-                        // don't try and load the metadata again
-                        imageMetadata.MetadataLoaded = true;
+                            if (metadata != null)
+                            {
+                                _logService.Trace($"Populating values from metadata for \"{imageMetadata.Filename}\"...");
+                                Mapper.Map(metadata, imageMetadata);
+                            }
+
+                            // don't try and load the metadata again
+                            imageMetadata.MetadataLoaded = true;
+                        }
                     }
                 }
 
@@ -441,7 +502,7 @@ namespace PhotoLabel.ViewModels
 
                 if (cancellationToken.IsCancellationRequested) return;
                 var manualResetEvent = new ManualResetEvent(false);
-                Task.Factory.StartNew(() => LoadMetadata(imageMetadata, manualResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
+                Task.Factory.StartNew(() => MetadataThread(imageMetadata, manualResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
 
                 if (cancellationToken.IsCancellationRequested) return;
                 preview = _imageService.Get(imageMetadata.Filename, 128, 128);
@@ -464,7 +525,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public float? Longitude => Current?.Longitude;
+        public float? Longitude => _current?.Longitude;
 
         private ImageModel Next => _position > -1 && _position + 1 < _images.Count ? _images[_position + 1] : null;
 
@@ -534,10 +595,15 @@ namespace PhotoLabel.ViewModels
                     _logService.Trace("Cancelling any in progress open...");
                     _openCancellationTokenSource?.Cancel();
 
+                    _logService.Trace("Clearing current image...");
+                    lock (_imageLock) Image = null;
+
                     _logService.Trace($"Opening \"{directory}\" on a background thread...");
                     _openCancellationTokenSource = new CancellationTokenSource();
                     Task.Factory.StartNew(() => OpenThread(directory, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+
+                    Notify();
                 }
             }
             finally
@@ -629,11 +695,14 @@ namespace PhotoLabel.ViewModels
                 // save the last selected filename for this folder
                 SaveLastSelectedFilename();
 
+                // clear the current image
+                _current = null;
+
                 // redraw the image on a background thread
-                LoadImage();
+                LoadImage(value);
 
                 // cache the next image on a background thread
-                CacheImage();
+                CacheImage(value + 1);
 
                 Notify();
             }
@@ -649,8 +718,8 @@ namespace PhotoLabel.ViewModels
                 _logService.Trace($"Current folder is \"{folder.Path}\"");
 
                 // save this file as the last used file for this folder
-                _logService.Trace($"Last selected file in folder \"{folder.Path}\" is \"{Current?.Filename}\"");
-                folder.Filename = Current?.Filename;
+                _logService.Trace($"Last selected file in folder \"{folder.Path}\" is \"{_current?.Filename}\"");
+                folder.Filename = _current?.Filename;
 
                 // map to the service layer
                 _logService.Trace("Saving recently used folder change...");
@@ -665,20 +734,20 @@ namespace PhotoLabel.ViewModels
 
         public Rotations Rotation
         {
-            get => Current?.Rotation ?? Rotations.Zero;
+            get => _current?.Rotation ?? Rotations.Zero;
             set
             {
                 // only process changes
                 if (Rotation == value) return;
 
                 // save the rotation to the image
-                if (Current != null)
+                if (_current != null)
                 {
                     // update the value
-                    Current.Rotation = value;
+                    _current.Rotation = value;
 
                     // redraw the image
-                    LoadImage();
+                    LoadImage(_position);
 
                     Notify();
                 }
@@ -688,7 +757,7 @@ namespace PhotoLabel.ViewModels
         public void Save(string filename)
         {
             if (filename == null) throw new ArgumentNullException(nameof(filename));
-            if (Current == null) throw new InvalidOperationException("There is no current image");
+            if (_current == null) throw new InvalidOperationException("There is no current image");
 
             _logService.TraceEnter();
             try
@@ -709,9 +778,10 @@ namespace PhotoLabel.ViewModels
                     Caption = Caption,
                     CaptionAlignment = CaptionAlignment,
                     Colour = Colour.ToArgb(),
-                    FontBold = Font.Bold,
-                    FontFamily = Font.FontFamily.Name,
-                    FontSize = Font.Size,
+                    FontBold = FontBold,
+                    FontFamily = FontName,
+                    FontSize = FontSize,
+                    FontType = FontType,
                     Latitude = Latitude,
                     Longitude = Longitude,
                     Rotation = Rotation
@@ -719,13 +789,13 @@ namespace PhotoLabel.ViewModels
                 _imageMetadataService.Save(metadata, Filename);
 
                 // do we need to flag it as saved?
-                if (!Current.Saved)
+                if (!_current.Saved)
                 {
                     // flag that the current image has been saved
-                    Current.Saved = true;
+                    _current.Saved = true;
 
                     // reload the preview
-                    Task.Factory.StartNew(() => PreviewThread(Current, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
                 }
             }
@@ -752,22 +822,6 @@ namespace PhotoLabel.ViewModels
 
                 // save the new value
                 Properties.Settings.Default.WindowState = value;
-                Properties.Settings.Default.Save();
-
-                Notify();
-            }
-        }
-
-        public int Zoom
-        {
-            get => Properties.Settings.Default.Zoom;
-            set
-            {
-                // only process changes
-                if (Properties.Settings.Default.Zoom == value) return;
-
-                // save the new value
-                Properties.Settings.Default.Zoom = value;
                 Properties.Settings.Default.Save();
 
                 Notify();

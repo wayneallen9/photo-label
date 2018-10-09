@@ -198,6 +198,11 @@
   <ItemGroup>
     <None Include="Resources\icons8-watch-filled-100 %281%29.png" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Extensions\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icons8-bold-filled-16.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

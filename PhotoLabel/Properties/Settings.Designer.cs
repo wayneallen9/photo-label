@@ -83,18 +83,6 @@ namespace PhotoLabel.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int Zoom {
-            get {
-                return ((int)(this["Zoom"]));
-            }
-            set {
-                this["Zoom"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("BottomRight")]
         public global::PhotoLabel.Services.CaptionAlignments CaptionAlignment {
             get {

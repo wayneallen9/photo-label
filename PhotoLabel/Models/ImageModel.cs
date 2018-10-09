@@ -9,7 +9,10 @@ namespace PhotoLabel.Models
         public Color? Colour { get; set; }
         public bool ExifLoaded { get; set; }
         public string Filename { get; set; }
-        public Font Font { get; set; }
+        public bool? FontBold { get; set; }
+        public string FontName { get; set; }
+        public float? FontSize { get; set; }
+        public string FontType { get; set; }
         public float? Latitude { get; set; }
         public float? Longitude { get; set; }
         public bool MetadataExists { get; set; }

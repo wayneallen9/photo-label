@@ -4,6 +4,7 @@
     {
         public override void Load()
         {
+            Bind<IConfigurationService>().To<ConfigurationService>().InSingletonScope();
             Bind<IImageLoaderService>().To<ImageLoaderService>().InSingletonScope();
             Bind<IImageMetadataService>().To<ImageMetadataService>().InSingletonScope();
             Bind<IImageService>().To<ImageService>().InSingletonScope();

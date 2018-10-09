@@ -5,7 +5,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Threading;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace PhotoLabel
@@ -38,6 +39,9 @@ namespace PhotoLabel
 
             InitializeComponent();
 
+            // initialise the font list
+            SetupFontComboBox();
+
             // initialise the view model
             _mainFormViewModel = mainFormViewModel;
 
@@ -45,29 +49,10 @@ namespace PhotoLabel
             _mainFormViewModel.Subscribe(this);
         }
 
-        private void CentrePictureBox()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // this must run on the UI thread
-                _logService.Trace($"Image size is {pictureBoxImage.Width}px x {pictureBoxImage.Height}px");
-                if (pictureBoxImage.Height < panelSize.Height)
-                    pictureBoxImage.Top = (panelSize.Height - pictureBoxImage.Height) / 2;
-                else
-                    pictureBoxImage.Top = 0;
-
-                if (pictureBoxImage.Width < panelSize.Width)
-                    pictureBoxImage.Left = (panelSize.Width - pictureBoxImage.Width) / 2;
-                else
-                    pictureBoxImage.Left = 0;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
+        /// <summary>
+        /// Run an action on the UI thread.
+        /// </summary>
+        /// <param name="action">The <see cref="Action"/> to be executed.</param>
         private void Invoke(Action action)
         {
             _logService.TraceEnter();
@@ -76,7 +61,7 @@ namespace PhotoLabel
                 _logService.Trace("Checking if running on the UI thread...");
                 if (InvokeRequired)
                 {
-                    _logService.Trace("Not running on the UI thread");
+                    _logService.Trace("Not running on the UI thread.  Delegating to UI thread...");
                     Invoke(new ActionDelegate(Invoke), action);
 
                     return;
@@ -95,6 +80,9 @@ namespace PhotoLabel
             }
         }
 
+        /// <summary>
+        /// Prompt the user for a target folder.
+        /// </summary>
         private void OpenFolder()
         {
             _logService.TraceEnter();
@@ -117,48 +105,9 @@ namespace PhotoLabel
             }
         }
 
-        private void ZoomImage()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if there is a current image showing...");
-                if (pictureBoxImage.Image == null)
-                {
-                    _logService.Trace("No image is showing.  Exiting...");
-                    return;
-                }
-
-                _logService.Trace($"Zooming to {_mainFormViewModel.Zoom}%...");
-                pictureBoxImage.Height = pictureBoxImage.Image.Height * _mainFormViewModel.Zoom / 100;
-                pictureBoxImage.Width = pictureBoxImage.Image.Width * _mainFormViewModel.Zoom / 100;
-
-                _logService.Trace("Centering image...");
-                if (pictureBoxImage.Width < panelSize.Width)
-                {
-                    pictureBoxImage.Left = (panelSize.Width - pictureBoxImage.Width) / 2;
-                }
-                else
-                {
-                    pictureBoxImage.Left = 0;
-                }
-                if (pictureBoxImage.Height < panelSize.Height)
-                {
-                    pictureBoxImage.Top = (panelSize.Height - pictureBoxImage.Height) / 2;
-                }
-                else
-                {
-                    pictureBoxImage.Top = 0;
-                }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         /// <summary>
-        /// Cancels any in progress load then loads all images from the specified path.
+        /// Cancel any in progress load then load all images from the 
+        /// specified path.
         /// </summary>
         /// <param name="directory">The source path for the images.</param>
         private void OpenFolder(string directory)
@@ -168,9 +117,6 @@ namespace PhotoLabel
             {
                 // open the selected directory
                 _mainFormViewModel.Open(directory);
-
-                // show the Ajaz icon whilst the directory opens
-                ShowAjaxImage();
             }
             finally
             {
@@ -184,14 +130,12 @@ namespace PhotoLabel
             try
             {
                 colourToolStripMenuItem.Enabled =
-                    fontToolStripMenuItem.Enabled =
                     rotateLeftToolStripMenuItem.Enabled =
                     rotateRightToolStripMenuItem.Enabled =
                     saveToolStripMenuItem.Enabled =
                     saveAsToolStripMenuItem.Enabled = mainFormViewModel.Position > -1;
                 toolStripButtonColour.Enabled =
                     toolStripButtonDontSave.Enabled =
-                    toolStripButtonFont.Enabled =
                     toolStripButtonRotateLeft.Enabled =
                     toolStripButtonRotateRight.Enabled =
                     toolStripButtonSave.Enabled =
@@ -201,6 +145,40 @@ namespace PhotoLabel
             {
                 _logService.TraceExit();
             }
+        }
+
+        private void SetupFontComboBox()
+        {
+            var box = toolStripComboBoxFonts.Control as ComboBox;
+
+            box.DrawMode = DrawMode.OwnerDrawVariable;
+            box.Items.AddRange(FontFamily.Families.Select(f => f.Name).ToArray());
+            box.Sorted = true;
+            box.DrawItem += (sender, e) =>
+            {
+                if (e.Index > -1 && e.Index < box.Items.Count)
+                {
+                    e.DrawBackground();
+
+                    if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
+                        e.DrawFocusRectangle();
+
+                    using (SolidBrush textBrush = new SolidBrush(e.ForeColor))
+                    {
+                        string fontFamilyName;
+
+                        // get the name of the font
+                        fontFamilyName = box.Items[e.Index].ToString();
+
+                        // create the font
+                        var font = new Font(fontFamilyName, 10, FontStyle.Regular);
+
+                        // draw the font on the control
+                        e.Graphics.DrawString(fontFamilyName, font, textBrush, e.Bounds);
+                    }
+                }
+            };
+
         }
 
         private void SetWindowState(MainFormViewModel mainFormViewModel)
@@ -221,14 +199,33 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                // show the Ajax icon
-                _logService.Trace("Displaying ajax resource...");
-                pictureBoxImage.Image = _ajaxImage;
-                pictureBoxImage.Height = _ajaxImage.Height;
-                pictureBoxImage.Width = _ajaxImage.Width;
+                // release the existing image
+                if (pictureBoxImage.Image != _ajaxImage)
+                {
+                    _logService.Trace("Releasing existing image...");
+                    pictureBoxImage.Image?.Dispose();
 
-                _logService.Trace("Centering ajax resource...");
-                CentrePictureBox();
+                    // show the Ajax icon
+                    _logService.Trace("Displaying ajax resource...");
+                    pictureBoxImage.Image = _ajaxImage;
+                    pictureBoxImage.SizeMode = PictureBoxSizeMode.CenterImage;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowFont(MainFormViewModel mainFormViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Updating fonr selection to \"{mainFormViewModel.FontName}\"...");
+                toolStripComboBoxFonts.Text = mainFormViewModel.FontName;
+                toolStripComboBoxSizes.Text = mainFormViewModel.FontSize.ToString();
+                toolStripComboBoxType.Text = mainFormViewModel.FontType;
             }
             finally
             {
@@ -278,19 +275,50 @@ namespace PhotoLabel
             {
                 if (mainFormViewModel.Image != null)
                 {
-                    // show the image
-                    pictureBoxImage.Image = mainFormViewModel.Image;
+                    // has the image changed?
+                    if (pictureBoxImage.Image != mainFormViewModel.Image)
+                    {
+                        // release the existing image (if it has changed)
+                        if (pictureBoxImage.Image != _ajaxImage)
+                            // release the image memory
+                            pictureBoxImage.Image?.Dispose();
 
-                    // zoom the image
-                    ZoomImage();
+                        // show the image
+                        pictureBoxImage.Image = mainFormViewModel.Image;
 
-                    // position it in the form
-                    CentrePictureBox();
+                        // set the size mode for the image
+                        SetSizeMode();
+                    }
                 }
                 else if (listViewPreview.Items.Count > 0)
                 {
                     ShowAjaxImage();
                 }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void SetSizeMode()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if there is a current image...");
+                if (pictureBoxImage.Image == null)
+                {
+                    _logService.Trace("There is no current image.  Exiting...");
+                    return;
+                }
+
+                // which size mode should we use?
+                if (pictureBoxImage.Image.Width < pictureBoxImage.Width &&
+                    pictureBoxImage.Image.Height < pictureBoxImage.Height)
+                    pictureBoxImage.SizeMode = PictureBoxSizeMode.CenterImage;
+                else
+                    pictureBoxImage.SizeMode = PictureBoxSizeMode.Zoom;
             }
             finally
             {
@@ -312,6 +340,20 @@ namespace PhotoLabel
                     toolStripStatusLabelStatus.Text = $"{mainFormViewModel.Position + 1} of {mainFormViewModel.Count}";
                     toolStripStatusLabelStatus.Visible = true;
                 }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowBold(MainFormViewModel mainFormViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Setting bold value to {mainFormViewModel.FontBold}...");
+                toolStripButtonBold.Checked = mainFormViewModel.FontBold;
             }
             finally
             {
@@ -362,6 +404,9 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                _logService.Trace("Releasing existing second colour image...");
+                //toolStripButtonSecondColour.Image?.Dispose();
+
                 _logService.Trace("Checking if a second colour is set...");
                 if (mainFormViewModel.SecondColour == null)
                 {
@@ -373,20 +418,6 @@ namespace PhotoLabel
                     toolStripButtonSecondColour.Image = _mainFormViewModel.SecondColourImage;
                     toolStripButtonSecondColour.Visible = true;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void ShowZoom(MainFormViewModel mainFormViewModel)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Updating zoom to {mainFormViewModel.Zoom}%...");
-                toolStripComboBoxZoom.Text = string.Format("{0:P0}", mainFormViewModel.Zoom / 100f);
             }
             finally
             {
@@ -482,49 +513,6 @@ namespace PhotoLabel
             }
         }
 
-        private void ToolStripButtonFont_Click(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Changing font...");
-                ChangeFont();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void ChangeFont()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // set the current font
-                _logService.Trace($"Defaulting to font \"{_mainFormViewModel.Font.Name}\"...");
-                fontDialog.Font = _mainFormViewModel.Font;
-
-                // now show the dialog
-                if (fontDialog.ShowDialog() == DialogResult.OK)
-                {
-                    // save the new font as the default font
-                    _logService.Trace("Updating font...");
-                    _mainFormViewModel.Font = fontDialog.Font;
-                }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         private void ShowRecentlyUsedDirectories(MainFormViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
@@ -582,45 +570,6 @@ namespace PhotoLabel
             }
         }
 
-        private void ToolStripComboBoxZoom_Validated(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // set the new zoom
-                _mainFormViewModel.Zoom = _localeService.PercentageTryParse(toolStripComboBoxZoom.Text, out decimal percentage) ? (int)percentage : 100;
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void ToolStripComboBoxZoom_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                ValidateChildren();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         private void ToolStripButtonColour_Click(object sender, EventArgs e)
         {
             _logService.TraceEnter();
@@ -669,6 +618,12 @@ namespace PhotoLabel
             {
                 // save the window state
                 _mainFormViewModel.WindowState = WindowState;
+
+                // load any new preview images
+                LoadVisiblePreviews();
+
+                // size the image properly
+                SetSizeMode();
             }
             catch (Exception ex)
             {
@@ -1331,7 +1286,7 @@ namespace PhotoLabel
                 if (InvokeRequired)
                 {
                     _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(() => FocusPreviewList());
+                    Invoke(FocusPreviewList);
 
                     return;
                 }
@@ -1346,26 +1301,6 @@ namespace PhotoLabel
                 {
                     listViewPreview.Items[_mainFormViewModel.Position].Selected = true;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void FontToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Changing font...");
-                ChangeFont();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -1550,7 +1485,9 @@ namespace PhotoLabel
                 }
 
                 // perform the updates
+                ShowBold(value);
                 ShowCaption(value);
+                ShowFont(value);
                 SetWindowState(value);
                 ShowCaptionAlignment(value);
                 ShowLocation(value);
@@ -1560,7 +1497,6 @@ namespace PhotoLabel
                 ShowRecentlyUsedDirectories(value);
                 ShowSecondColour(value);
                 SetToolbarStatus(value);
-                ShowZoom(value);
             }
             finally
             {
@@ -1624,25 +1560,6 @@ namespace PhotoLabel
             }
         }
 
-        private void ListViewPreview_SizeChanged(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                LoadVisiblePreviews();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         private void LoadVisiblePreviews()
         {
             _logService.TraceEnter();
@@ -1682,7 +1599,12 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                LoadVisiblePreviews();
+                // only do it when the scroll has finished
+                if (e.Type == ScrollEventType.LargeDecrement ||
+                    e.Type == ScrollEventType.LargeIncrement ||
+                    e.Type == ScrollEventType.SmallDecrement ||
+                    e.Type == ScrollEventType.SmallIncrement ||
+                    e.Type == ScrollEventType.EndScroll) LoadVisiblePreviews();
             }
             catch (Exception ex)
             {
@@ -1702,6 +1624,189 @@ namespace PhotoLabel
             try
             {
                 _mainFormViewModel.Caption = textBoxCaption.Text;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxFonts_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"User has selected font \"{toolStripComboBoxFonts.Text}\"...");
+                _mainFormViewModel.FontName = toolStripComboBoxFonts.Text;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxSizes_Validating(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Validating size of \"{toolStripComboBoxSizes.Text}\"...");
+                e.Cancel = !float.TryParse(toolStripComboBoxSizes.Text, out float result);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxSizes_Validated(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Saving size of \"{toolStripComboBoxSizes.Text}\"...");
+                _mainFormViewModel.FontSize = float.Parse(toolStripComboBoxSizes.Text);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxFonts_Validated(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Saving font \"{toolStripComboBoxSizes.Text}\"...");
+                _mainFormViewModel.FontName = toolStripComboBoxFonts.Text;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxType_Validated(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Saving font type \"{toolStripComboBoxType.Text}\"...");
+                _mainFormViewModel.FontType = toolStripComboBoxType.Text;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxFonts_SelectedIndexChanged_1(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Saving font \"{toolStripComboBoxFonts.Text}\"...");
+                _mainFormViewModel.FontName = toolStripComboBoxFonts.Text;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+
+        }
+
+        private void ToolStripComboBoxSizes_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                if (toolStripComboBoxSizes.SelectedIndex > -1)
+                {
+                    _logService.Trace($"Saving font size \"{toolStripComboBoxSizes.Text}\"...");
+                    _mainFormViewModel.FontSize = float.Parse(toolStripComboBoxSizes.Text);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+
+        }
+
+        private void ToolStripComboBoxType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                if (toolStripComboBoxType.SelectedIndex > -1)
+                {
+                    _logService.Trace($"Saving font type \"{toolStripComboBoxType.Text}\"...");
+                    _mainFormViewModel.FontType = toolStripComboBoxType.Text;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+
+        }
+
+        private void ToolStripButtonBold_CheckedChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Setting bold value to {toolStripButtonBold.Checked}...");
+                _mainFormViewModel.FontBold = toolStripButtonBold.Checked;
             }
             catch (Exception ex)
             {

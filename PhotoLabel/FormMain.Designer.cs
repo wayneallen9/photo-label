@@ -39,7 +39,6 @@
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripMenuItemExit = new System.Windows.Forms.ToolStripMenuItem();
             this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.fontToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.colourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.rotateLeftToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -48,9 +47,10 @@
             this.toolStripToolbar = new System.Windows.Forms.ToolStrip();
             this.toolStripButtonOpen = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            this.toolStripComboBoxZoom = new System.Windows.Forms.ToolStripComboBox();
-            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-            this.toolStripButtonFont = new System.Windows.Forms.ToolStripButton();
+            this.toolStripComboBoxFonts = new System.Windows.Forms.ToolStripComboBox();
+            this.toolStripComboBoxSizes = new System.Windows.Forms.ToolStripComboBox();
+            this.toolStripComboBoxType = new System.Windows.Forms.ToolStripComboBox();
+            this.toolStripButtonBold = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonColour = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonSecondColour = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
@@ -68,8 +68,6 @@
             this.colorDialog = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.textBoxCaption = new System.Windows.Forms.TextBox();
-            this.panelSize = new System.Windows.Forms.Panel();
-            this.panelCanvas = new System.Windows.Forms.Panel();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
             this.label1 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
@@ -83,7 +81,6 @@
             this.checkBoxTopCentre = new System.Windows.Forms.CheckBox();
             this.checkBoxTopLeft = new System.Windows.Forms.CheckBox();
             this.imageListLarge = new System.Windows.Forms.ImageList(this.components);
-            this.fontDialog = new System.Windows.Forms.FontDialog();
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.listViewPreview = new PhotoLabel.Controls.ListView();
@@ -91,8 +88,6 @@
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
-            this.panelSize.SuspendLayout();
-            this.panelCanvas.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).BeginInit();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -175,7 +170,6 @@
             // editToolStripMenuItem
             // 
             this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.fontToolStripMenuItem,
             this.colourToolStripMenuItem,
             this.toolStripMenuItem2,
             this.rotateLeftToolStripMenuItem,
@@ -183,15 +177,6 @@
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
             this.editToolStripMenuItem.Size = new System.Drawing.Size(39, 20);
             this.editToolStripMenuItem.Text = "&Edit";
-            // 
-            // fontToolStripMenuItem
-            // 
-            this.fontToolStripMenuItem.Enabled = false;
-            this.fontToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.font;
-            this.fontToolStripMenuItem.Name = "fontToolStripMenuItem";
-            this.fontToolStripMenuItem.Size = new System.Drawing.Size(139, 22);
-            this.fontToolStripMenuItem.Text = "&Font...";
-            this.fontToolStripMenuItem.Click += new System.EventHandler(this.FontToolStripMenuItem_Click);
             // 
             // colourToolStripMenuItem
             // 
@@ -237,9 +222,10 @@
             this.toolStripToolbar.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripButtonOpen,
             this.toolStripSeparator1,
-            this.toolStripComboBoxZoom,
-            this.toolStripSeparator2,
-            this.toolStripButtonFont,
+            this.toolStripComboBoxFonts,
+            this.toolStripComboBoxSizes,
+            this.toolStripComboBoxType,
+            this.toolStripButtonBold,
             this.toolStripButtonColour,
             this.toolStripButtonSecondColour,
             this.toolStripSeparator4,
@@ -253,6 +239,7 @@
             this.toolStripButtonLocation});
             this.toolStripToolbar.Location = new System.Drawing.Point(0, 24);
             this.toolStripToolbar.Name = "toolStripToolbar";
+            this.toolStripToolbar.ShowItemToolTips = false;
             this.toolStripToolbar.Size = new System.Drawing.Size(800, 25);
             this.toolStripToolbar.TabIndex = 1;
             this.toolStripToolbar.Text = "toolStrip1";
@@ -272,37 +259,53 @@
             this.toolStripSeparator1.Name = "toolStripSeparator1";
             this.toolStripSeparator1.Size = new System.Drawing.Size(6, 25);
             // 
-            // toolStripComboBoxZoom
+            // toolStripComboBoxFonts
             // 
-            this.toolStripComboBoxZoom.Items.AddRange(new object[] {
-            "10%",
-            "25%",
-            "50%",
-            "75%",
-            "100%",
-            "150%",
-            "200%"});
-            this.toolStripComboBoxZoom.Name = "toolStripComboBoxZoom";
-            this.toolStripComboBoxZoom.Size = new System.Drawing.Size(80, 25);
-            this.toolStripComboBoxZoom.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxZoom_SelectedIndexChanged);
-            this.toolStripComboBoxZoom.Leave += new System.EventHandler(this.ToolStripComboBoxZoom_Leave);
-            this.toolStripComboBoxZoom.Validated += new System.EventHandler(this.ToolStripComboBoxZoom_Validated);
+            this.toolStripComboBoxFonts.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.toolStripComboBoxFonts.Name = "toolStripComboBoxFonts";
+            this.toolStripComboBoxFonts.Size = new System.Drawing.Size(121, 25);
+            this.toolStripComboBoxFonts.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxFonts_SelectedIndexChanged_1);
+            this.toolStripComboBoxFonts.Validated += new System.EventHandler(this.ToolStripComboBoxFonts_Validated);
             // 
-            // toolStripSeparator2
+            // toolStripComboBoxSizes
             // 
-            this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 25);
+            this.toolStripComboBoxSizes.AutoSize = false;
+            this.toolStripComboBoxSizes.Items.AddRange(new object[] {
+            "10",
+            "12",
+            "14",
+            "25",
+            "50",
+            "75",
+            "100"});
+            this.toolStripComboBoxSizes.Name = "toolStripComboBoxSizes";
+            this.toolStripComboBoxSizes.Size = new System.Drawing.Size(50, 23);
+            this.toolStripComboBoxSizes.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxSizes_SelectedIndexChanged);
+            this.toolStripComboBoxSizes.Validating += new System.ComponentModel.CancelEventHandler(this.ToolStripComboBoxSizes_Validating);
+            this.toolStripComboBoxSizes.Validated += new System.EventHandler(this.ToolStripComboBoxSizes_Validated);
             // 
-            // toolStripButtonFont
+            // toolStripComboBoxType
             // 
-            this.toolStripButtonFont.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.toolStripButtonFont.Enabled = false;
-            this.toolStripButtonFont.Image = global::PhotoLabel.Properties.Resources.font;
-            this.toolStripButtonFont.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButtonFont.Name = "toolStripButtonFont";
-            this.toolStripButtonFont.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButtonFont.Text = "Font";
-            this.toolStripButtonFont.Click += new System.EventHandler(this.ToolStripButtonFont_Click);
+            this.toolStripComboBoxType.AutoSize = false;
+            this.toolStripComboBoxType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.toolStripComboBoxType.Items.AddRange(new object[] {
+            "%",
+            "pts"});
+            this.toolStripComboBoxType.Name = "toolStripComboBoxType";
+            this.toolStripComboBoxType.Size = new System.Drawing.Size(40, 23);
+            this.toolStripComboBoxType.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxType_SelectedIndexChanged);
+            this.toolStripComboBoxType.Validated += new System.EventHandler(this.ToolStripComboBoxType_Validated);
+            // 
+            // toolStripButtonBold
+            // 
+            this.toolStripButtonBold.CheckOnClick = true;
+            this.toolStripButtonBold.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonBold.Image = global::PhotoLabel.Properties.Resources.bold;
+            this.toolStripButtonBold.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonBold.Name = "toolStripButtonBold";
+            this.toolStripButtonBold.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonBold.ToolTipText = "Bold";
+            this.toolStripButtonBold.CheckedChanged += new System.EventHandler(this.ToolStripButtonBold_CheckedChanged);
             // 
             // toolStripButtonColour
             // 
@@ -444,7 +447,7 @@
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.textBoxCaption, 0, 2);
-            this.tableLayoutPanel1.Controls.Add(this.panelSize, 0, 0);
+            this.tableLayoutPanel1.Controls.Add(this.pictureBoxImage, 0, 0);
             this.tableLayoutPanel1.Controls.Add(this.label1, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.panel1, 1, 2);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -469,36 +472,15 @@
             this.textBoxCaption.TabIndex = 3;
             this.textBoxCaption.TextChanged += new System.EventHandler(this.TextBoxCaption_TextChanged);
             // 
-            // panelSize
-            // 
-            this.tableLayoutPanel1.SetColumnSpan(this.panelSize, 2);
-            this.panelSize.Controls.Add(this.panelCanvas);
-            this.panelSize.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelSize.Location = new System.Drawing.Point(10, 10);
-            this.panelSize.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
-            this.panelSize.Name = "panelSize";
-            this.panelSize.Size = new System.Drawing.Size(480, 209);
-            this.panelSize.TabIndex = 4;
-            // 
-            // panelCanvas
-            // 
-            this.panelCanvas.AutoScroll = true;
-            this.panelCanvas.BackColor = System.Drawing.Color.Black;
-            this.panelCanvas.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.panelCanvas.Controls.Add(this.pictureBoxImage);
-            this.panelCanvas.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelCanvas.Location = new System.Drawing.Point(0, 0);
-            this.panelCanvas.Margin = new System.Windows.Forms.Padding(0);
-            this.panelCanvas.Name = "panelCanvas";
-            this.panelCanvas.Size = new System.Drawing.Size(480, 209);
-            this.panelCanvas.TabIndex = 3;
-            // 
             // pictureBoxImage
             // 
             this.pictureBoxImage.BackColor = System.Drawing.Color.Black;
-            this.pictureBoxImage.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel1.SetColumnSpan(this.pictureBoxImage, 2);
+            this.pictureBoxImage.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pictureBoxImage.Location = new System.Drawing.Point(10, 10);
+            this.pictureBoxImage.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
             this.pictureBoxImage.Name = "pictureBoxImage";
-            this.pictureBoxImage.Size = new System.Drawing.Size(100, 50);
+            this.pictureBoxImage.Size = new System.Drawing.Size(480, 209);
             this.pictureBoxImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBoxImage.TabIndex = 0;
             this.pictureBoxImage.TabStop = false;
@@ -694,7 +676,6 @@
             this.listViewPreview.UseCompatibleStateImageBehavior = false;
             this.listViewPreview.Scroll += new System.Windows.Forms.ScrollEventHandler(this.ListViewPreview_Scroll);
             this.listViewPreview.SelectedIndexChanged += new System.EventHandler(this.ListViewPreview_SelectedIndexChanged);
-            this.listViewPreview.SizeChanged += new System.EventHandler(this.ListViewPreview_SizeChanged);
             // 
             // FormMain
             // 
@@ -718,8 +699,6 @@
             this.statusStrip.PerformLayout();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            this.panelSize.ResumeLayout(false);
-            this.panelCanvas.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).EndInit();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
@@ -747,16 +726,10 @@
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabelStatus;
         private System.Windows.Forms.ColorDialog colorDialog;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.ToolStripComboBox toolStripComboBoxZoom;
-        private System.Windows.Forms.FontDialog fontDialog;
-        private System.Windows.Forms.ToolStripButton toolStripButtonFont;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
-        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripButton toolStripButtonColour;
         private System.Windows.Forms.TextBox textBoxCaption;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItemSeparator;
-        private System.Windows.Forms.Panel panelSize;
-        private System.Windows.Forms.Panel panelCanvas;
         private System.Windows.Forms.PictureBox pictureBoxImage;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
@@ -783,7 +756,6 @@
         private System.Windows.Forms.CheckBox checkBoxBottomCentre;
         private System.Windows.Forms.CheckBox checkBoxBottomRight;
         private System.Windows.Forms.ToolStripMenuItem editToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem fontToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem colourToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem rotateLeftToolStripMenuItem;
@@ -791,6 +763,10 @@
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator5;
         private System.Windows.Forms.ToolStripButton toolStripButtonLocation;
         private System.Windows.Forms.ToolStripButton toolStripButtonSecondColour;
+        private System.Windows.Forms.ToolStripComboBox toolStripComboBoxFonts;
+        private System.Windows.Forms.ToolStripComboBox toolStripComboBoxSizes;
+        private System.Windows.Forms.ToolStripComboBox toolStripComboBoxType;
+        private System.Windows.Forms.ToolStripButton toolStripButtonBold;
     }
 }
 

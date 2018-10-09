@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 namespace PhotoLabel.Services.Models
 {
     [Serializable]
@@ -11,6 +10,7 @@ namespace PhotoLabel.Services.Models
         public bool FontBold { get; set; }
         public string FontFamily { get; set; }
         public float FontSize { get; set; }
+        public string FontType { get; set; }
         public float? Latitude { get; set;}
         public float? Longitude { get; set; }
         public Rotations Rotation { get; set; }

@@ -17,9 +17,6 @@
     <Setting Name="WindowState" Type="System.Windows.Forms.FormWindowState" Scope="User">
       <Value Profile="(Default)">Normal</Value>
     </Setting>
-    <Setting Name="Zoom" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
     <Setting Name="CaptionAlignment" Type="PhotoLabel.Services.CaptionAlignments" Scope="User">
       <Value Profile="(Default)">BottomRight</Value>
     </Setting>

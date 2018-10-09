@@ -117,6 +117,36 @@ namespace PhotoLabel.Services
             }
         }
 
+        private float GetFontSize(Graphics graphics, string fontName, FontStyle fontStyle, string caption, float height)
+        {
+            var lastSize = 0F;
+
+            _logService.TraceEnter();
+            try
+            {
+                for (var i = 1F; ; i += 0.5F)
+                {
+                    // create a test font
+                    var font = new Font(fontName, i, fontStyle);
+
+                    // now measure the string
+                    var size = graphics.MeasureString(caption, font);
+
+                    // if it is bigger than the desired height, we have found the correct size
+                    if (size.Height > height) break;
+
+                    // save the last font size that fit
+                    lastSize = i;
+                }
+
+                return lastSize;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private float? GetLatitude(BitmapMetadata bitmapMetadata)
         {
             _logService.TraceEnter();
@@ -181,25 +211,10 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Caption(string filename, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
+        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Rotations rotation)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Getting \"{filename}\"...");
-                var original = Get(filename);
-
-                _logService.Trace($"Adding caption to \"{filename}\"...");
-                return Caption(original, caption, captionAlignment, font, brush, rotation);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, Font font, Brush brush, Rotations rotation)
-        {
+            float fontSizeInPoints;
+            FontStyle fontStyle;
             Bitmap image;
 
             _logService.TraceEnter();
@@ -210,24 +225,19 @@ namespace PhotoLabel.Services
                     _logService.Trace("Creating a copy of the original image...");
                     image = new Bitmap(original);
                 }
+                
+                // work out the style of the font
+                fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
 
-                _logService.Trace($"Rotating copy to {rotation}...");
-                switch (rotation)
-                {
-                    case Rotations.Ninety:
-                        image.RotateFlip(RotateFlipType.Rotate90FlipNone);
-                        break;
-                    case Rotations.OneEighty:
-                        image.RotateFlip(RotateFlipType.Rotate180FlipNone);
-                        break;
-                    case Rotations.TwoSeventy:
-                        image.RotateFlip(RotateFlipType.Rotate270FlipNone);
-                        break;
-                }
+                // rotate the original image to it's desired position
+                Rotate(image, rotation);
 
                 // create a copy of the rotated image (to workaround the problem drawing strings
                 // outside the bounds of the unrotated image)
                 var rotatedImage = new Bitmap(image);
+
+                // is there a caption to display
+                if (string.IsNullOrWhiteSpace(caption)) return rotatedImage;
 
                 _logService.Trace("Getting graphics manager for new image...");
                 using (var graphics = Graphics.FromImage(rotatedImage))
@@ -237,57 +247,99 @@ namespace PhotoLabel.Services
                     graphics.CompositingQuality = CompositingQuality.HighQuality;
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
 
-                    _logService.Trace("Determining size of caption...");
-                    var captionSize = graphics.MeasureString(caption, font);
-
-                    _logService.Trace("Determining location for caption...");
-                    switch (captionAlignment)
+                    // how is the caption sized?
+                    if (fontType == "pts")
                     {
-                        case CaptionAlignments.BottomCentre:
-                            CaptionBottomCentre(graphics, rotatedImage.Size, caption, font, brush);
+                        // use the value provided by the user
+                        fontSizeInPoints = fontSize;
+                    }
+                    else
+                    {
+                        // work out the logical height of the image (allowing for padding)
+                        var height = rotatedImage.Height - 8;
 
-                            break;
-                        case CaptionAlignments.BottomLeft:
-                            // draw them on the image
-                            CaptionBottomLeft(graphics, rotatedImage.Size, caption, font, brush);
+                        // work out the maximum height for the caption
+                        var captionHeight = height * fontSize / 100;
 
-                            break;
-                        case CaptionAlignments.BottomRight:
-                            CaptionBottomRight(graphics, rotatedImage.Size, caption, font, brush);
+                        // calculate the font size
+                        fontSizeInPoints = GetFontSize(graphics, fontName, fontStyle, caption, captionHeight);
+                    }
 
-                            break;
-                        case CaptionAlignments.MiddleCentre:
-                            CaptionMiddleCentre(graphics, rotatedImage.Size, caption, font, brush);
+                    _logService.Trace("Creating font...");
+                    using (var font = new Font(fontName, fontSizeInPoints, fontStyle))
+                    {
+                        _logService.Trace("Determining size of caption...");
+                        var captionSize = graphics.MeasureString(caption, font);
 
-                            break;
-                        case CaptionAlignments.MiddleLeft:
-                            CaptionMiddleLeft(graphics, rotatedImage.Size, caption, font, brush);
+                        _logService.Trace("Determining location for caption...");
+                        switch (captionAlignment)
+                        {
+                            case CaptionAlignments.BottomCentre:
+                                CaptionBottomCentre(graphics, rotatedImage.Size, caption, font, brush);
 
-                            break;
-                        case CaptionAlignments.MiddleRight:
-                            CaptionMiddleRight(graphics, rotatedImage.Size, caption, font, brush);
+                                break;
+                            case CaptionAlignments.BottomLeft:
+                                // draw them on the image
+                                CaptionBottomLeft(graphics, rotatedImage.Size, caption, font, brush);
 
-                            break;
-                        case CaptionAlignments.TopCentre:
-                            CaptionTopCentre(graphics, rotatedImage.Size, caption, font, brush);
+                                break;
+                            case CaptionAlignments.BottomRight:
+                                CaptionBottomRight(graphics, rotatedImage.Size, caption, font, brush);
 
-                            break;
-                        case CaptionAlignments.TopLeft:
-                            CaptionTopLeft(graphics, rotatedImage.Size, caption, font, brush);
+                                break;
+                            case CaptionAlignments.MiddleCentre:
+                                CaptionMiddleCentre(graphics, rotatedImage.Size, caption, font, brush);
 
-                            break;
-                        case CaptionAlignments.TopRight:
-                            CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush);
+                                break;
+                            case CaptionAlignments.MiddleLeft:
+                                CaptionMiddleLeft(graphics, rotatedImage.Size, caption, font, brush);
 
-                            break;
+                                break;
+                            case CaptionAlignments.MiddleRight:
+                                CaptionMiddleRight(graphics, rotatedImage.Size, caption, font, brush);
+
+                                break;
+                            case CaptionAlignments.TopCentre:
+                                CaptionTopCentre(graphics, rotatedImage.Size, caption, font, brush);
+
+                                break;
+                            case CaptionAlignments.TopLeft:
+                                CaptionTopLeft(graphics, rotatedImage.Size, caption, font, brush);
+
+                                break;
+                            case CaptionAlignments.TopRight:
+                                CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush);
+
+                                break;
+                        }
                     }
                 }
+
+                // release the image copy
+                image.Dispose();
 
                 return rotatedImage;
             }
             finally
             {
                 _logService.TraceExit();
+            }
+        }
+
+        private void Rotate(Image image, Rotations rotation)
+        {
+            _logService.Trace($"Rotating copy to {rotation}...");
+            switch (rotation)
+            {
+                case Rotations.Ninety:
+                    image.RotateFlip(RotateFlipType.Rotate90FlipNone);
+                    break;
+                case Rotations.OneEighty:
+                    image.RotateFlip(RotateFlipType.Rotate180FlipNone);
+                    break;
+                case Rotations.TwoSeventy:
+                    image.RotateFlip(RotateFlipType.Rotate270FlipNone);
+                    break;
             }
         }
 
@@ -601,23 +653,6 @@ namespace PhotoLabel.Services
                     var location = new PointF(imageSize.Width - lineSize.Width - 10, y);
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
-                }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public Image Overlay(string filename, int width, int height, Image overlay, int x, int y)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Getting \"{filename}\"...");
-                using (var image = Image.FromFile(filename))
-                {
-                    return Overlay(image, overlay, x, y);
                 }
             }
             finally
