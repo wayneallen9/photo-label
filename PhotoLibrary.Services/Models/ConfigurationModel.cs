@@ -8,5 +8,6 @@
         public string FontName { get; set; }
         public float FontSize { get; set; }
         public string FontType { get; set; }
+        public int? SecondColour { get; set; }
     }
 }

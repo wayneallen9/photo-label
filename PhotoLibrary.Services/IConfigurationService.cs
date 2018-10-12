@@ -9,5 +9,6 @@ namespace PhotoLabel.Services
         string FontName { get; set; }
         float FontSize { get; set; }
         string FontType { get; set; }
+        Color? SecondColour { get; set; }
     }
 }

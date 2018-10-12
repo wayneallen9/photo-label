@@ -69,6 +69,9 @@
     <Compile Include="Controls\ListView.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Controls\ToolStripComboBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>

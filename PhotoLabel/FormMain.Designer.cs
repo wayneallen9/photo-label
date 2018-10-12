@@ -47,7 +47,7 @@
             this.toolStripToolbar = new System.Windows.Forms.ToolStrip();
             this.toolStripButtonOpen = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            this.toolStripComboBoxFonts = new System.Windows.Forms.ToolStripComboBox();
+            this.toolStripComboBoxFonts = new PhotoLabel.Controls.ToolStripComboBox();
             this.toolStripComboBoxSizes = new System.Windows.Forms.ToolStripComboBox();
             this.toolStripComboBoxType = new System.Windows.Forms.ToolStripComboBox();
             this.toolStripButtonBold = new System.Windows.Forms.ToolStripButton();
@@ -261,9 +261,13 @@
             // 
             // toolStripComboBoxFonts
             // 
+            this.toolStripComboBoxFonts.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawVariable;
             this.toolStripComboBoxFonts.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.toolStripComboBoxFonts.Name = "toolStripComboBoxFonts";
-            this.toolStripComboBoxFonts.Size = new System.Drawing.Size(121, 25);
+            this.toolStripComboBoxFonts.Size = new System.Drawing.Size(150, 25);
+            this.toolStripComboBoxFonts.Sorted = true;
+            this.toolStripComboBoxFonts.ToolTipText = "Font";
+            this.toolStripComboBoxFonts.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.ToolStripComboBoxFonts_DrawItem);
             this.toolStripComboBoxFonts.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxFonts_SelectedIndexChanged_1);
             this.toolStripComboBoxFonts.Validated += new System.EventHandler(this.ToolStripComboBoxFonts_Validated);
             // 
@@ -763,7 +767,7 @@
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator5;
         private System.Windows.Forms.ToolStripButton toolStripButtonLocation;
         private System.Windows.Forms.ToolStripButton toolStripButtonSecondColour;
-        private System.Windows.Forms.ToolStripComboBox toolStripComboBoxFonts;
+        private PhotoLabel.Controls.ToolStripComboBox toolStripComboBoxFonts;
         private System.Windows.Forms.ToolStripComboBox toolStripComboBoxSizes;
         private System.Windows.Forms.ToolStripComboBox toolStripComboBoxType;
         private System.Windows.Forms.ToolStripButton toolStripButtonBold;

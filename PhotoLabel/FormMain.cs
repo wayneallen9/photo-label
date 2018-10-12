@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace PhotoLabel
@@ -40,7 +39,7 @@ namespace PhotoLabel
             InitializeComponent();
 
             // initialise the font list
-            SetupFontComboBox();
+            PopulateFonts();
 
             // initialise the view model
             _mainFormViewModel = mainFormViewModel;
@@ -106,17 +105,17 @@ namespace PhotoLabel
         }
 
         /// <summary>
-        /// Cancel any in progress load then load all images from the 
-        /// specified path.
+        /// Retrieve images from a directory.
         /// </summary>
-        /// <param name="directory">The source path for the images.</param>
-        private void OpenFolder(string directory)
+        /// <param name="folder">The source path for the images.</param>
+        private void OpenFolder(string folder)
         {
             _logService.TraceEnter();
             try
             {
                 // open the selected directory
-                _mainFormViewModel.Open(directory);
+                _logService.Trace($"Opening folder \"{folder}\"...");
+                _mainFormViewModel.Open(folder);
             }
             finally
             {
@@ -124,11 +123,17 @@ namespace PhotoLabel
             }
         }
 
+        /// <summary>
+        /// Disable or enable toolbar controls depending upon the state of the 
+        /// view model.
+        /// </summary>
+        /// <param name="mainFormViewModel">The view model for the form.</param>
         private void SetToolbarStatus(MainFormViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
             {
+                _logService.Trace($"The current position is {mainFormViewModel.Position}");
                 colourToolStripMenuItem.Enabled =
                     rotateLeftToolStripMenuItem.Enabled =
                     rotateRightToolStripMenuItem.Enabled =
@@ -147,38 +152,21 @@ namespace PhotoLabel
             }
         }
 
-        private void SetupFontComboBox()
+        /// <summary>
+        /// Add the available fonts to the drop down list of fonts
+        /// </summary>
+        private void PopulateFonts()
         {
-            var box = toolStripComboBoxFonts.Control as ComboBox;
-
-            box.DrawMode = DrawMode.OwnerDrawVariable;
-            box.Items.AddRange(FontFamily.Families.Select(f => f.Name).ToArray());
-            box.Sorted = true;
-            box.DrawItem += (sender, e) =>
+            _logService.TraceEnter();
+            try
             {
-                if (e.Index > -1 && e.Index < box.Items.Count)
-                {
-                    e.DrawBackground();
-
-                    if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
-                        e.DrawFocusRectangle();
-
-                    using (SolidBrush textBrush = new SolidBrush(e.ForeColor))
-                    {
-                        string fontFamilyName;
-
-                        // get the name of the font
-                        fontFamilyName = box.Items[e.Index].ToString();
-
-                        // create the font
-                        var font = new Font(fontFamilyName, 10, FontStyle.Regular);
-
-                        // draw the font on the control
-                        e.Graphics.DrawString(fontFamilyName, font, textBrush, e.Bounds);
-                    }
-                }
-            };
-
+                _logService.Trace("Adding fonts to combo box list...");
+                toolStripComboBoxFonts.Items.AddRange(FontFamily.Families.Select(f => f.Name).ToArray());
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
         private void SetWindowState(MainFormViewModel mainFormViewModel)
@@ -1634,6 +1622,34 @@ namespace PhotoLabel
             finally
             {
                 _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxFonts_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            // get the target control
+            var comboBox = sender as ToolStripComboBox;
+
+            if (e.Index > -1 && e.Index < comboBox.Items.Count)
+            {
+                e.DrawBackground();
+
+                if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
+                    e.DrawFocusRectangle();
+
+                using (SolidBrush textBrush = new SolidBrush(e.ForeColor))
+                {
+                    string fontFamilyName;
+
+                    // get the name of the font
+                    fontFamilyName = comboBox.Items[e.Index].ToString();
+
+                    // create the font
+                    var font = new Font(fontFamilyName, 10, FontStyle.Regular);
+
+                    // draw the font on the control
+                    e.Graphics.DrawString(fontFamilyName, font, textBrush, e.Bounds);
+                }
             }
         }
 

@@ -34,7 +34,6 @@ namespace PhotoLabel.ViewModels
         private int _position = -1;
         private readonly object _previewLock = new object();
         private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
-        private Color? _secondColour;
         private Image _secondColourImage;
         #endregion
 
@@ -54,6 +53,10 @@ namespace PhotoLabel.ViewModels
 
             // load the list of recently used directories
             _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
+
+            // load the second colour image
+            if (_configurationService.SecondColour != null)
+                _secondColourImage = _imageService.Circle(_configurationService.SecondColour.Value, 16, 16);
         }
 
         private void CacheImage(int position)
@@ -137,7 +140,7 @@ namespace PhotoLabel.ViewModels
                 if (Colour == value) return;
 
                 // save the current colour as the secondary colour
-                _secondColour = Colour;
+                _configurationService.SecondColour = Colour;
                 _secondColourImage = _imageService.Circle(Colour, 16, 16);
 
                 // save the colour to the image
@@ -805,7 +808,7 @@ namespace PhotoLabel.ViewModels
             }
         }
 
-        public Color? SecondColour => _secondColour;
+        public Color? SecondColour => _configurationService.SecondColour;
 
         public Image SecondColourImage => _secondColourImage;
 

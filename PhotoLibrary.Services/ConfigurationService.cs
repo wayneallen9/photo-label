@@ -60,6 +60,7 @@ namespace PhotoLabel.Services
                 Save();
             }
         }
+
         public string FontName
         {
             get => _configurationModel.FontName;
@@ -195,6 +196,24 @@ namespace PhotoLabel.Services
             finally
             {
                 _logService.TraceExit();
+            }
+        }
+
+        public Color? SecondColour
+        {
+            get
+            {
+                if (_configurationModel.SecondColour == null) return null;
+
+                return Color.FromArgb(_configurationModel.SecondColour.Value);
+            }
+            set
+            {
+                // update the value
+                _configurationModel.SecondColour = value?.ToArgb();
+
+                // persist it
+                Save();
             }
         }
     }
