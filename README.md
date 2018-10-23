@@ -1,5 +1,5 @@
 # photo-label
-Photo label is an application that lets you easily add captions to your photos.
+Photo label is an Windows application that lets you easily add captions to your photos.
 
 ## Features
 1. Add captions without modifying the original photo.
