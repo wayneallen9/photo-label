@@ -8,3 +8,6 @@ Photo label is an Windows application that lets you easily add captions to your 
 
 ## Download
 Download the installation files [here](https://github.com/wayneallen9/photo-label/tree/master/PhotoLabel.Setup/Release "Installation files").
+
+## Feedback
+Got any bug reports or suggestions for improvement?  [Let us know](https://github.com/wayneallen9/photo-label/issues/new).
