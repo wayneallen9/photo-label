@@ -7,4 +7,4 @@ Photo label is an application that lets you easily add captions to your photos.
 3. Use any font and colour combination supported by your PC.
 
 ## Download
-Download the installation files [here](http://github.com/wayneallen9/photo-label/PhotoLabel.Setup/Release "Installation files").
+Download the installation files [here](https://github.com/wayneallen9/photo-label/tree/master/PhotoLabel.Setup/Release "Installation files").
