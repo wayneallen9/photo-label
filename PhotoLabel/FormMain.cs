@@ -205,12 +205,26 @@ namespace PhotoLabel
             }
         }
 
+        private void ShowFilename(MainFormViewModel mainFormViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Current image path is \"{mainFormViewModel.Filename}\"");
+                labelFilename.Text = mainFormViewModel.Filename;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private void ShowFont(MainFormViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Updating fonr selection to \"{mainFormViewModel.FontName}\"...");
+                _logService.Trace($"Updating font selection to \"{mainFormViewModel.FontName}\"...");
                 toolStripComboBoxFonts.Text = mainFormViewModel.FontName;
                 toolStripComboBoxSizes.Text = mainFormViewModel.FontSize.ToString();
                 toolStripComboBoxType.Text = mainFormViewModel.FontType;
@@ -1475,6 +1489,7 @@ namespace PhotoLabel
                 // perform the updates
                 ShowBold(value);
                 ShowCaption(value);
+                ShowFilename(value);
                 ShowFont(value);
                 SetWindowState(value);
                 ShowCaptionAlignment(value);

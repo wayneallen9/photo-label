@@ -69,7 +69,7 @@
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.textBoxCaption = new System.Windows.Forms.TextBox();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.labelFilename = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.checkBoxBottomRight = new System.Windows.Forms.CheckBox();
             this.checkBoxBottomCentre = new System.Windows.Forms.CheckBox();
@@ -452,7 +452,7 @@
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.textBoxCaption, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.pictureBoxImage, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.label1, 0, 1);
+            this.tableLayoutPanel1.Controls.Add(this.labelFilename, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.panel1, 1, 2);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
@@ -489,17 +489,17 @@
             this.pictureBoxImage.TabIndex = 0;
             this.pictureBoxImage.TabStop = false;
             // 
-            // label1
+            // labelFilename
             // 
-            this.label1.AutoSize = true;
-            this.tableLayoutPanel1.SetColumnSpan(this.label1, 2);
-            this.label1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label1.Location = new System.Drawing.Point(10, 219);
-            this.label1.Margin = new System.Windows.Forms.Padding(10, 0, 10, 10);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(480, 22);
-            this.label1.TabIndex = 5;
-            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.labelFilename.AutoSize = true;
+            this.tableLayoutPanel1.SetColumnSpan(this.labelFilename, 2);
+            this.labelFilename.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelFilename.Location = new System.Drawing.Point(10, 219);
+            this.labelFilename.Margin = new System.Windows.Forms.Padding(10, 0, 10, 10);
+            this.labelFilename.Name = "labelFilename";
+            this.labelFilename.Size = new System.Drawing.Size(480, 22);
+            this.labelFilename.TabIndex = 5;
+            this.labelFilename.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // panel1
             // 
@@ -735,7 +735,7 @@
         private System.Windows.Forms.TextBox textBoxCaption;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItemSeparator;
         private System.Windows.Forms.PictureBox pictureBoxImage;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label labelFilename;
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
         private System.Windows.Forms.ToolStripButton toolStripButtonSave;

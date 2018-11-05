@@ -335,7 +335,8 @@ namespace PhotoLabel.ViewModels
 
                     // load the image on a background thread
                     _imageCancellationTokenSource = new CancellationTokenSource();
-                    Task.Factory.StartNew(() => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    Task.Delay(300, _imageCancellationTokenSource.Token)
+                        .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null, _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(ExceptionHandler, _imageCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
                 }
             }
