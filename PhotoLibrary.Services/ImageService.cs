@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -16,6 +17,7 @@ namespace PhotoLabel.Services
         private IImageLoaderService _imageLoaderService;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
+        private readonly string _shortDateFormat;
         #endregion
 
         public ImageService(
@@ -27,6 +29,9 @@ namespace PhotoLabel.Services
             _imageLoaderService = imageLoaderService;
             _lineWrapService = lineWrapService;
             _logService = logService;
+
+            // create the format for the date
+            _shortDateFormat = CultureInfo.CurrentUICulture.DateTimeFormat.ShortDatePattern.Replace("yyyy", "yy");
         }
 
         public Image Circle(Color color, int width, int height)
@@ -102,7 +107,7 @@ namespace PhotoLabel.Services
                     if (!DateTime.TryParse(bitmapMetadata.DateTaken, out DateTime dateTaken))
                         exifData.DateTaken = bitmapMetadata.DateTaken;
                     else
-                        exifData.DateTaken = dateTaken.Date.ToShortDateString();
+                        exifData.DateTaken = dateTaken.Date.ToString(_shortDateFormat);
 
                     // is there a latitude on the image
                     exifData.Latitude = GetLatitude(bitmapMetadata);
