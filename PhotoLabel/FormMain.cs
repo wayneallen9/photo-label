@@ -145,6 +145,8 @@ namespace PhotoLabel
                     toolStripButtonRotateRight.Enabled =
                     toolStripButtonSave.Enabled =
                     toolStripButtonSaveAs.Enabled = mainFormViewModel.Position > -1;
+
+                toolStripButtonDelete.Enabled = mainFormViewModel.CanDelete;
             }
             finally
             {
@@ -1838,6 +1840,26 @@ namespace PhotoLabel
             {
                 _logService.Trace($"Setting bold value to {toolStripButtonBold.Checked}...");
                 _mainFormViewModel.FontBold = toolStripButtonBold.Checked;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripButtonDelete_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Deleting current image...");
+                _mainFormViewModel.Delete();
             }
             catch (Exception ex)
             {

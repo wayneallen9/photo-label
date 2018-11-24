@@ -84,6 +84,8 @@ namespace PhotoLabel.ViewModels
             }
         }
 
+        public bool CanDelete => _current?.MetadataExists ?? false;
+
         public string Caption
         {
             get => _current?.Caption ?? string.Empty;
@@ -163,6 +165,69 @@ namespace PhotoLabel.ViewModels
         public int Count => _images.Count;
 
         public IList<DirectoryModel> Directories => _folders;
+
+        public bool Delete()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Is there a current image?");
+                if (_current == null)
+                {
+                    _logService.Trace("There is no current image.  Returning...");
+                    return false;
+                }
+
+                _logService.Trace($"Deleting metadata for \"{_current.Filename}\"...");
+                if (!_imageMetadataService.Delete(_current.Filename)) return false;
+
+                _logService.Trace("Resetting image...");
+                _current.ExifLoaded = false;
+                _current.MetadataExists = false;
+                _current.MetadataLoaded = false;
+                _current.Rotation = Rotations.Zero;
+                _current.Saved = false;
+
+                _logService.Trace("Reloading image...");
+                LoadImage(_position);
+
+                _logService.Trace("Reloading preview...");
+                LoadPreview(_current.Filename);
+
+                _logService.Trace("Checking if there is a current output path...");
+                if (string.IsNullOrWhiteSpace(OutputPath))
+                {
+                    _logService.Trace("There is no current output path.  Returning...");
+                    return true;
+                }
+
+                _logService.Trace($"Getting output filename for \"{_current.Filename}\"...");
+                var outputPath = Path.Combine(OutputPath, Path.GetFileNameWithoutExtension(Filename) + ".jpg");
+
+                _logService.Trace($"Checking that \"{outputPath}\" is not \"{_current.Filename}\"...");
+                if (outputPath == _current.Filename)
+                {
+                    _logService.Trace($"\"{outputPath}\" is \"{_current.Filename}\".  Returning...");
+                    return true;
+                }
+
+                _logService.Trace($"Checking if \"{outputPath}\" exists...");
+                if (!File.Exists(outputPath))
+                {
+                    _logService.Trace($"\"{outputPath}\" does not exist.  Returning...");
+                    return true;
+                }
+
+                _logService.Trace($"Deleting \"{outputPath}\"...");
+                File.Delete(outputPath);
+
+                return true;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
 
         private void ExceptionHandler(Task task, object state)
         {
@@ -671,15 +736,10 @@ namespace PhotoLabel.ViewModels
 
         public string OutputPath
         {
-            get => Properties.Settings.Default.OutputPath;
+            get => _configurationService.OutputPath;
             set
             {
-                // only process changes
-                if (Properties.Settings.Default.OutputPath == value) return;
-
-                // save the change
-                Properties.Settings.Default.OutputPath = value;
-                Properties.Settings.Default.Save();
+                _configurationService.OutputPath = value;
 
                 Notify();
             }
@@ -795,6 +855,9 @@ namespace PhotoLabel.ViewModels
                 // do we need to flag it as saved?
                 if (!_current.Saved)
                 {
+                    // flag that the current image has metadata
+                    _current.MetadataExists = true;
+
                     // flag that the current image has been saved
                     _current.Saved = true;
 

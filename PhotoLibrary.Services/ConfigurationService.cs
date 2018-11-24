@@ -174,6 +174,30 @@ namespace PhotoLabel.Services
             }
         }
 
+        public string OutputPath
+        {
+            get => _configurationModel.OutputPath;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    // only process changes
+                    if (_configurationModel.OutputPath == value) return;
+
+                    _logService.Trace($"Saving new value for {nameof(OutputPath)}...");
+                    _configurationModel.OutputPath = value;
+
+                    _logService.Trace("Persisting new value...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         private void Save()
         {
             _logService.TraceEnter();

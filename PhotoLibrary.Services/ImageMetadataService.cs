@@ -18,6 +18,35 @@ namespace PhotoLabel.Services
             _logService = logService;
         }
 
+        public bool Delete(string filename)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // get the name of the metadata file
+                _logService.Trace($"Getting metadata filename for image \"{filename}\"...");
+                var metadataFilename = GetMetadataFilename(filename);
+                _logService.Trace($"Metadata filename is \"{metadataFilename}\"");
+
+                // does the metadata exist?
+                _logService.Trace($"Checking if file \"{metadataFilename}\" exists...");
+                if (!File.Exists(metadataFilename))
+                {
+                    _logService.Trace($"File \"{metadataFilename}\" does not exist.  Exiting...");
+                    return false;
+                }
+
+                _logService.Trace($"Deleting \"{metadataFilename}\"...");
+                File.Delete(metadataFilename);
+
+                return true;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private string GetMetadataFilename(string filename)
         {
             _logService.TraceEnter();

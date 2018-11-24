@@ -60,6 +60,7 @@
             this.toolStripButtonSave = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonSaveAs = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDontSave = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButtonDelete = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonLocation = new System.Windows.Forms.ToolStripButton();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
@@ -235,6 +236,7 @@
             this.toolStripButtonSave,
             this.toolStripButtonSaveAs,
             this.toolStripButtonDontSave,
+            this.toolStripButtonDelete,
             this.toolStripSeparator5,
             this.toolStripButtonLocation});
             this.toolStripToolbar.Location = new System.Drawing.Point(0, 24);
@@ -394,12 +396,23 @@
             // 
             this.toolStripButtonDontSave.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
             this.toolStripButtonDontSave.Enabled = false;
-            this.toolStripButtonDontSave.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButtonDontSave.Image")));
+            this.toolStripButtonDontSave.Image = global::PhotoLabel.Properties.Resources.dont_save;
             this.toolStripButtonDontSave.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonDontSave.Name = "toolStripButtonDontSave";
             this.toolStripButtonDontSave.Size = new System.Drawing.Size(23, 22);
             this.toolStripButtonDontSave.Text = "Do not save";
             this.toolStripButtonDontSave.Click += new System.EventHandler(this.ToolStripButtonDontSave_Click);
+            // 
+            // toolStripButtonDelete
+            // 
+            this.toolStripButtonDelete.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonDelete.Enabled = false;
+            this.toolStripButtonDelete.Image = global::PhotoLabel.Properties.Resources.delete;
+            this.toolStripButtonDelete.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonDelete.Name = "toolStripButtonDelete";
+            this.toolStripButtonDelete.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonDelete.Text = "Delete";
+            this.toolStripButtonDelete.Click += new System.EventHandler(this.ToolStripButtonDelete_Click);
             // 
             // toolStripSeparator5
             // 
@@ -771,6 +784,7 @@
         private System.Windows.Forms.ToolStripComboBox toolStripComboBoxSizes;
         private System.Windows.Forms.ToolStripComboBox toolStripComboBoxType;
         private System.Windows.Forms.ToolStripButton toolStripButtonBold;
+        private System.Windows.Forms.ToolStripButton toolStripButtonDelete;
     }
 }
 
