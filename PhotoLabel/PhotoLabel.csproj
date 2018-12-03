@@ -86,7 +86,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ViewModels\Unsubscriber.cs" />
-    <Compile Include="ViewModels\MainFormViewModel.cs" />
+    <Compile Include="MainFormViewModel.cs" />
     <EmbeddedResource Include="FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>

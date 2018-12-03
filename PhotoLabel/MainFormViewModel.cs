@@ -10,9 +10,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-namespace PhotoLabel.ViewModels
+namespace PhotoLabel
 {
-    public class MainFormViewModel : IObservable
+    public class MainFormViewModel : ViewModels.IObservable
     {
         #region events
         #endregion
@@ -24,11 +24,12 @@ namespace PhotoLabel.ViewModels
         private CancellationTokenSource _imageCancellationTokenSource;
         private readonly object _imageLock = new object();
         private readonly IImageMetadataService _imageMetadataService;
+        private readonly ManualResetEvent _imageManualResetEvent;
         private readonly IList<ImageModel> _images = new List<ImageModel>();
         private readonly object _imagesLock = new object();
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
-        private readonly IList<IObserver> _observers = new List<IObserver>();
+        private readonly IList<ViewModels.IObserver> _observers = new List<ViewModels.IObserver>();
         private CancellationTokenSource _openCancellationTokenSource;
         private readonly object _openLock = new object();
         private int _position = -1;
@@ -50,6 +51,9 @@ namespace PhotoLabel.ViewModels
             _imageService = imageService;
             _logService = logService;
             _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
+
+            // initialise variables
+            _imageManualResetEvent = new ManualResetEvent(true);
 
             // load the list of recently used directories
             _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
@@ -392,6 +396,9 @@ namespace PhotoLabel.ViewModels
                     // cancel any in progress load
                     _imageCancellationTokenSource?.Cancel();
 
+                    // flag that the image is loading
+                    _imageManualResetEvent.Reset();
+
                     // clear the image
                     Image = null;
 
@@ -485,6 +492,9 @@ namespace PhotoLabel.ViewModels
                 {
                     if (cancellationToken.IsCancellationRequested) captionedImage.Dispose();
                 }
+
+                // flag that the image has loaded
+                _imageManualResetEvent.Set();
 
                 if (cancellationToken.IsCancellationRequested) return;
                 Notify();
@@ -826,6 +836,9 @@ namespace PhotoLabel.ViewModels
             _logService.TraceEnter();
             try
             {
+                // wait for the image to load
+                _imageManualResetEvent.WaitOne();
+
                 // save the image
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
@@ -896,7 +909,7 @@ namespace PhotoLabel.ViewModels
         }
 
         #region IObservable
-        public IDisposable Subscribe(IObserver observer)
+        public IDisposable Subscribe(ViewModels.IObserver observer)
         {
             _logService.TraceEnter();
             try
@@ -911,7 +924,7 @@ namespace PhotoLabel.ViewModels
                     observer.OnUpdate(this);
                 }
 
-                return new Unsubscriber(_observers, observer);
+                return new ViewModels.Unsubscriber(_observers, observer);
             }
             finally
             {
