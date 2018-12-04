@@ -3,6 +3,7 @@ using PhotoLabel.Models;
 using PhotoLabel.Services;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -10,17 +11,29 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Runtime.CompilerServices;
+
 namespace PhotoLabel
 {
-    public class MainFormViewModel : ViewModels.IObservable
+    public class FormMainViewModel : INotifyPropertyChanged
     {
+        #region delegates
+        private delegate void OnErrorDelegate(Exception ex);
+        private delegate void OnPreviewLoadedDelegate(string filename, Image image);
+        private delegate void OnPropertyChangedDelegate(string propertyName);
+        public delegate void PreviewLoadedEventHandler(object sender, PreviewLoadedEventArgs e);
+        #endregion
+
         #region events
+        public event ErrorEventHandler Error;
+        public event PreviewLoadedEventHandler PreviewLoaded;
+        public event PropertyChangedEventHandler PropertyChanged;
         #endregion
 
         #region variables
         private readonly IConfigurationService _configurationService;
         private ImageModel _current;
-        private List<DirectoryModel> _folders;
+        private List<DirectoryModel> _recentlyUsedDirectories;
         private CancellationTokenSource _imageCancellationTokenSource;
         private readonly object _imageLock = new object();
         private readonly IImageMetadataService _imageMetadataService;
@@ -38,7 +51,7 @@ namespace PhotoLabel
         private Image _secondColourImage;
         #endregion
 
-        public MainFormViewModel(
+        public FormMainViewModel(
             IConfigurationService configurationService,
             IImageMetadataService imageMetadataService,
             IImageService imageService,
@@ -54,9 +67,7 @@ namespace PhotoLabel
 
             // initialise variables
             _imageManualResetEvent = new ManualResetEvent(true);
-
-            // load the list of recently used directories
-            _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
+            _recentlyUsedDirectories = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
 
             // load the second colour image
             if (_configurationService.SecondColour != null)
@@ -107,7 +118,7 @@ namespace PhotoLabel
                     // redraw the image
                     LoadImage(_position);
 
-                    Notify();
+                    OnPropertyChanged();
                 }
             }
         }
@@ -133,7 +144,7 @@ namespace PhotoLabel
                 // save this as the default caption alignment
                 _configurationService.CaptionAlignment = value;
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
@@ -162,13 +173,13 @@ namespace PhotoLabel
                 // save the new default colour
                 _configurationService.Colour = value;
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
         public int Count => _images.Count;
 
-        public IList<DirectoryModel> Directories => _folders;
+        public IList<DirectoryModel> RecentlyUsedDirectories => _recentlyUsedDirectories;
 
         public bool Delete()
         {
@@ -249,6 +260,8 @@ namespace PhotoLabel
 
         public string Filename => _current?.Filename;
 
+        public IList<string> Filenames => _images.Select(i => i.Filename).ToList();
+
         public bool FontBold
         {
             get => _current?.FontBold ?? _configurationService.FontBold;
@@ -269,7 +282,7 @@ namespace PhotoLabel
                 // reload the im
                 LoadImage(_position);
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
@@ -293,7 +306,7 @@ namespace PhotoLabel
                 // update the image
                 LoadImage(_position);
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
@@ -317,7 +330,7 @@ namespace PhotoLabel
                 // reload the image
                 LoadImage(_position);
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
@@ -344,11 +357,13 @@ namespace PhotoLabel
                 // reload the image
                 LoadImage(_position);
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
         public Image Image { get; private set; }
+
+        public IInvoker Invoker { get; set; }
 
         public float? Latitude => _current?.Latitude;
 
@@ -497,7 +512,7 @@ namespace PhotoLabel
                 _imageManualResetEvent.Set();
 
                 if (cancellationToken.IsCancellationRequested) return;
-                Notify();
+                OnPropertyChanged(nameof(Image));
             }
             finally
             {
@@ -596,7 +611,7 @@ namespace PhotoLabel
                     preview = _imageService.Overlay(preview, Properties.Resources.metadata, preview.Width - Properties.Resources.saved.Width - 4, 4);
 
                 if (cancellationToken.IsCancellationRequested) return;
-                NotifyPreview(imageMetadata.Filename, preview);
+                OnPreviewLoaded(imageMetadata.Filename, preview);
             }
             finally
             {
@@ -606,15 +621,22 @@ namespace PhotoLabel
 
         public float? Longitude => _current?.Longitude;
 
-        private ImageModel Next => _position > -1 && _position + 1 < _images.Count ? _images[_position + 1] : null;
-
-        public void Notify()
+        private void OnError(Exception ex)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Notifying {_observers.Count} observers...");
-                for (var i = 0; i < _observers.Count; i++) _observers[i].OnUpdate(this);
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker.InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnErrorDelegate(OnError), ex);
+
+                    return;
+                }
+
+                _logService.Trace($"Notifying error...");
+                Error?.Invoke(this, new ErrorEventArgs(ex));
             }
             finally
             {
@@ -622,13 +644,22 @@ namespace PhotoLabel
             }
         }
 
-        public void NotifyError(Exception error)
+        private void OnPreviewLoaded(string filename, Image image)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Notifying {_observers.Count} observers of error...");
-                for (var i = 0; i < _observers.Count; i++) _observers[i].OnError(error);
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker.InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnPreviewLoadedDelegate(OnPreviewLoaded), filename, image);
+
+                    return;
+                }
+
+                _logService.Trace($"Notifying preview loaded for {filename}...");
+                PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs { Filename = filename, Image=image });
             }
             finally
             {
@@ -636,27 +667,22 @@ namespace PhotoLabel
             }
         }
 
-        public void NotifyOpen(IList<string> filenames)
+        private void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Notifying {_observers.Count} observers of open...");
-                for (var i = 0; i < _observers.Count; i++) _observers[i].OnOpen(filenames);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker.InvokeRequired)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged), propertyName);
 
-        public void NotifyPreview(string filename, Image preview)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Notifying {_observers.Count} observers of new preview image for \"{filename}\"...");
-                for (var i = 0; i < _observers.Count; i++) _observers[i].OnPreview(filename, preview);
+                    return;
+                }
+
+                _logService.Trace($"Notifying change to {propertyName}...");
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
             finally
             {
@@ -682,7 +708,7 @@ namespace PhotoLabel
                     Task.Factory.StartNew(() => OpenThread(directory, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
 
-                    Notify();
+                    OnPropertyChanged(nameof(Image));
                 }
             }
             finally
@@ -728,14 +754,23 @@ namespace PhotoLabel
                         };
 
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        _folders = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Add(directory, Mapper.Map<List<Services.Models.FolderModel>>(_folders)));
+                        _logService.Trace("Mapping to service layer...");
+                        var servicesRecentlyUsedDirectories = Mapper.Map<List<Services.Models.FolderModel>>(_recentlyUsedDirectories);
 
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        Notify();
+                        _logService.Trace($"Adding \"{directory}\" to list of recently used directories...");
+                        servicesRecentlyUsedDirectories = _recentlyUsedDirectoriesService.Add(directory, servicesRecentlyUsedDirectories);
+
+                        if (_openCancellationTokenSource.IsCancellationRequested) return;
+                        _logService.Trace("Mapping to UI layer...");
+                        _recentlyUsedDirectories = Mapper.Map<List<DirectoryModel>>(servicesRecentlyUsedDirectories);
+
+                        if (_openCancellationTokenSource.IsCancellationRequested) return;
+                        OnPropertyChanged(nameof(RecentlyUsedDirectories));
                     }
 
                     if (_openCancellationTokenSource.IsCancellationRequested) return;
-                    NotifyOpen(filenames);
+                    OnPropertyChanged(nameof(Filenames));
                 }
             }
             finally
@@ -751,7 +786,7 @@ namespace PhotoLabel
             {
                 _configurationService.OutputPath = value;
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
@@ -778,7 +813,7 @@ namespace PhotoLabel
                 // cache the next image on a background thread
                 CacheImage(value + 1);
 
-                Notify();
+                OnPropertyChanged();
             }
         }
 
@@ -788,7 +823,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Getting current folder...");
-                var folder = _folders[0];
+                var folder = _recentlyUsedDirectories[0];
                 _logService.Trace($"Current folder is \"{folder.Path}\"");
 
                 // save this file as the last used file for this folder
@@ -797,7 +832,7 @@ namespace PhotoLabel
 
                 // map to the service layer
                 _logService.Trace("Saving recently used folder change...");
-                var folders = Mapper.Map<List<Services.Models.FolderModel>>(_folders);
+                var folders = Mapper.Map<List<Services.Models.FolderModel>>(_recentlyUsedDirectories);
                 _recentlyUsedDirectoriesService.Save(folders);
             }
             finally
@@ -823,7 +858,7 @@ namespace PhotoLabel
                     // redraw the image
                     LoadImage(_position);
 
-                    Notify();
+                    OnPropertyChanged();
                 }
             }
         }
@@ -891,46 +926,20 @@ namespace PhotoLabel
 
         public FormWindowState WindowState
         {
-            get => Properties.Settings.Default.WindowState;
+            get => _configurationService.WindowState;
             set
             {
                 // ignore when the form is minimized
                 if (value == FormWindowState.Minimized) return;
 
                 // only process changes
-                if (Properties.Settings.Default.WindowState == value) return;
+                if (_configurationService.WindowState == value) return;
 
                 // save the new value
-                Properties.Settings.Default.WindowState = value;
-                Properties.Settings.Default.Save();
+                _configurationService.WindowState = value;
 
-                Notify();
+                OnPropertyChanged();
             }
         }
-
-        #region IObservable
-        public IDisposable Subscribe(ViewModels.IObserver observer)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if observer is already observing...");
-                if (!_observers.Contains(observer))
-                {
-                    _logService.Trace("Observer is not already observing.  Adding observer...");
-                    _observers.Add(observer);
-
-                    // update with the initial values
-                    observer.OnUpdate(this);
-                }
-
-                return new ViewModels.Unsubscriber(_observers, observer);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-        #endregion
     }
 }

@@ -8,6 +8,6 @@ namespace PhotoLabel.ViewModels
         void OnError(Exception error);
         void OnOpen(IList<string> filenames);
         void OnPreview(string filename, Image preview);
-        void OnUpdate(MainFormViewModel value);
+        void OnUpdate(FormMainViewModel value);
     }
 }

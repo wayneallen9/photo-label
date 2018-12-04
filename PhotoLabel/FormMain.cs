@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace PhotoLabel
 {
-    public partial class FormMain : Form, IObserver
+    public partial class FormMain : Form, IInvoker
     {
         #region delegates
         private delegate void ActionDelegate(Action action);
@@ -21,14 +21,14 @@ namespace PhotoLabel
         private readonly Image _loadingImage = Properties.Resources.loading;
         private readonly ILocaleService _localeService;
         private readonly ILogService _logService;
-        private readonly MainFormViewModel _mainFormViewModel;
+        private readonly FormMainViewModel _mainFormViewModel;
         private readonly ITimerService _timerService;
         #endregion
 
         public FormMain(
             ILocaleService localeService,
             ILogService logService,
-            MainFormViewModel mainFormViewModel,
+            FormMainViewModel mainFormViewModel,
             ITimerService timerService)
         {
             // save dependencies
@@ -43,9 +43,84 @@ namespace PhotoLabel
 
             // initialise the view model
             _mainFormViewModel = mainFormViewModel;
+            _mainFormViewModel.Invoker = this;
 
             // add the event handling
-            _mainFormViewModel.Subscribe(this);
+            _mainFormViewModel.Error += ErrorHandler;
+            _mainFormViewModel.PreviewLoaded += PreviewLoadedHandler;
+            _mainFormViewModel.PropertyChanged += PropertyChangedHandler;
+        }
+
+        private void PropertyChangedHandler(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                var formMainViewModel = sender as FormMainViewModel;
+
+                switch (e.PropertyName)
+                {
+                    case "Filenames":
+                        PopulatePreviewImages(formMainViewModel);
+
+                        break;
+                    case "OutputPath":
+                        ShowOutputPath(formMainViewModel);
+
+                        break;
+                    case "RecentlyUsedDirectories":
+                        ShowRecentlyUsedDirectories(formMainViewModel);
+
+                        break;
+                    case "WindowState":
+                        SetWindowState(formMainViewModel);
+
+                        break;
+                    default:
+                        SetToolbarStatus(formMainViewModel);
+                        ShowBold(formMainViewModel);
+                        ShowCaption(formMainViewModel);
+                        ShowFilename(formMainViewModel);
+                        ShowFont(formMainViewModel);
+                        ShowCaptionAlignment(formMainViewModel);
+                        ShowLocation(formMainViewModel);
+                        ShowPicture(formMainViewModel);
+                        ShowProgress(formMainViewModel);
+                        ShowSecondColour(formMainViewModel);
+                        SetToolbarStatus(formMainViewModel);
+
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ErrorHandler(object sender, ErrorEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Error(e.GetException());
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception)
+            {
+                // ignore any exceptions whilst reporting an exception
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
         /// <summary>
@@ -128,7 +203,7 @@ namespace PhotoLabel
         /// view model.
         /// </summary>
         /// <param name="mainFormViewModel">The view model for the form.</param>
-        private void SetToolbarStatus(MainFormViewModel mainFormViewModel)
+        private void SetToolbarStatus(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -171,7 +246,7 @@ namespace PhotoLabel
             }
         }
 
-        private void SetWindowState(MainFormViewModel mainFormViewModel)
+        private void SetWindowState(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -207,7 +282,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowFilename(MainFormViewModel mainFormViewModel)
+        private void ShowFilename(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -221,7 +296,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowFont(MainFormViewModel mainFormViewModel)
+        private void ShowFont(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -237,7 +312,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowLocation(MainFormViewModel mainFormViewModel)
+        private void ShowLocation(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -250,7 +325,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowOutputPath(MainFormViewModel mainFormViewModel)
+        private void ShowOutputPath(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -272,7 +347,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowPicture(MainFormViewModel mainFormViewModel)
+        private void ShowPicture(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -330,7 +405,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowProgress(MainFormViewModel mainFormViewModel)
+        private void ShowProgress(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -351,7 +426,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowBold(MainFormViewModel mainFormViewModel)
+        private void ShowBold(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -365,7 +440,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowCaption(MainFormViewModel mainFormViewModel)
+        private void ShowCaption(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -382,7 +457,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowCaptionAlignment(MainFormViewModel mainFormViewModel)
+        private void ShowCaptionAlignment(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -403,7 +478,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowSecondColour(MainFormViewModel mainFormViewModel)
+        private void ShowSecondColour(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -467,37 +542,6 @@ namespace PhotoLabel
             }
         }
 
-        private void ExceptionHandler(Task task)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if running on UI thread...");
-                if (InvokeRequired)
-                {
-                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(() => ExceptionHandler(task));
-
-                    return;
-                }
-
-                // log the error message
-                _logService.Error(task.Exception);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         private void ExitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             _logService.TraceEnter();
@@ -517,13 +561,13 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowRecentlyUsedDirectories(MainFormViewModel mainFormViewModel)
+        private void ShowRecentlyUsedDirectories(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
             {
                 // are there any recently used directories?
-                if (mainFormViewModel.Directories.Count == 0)
+                if (mainFormViewModel.RecentlyUsedDirectories.Count == 0)
                 {
                     _logService.Trace("Removing existing recently used directory menu options...");
 
@@ -537,9 +581,9 @@ namespace PhotoLabel
                 else
                 {
                     // set the recently used files
-                    _logService.Trace($"Adding {mainFormViewModel.Directories.Count} recently used directory menu options...");
+                    _logService.Trace($"Adding {mainFormViewModel.RecentlyUsedDirectories.Count} recently used directory menu options...");
                     var menuPos = toolStripMenuItemFile.DropDownItems.IndexOf(toolStripMenuItemSeparator) + 1;
-                    foreach (var recentlyUsedDirectory in mainFormViewModel.Directories)
+                    foreach (var recentlyUsedDirectory in mainFormViewModel.RecentlyUsedDirectories)
                     {
                         // show the separator
                         toolStripMenuItemSeparator.Visible = true;
@@ -783,7 +827,7 @@ namespace PhotoLabel
                 if (listViewPreview.SelectedIndices.Count == 0)
                 {
                     // is there a last selected file?
-                    var lastSelectedFilename = _mainFormViewModel.Directories[0].Filename;
+                    var lastSelectedFilename = _mainFormViewModel.RecentlyUsedDirectories[0].Filename;
                     if (!string.IsNullOrWhiteSpace(lastSelectedFilename)) {
                         var listViewItems = listViewPreview.Items.Find(lastSelectedFilename, true);
                         if (listViewItems.Length > 0)
@@ -1412,31 +1456,24 @@ namespace PhotoLabel
             }
         }
 
-        public void OnOpen(IList<string> filenames)
+        public void PopulatePreviewImages(FormMainViewModel formMainViewModel)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Checking if running on UI thread...");
-                if (InvokeRequired)
-                {
-                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(() => OnOpen(filenames));
-
-                    return;
-                }
-
                 Cursor = Cursors.WaitCursor;
                 try
                 {
                     Application.DoEvents();
+
+                    var filenames = formMainViewModel.Filenames;
 
                     _logService.Trace($"Populating list with {filenames.Count} images...");
                     imageListLarge.Images.Clear();
                     imageListLarge.Images.Add(_loadingImage);
                     listViewPreview.Clear();
 
-                    if (filenames.Count > 0)
+                    if (formMainViewModel.Filenames.Count > 0)
                     {
                         foreach (var filename in filenames)
                         {
@@ -1474,7 +1511,7 @@ namespace PhotoLabel
             }
         }
 
-        public void OnUpdate(MainFormViewModel value)
+        public void OnUpdate(FormMainViewModel value)
         {
             _logService.TraceEnter();
             try
@@ -1509,52 +1546,14 @@ namespace PhotoLabel
             }
         }
 
-        public void OnError(Exception error)
+        public void PreviewLoadedHandler(object sender, PreviewLoadedEventArgs e)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Checking if running on UI thread...");
-                if (InvokeRequired)
-                {
-                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(() => OnError(error));
-
-                    return;
-                }
-
-                // write the error
-                _logService.Error(error);
-
-                _logService.Trace("Advising user that an exception has occurred...");
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public void OnPreview(string filename, Image image)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if running on UI thread...");
-                if (InvokeRequired)
-                {
-                    // prevent the UI from locking up
-                    _timerService.Pause(TimeSpan.FromMilliseconds(250));
-
-                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(() => OnPreview(filename, image));
-
-                    return;
-                }
-
                 _logService.Trace("Updating preview image...");
-                imageListLarge.Images.RemoveByKey(filename);
-                imageListLarge.Images.Add(filename, image);
+                imageListLarge.Images.RemoveByKey(e.Filename);
+                imageListLarge.Images.Add(e.Filename, e.Image);
 
                 _logService.Trace("Redrawing image list...");
                 listViewPreview.Invalidate();
@@ -1860,6 +1859,32 @@ namespace PhotoLabel
             {
                 _logService.Trace("Deleting current image...");
                 _mainFormViewModel.Delete();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void FormMain_Load(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Showing default output path \"{_mainFormViewModel.OutputPath}\"...");
+                ShowOutputPath(_mainFormViewModel);
+
+                _logService.Trace("Showing list of recently used directories...");
+                ShowRecentlyUsedDirectories(_mainFormViewModel);
+
+                _logService.Trace("Setting default window state...");
+                SetWindowState(_mainFormViewModel);
             }
             catch (Exception ex)
             {

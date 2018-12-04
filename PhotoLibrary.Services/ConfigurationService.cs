@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Windows.Forms;
 using System.Xml.Serialization;
 namespace PhotoLabel.Services
 {
@@ -160,6 +161,34 @@ namespace PhotoLabel.Services
             }
         }
 
+        public bool LoadLastFolder
+        {
+            get => _configurationModel.LoadLastFolder;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(LoadLastFolder)} has changed...");
+                    if (_configurationModel.LoadLastFolder == value)
+                    {
+                        _logService.Trace($"Value of {nameof(LoadLastFolder)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting value of {nameof(LoadLastFolder)} to {value}...");
+                    _configurationModel.LoadLastFolder = value;
+
+                    _logService.Trace("Persisting change...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         private string GetFilename()
         {
             _logService.TraceEnter();
@@ -238,6 +267,34 @@ namespace PhotoLabel.Services
 
                 // persist it
                 Save();
+            }
+        }
+
+        public FormWindowState WindowState
+        {
+            get => _configurationModel.WindowState;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(WindowState)} has changed...");
+                    if (_configurationModel.WindowState == value)
+                    {
+                        _logService.Trace($"Value of {nameof(WindowState)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting new value of {nameof(WindowState)} to {value}...");
+                    _configurationModel.WindowState = value;
+
+                    _logService.Trace($"Persisting new value of {nameof(WindowState)}...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
             }
         }
     }

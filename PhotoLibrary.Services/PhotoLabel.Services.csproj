@@ -46,6 +46,7 @@
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Transactions" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -83,7 +84,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="RecentlyUsedFoldersService.cs" />
+    <Compile Include="RecentlyUsedDirectoriesService.cs" />
     <Compile Include="Rotations.cs" />
     <Compile Include="TimerService.cs" />
   </ItemGroup>

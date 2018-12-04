@@ -6,7 +6,7 @@ using System.Linq;
 using System.Xml.Serialization;
 namespace PhotoLabel.Services
 {
-    public class RecentlyUsedFoldersService : IRecentlyUsedFoldersService
+    public class RecentlyUsedDirectoriesService : IRecentlyUsedFoldersService
     {
         #region delegates
         #endregion
@@ -18,7 +18,7 @@ namespace PhotoLabel.Services
         private readonly ILogService _logService;
         #endregion
 
-        public RecentlyUsedFoldersService(
+        public RecentlyUsedDirectoriesService(
             ILogService logService)
         {
             // save the dependency injections

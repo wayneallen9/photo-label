@@ -1,4 +1,6 @@
-﻿namespace PhotoLabel.Services.Models
+﻿using System.Windows.Forms;
+
+namespace PhotoLabel.Services.Models
 {
     public class ConfigurationModel
     {
@@ -8,7 +10,9 @@
         public string FontName { get; set; }
         public float FontSize { get; set; }
         public string FontType { get; set; }
+        public bool LoadLastFolder { get; set; }
         public string OutputPath { get; set; }
         public int? SecondColour { get; set; }
+        public FormWindowState WindowState {get;set;}
     }
 }

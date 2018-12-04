@@ -1,4 +1,6 @@
 ﻿using System.Drawing;
+using System.Windows.Forms;
+
 namespace PhotoLabel.Services
 {
     public interface IConfigurationService
@@ -9,7 +11,9 @@ namespace PhotoLabel.Services
         string FontName { get; set; }
         float FontSize { get; set; }
         string FontType { get; set; }
+        bool LoadLastFolder { get; set; }
         string OutputPath { get; set; }
         Color? SecondColour { get; set; }
+        FormWindowState WindowState { get; set; }
     }
 }
