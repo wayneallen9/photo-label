@@ -31,7 +31,7 @@ namespace PhotoLabel.Services
             _logService = logService;
 
             // create the format for the date
-            _shortDateFormat = CultureInfo.CurrentUICulture.DateTimeFormat.ShortDatePattern.Replace("yyyy", "yy");
+            _shortDateFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("yyyy", "yy");
         }
 
         public Image Circle(Color color, int width, int height)
@@ -744,6 +744,7 @@ namespace PhotoLabel.Services
                             s.EndsWith("*.png", StringComparison.CurrentCultureIgnoreCase)
                         ) &&
                         (File.GetAttributes(s) & FileAttributes.Hidden) == 0)
+                    .OrderBy(f => File.GetCreationTime(f))
                     .ToList();
             }
             finally
