@@ -116,10 +116,10 @@ namespace PhotoLabel.Services
                 _logService.Trace("Getting path to configuration file...");
                 string filename = GetFilename();
 
-                _logService.Trace($"Checking if configuration file \"{filename}\" exists...");
+                _logService.Trace($@"Checking if configuration file ""{filename}"" exists...");
                 if (!File.Exists(filename))
                 {
-                    _logService.Trace($"Configuration file \"{filename}\" does not exist.  Creating configuration...");
+                    _logService.Trace($@"Configuration file ""{filename}"" does not exist.  Creating configuration...");
                     return new ConfigurationModel
                     {
                         Colour = Color.White.ToArgb(),
@@ -134,11 +134,11 @@ namespace PhotoLabel.Services
                     {
                         using (var fileStream = new FileStream(filename, FileMode.Open, FileAccess.Read))
                         {
-                            // create the deserializer
-                            var serializer = new XmlSerializer(typeof(ConfigurationModel));
+                            // create the deserialiser
+                            var serialise = new XmlSerializer(typeof(ConfigurationModel));
 
-                            // deserialize the file
-                            return serializer.Deserialize(fileStream) as ConfigurationModel;
+                            // deserialise the file
+                            return serialise.Deserialize(fileStream) as ConfigurationModel;
                         }
                     }
                     catch (Exception ex)
@@ -233,17 +233,22 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace("Getting path to configuration file...");
-                string filename = GetFilename();
+                var filename = GetFilename();
 
-                _logService.Trace($"Ensuring that all parent directories exist for \"{filename}\"...");
-                Directory.CreateDirectory(Path.GetDirectoryName(filename));
+                _logService.Trace($@"Getting directory for ""{filename}""...");
+                var directory = Path.GetDirectoryName(filename);
+                if (directory != null)
+                {
+                    _logService.Trace($"Ensuring that all parent directories exist for \"{filename}\"...");
+                    Directory.CreateDirectory(directory);
+                }
 
                 _logService.Trace($"Saving configuration to \"{filename}\"...");
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
-                    var serializer = new XmlSerializer(_configurationModel.GetType());
+                    var serialiser = new XmlSerializer(_configurationModel.GetType());
 
-                    serializer.Serialize(fileStream, _configurationModel);
+                    serialiser.Serialize(fileStream, _configurationModel);
                 }
             }
             finally

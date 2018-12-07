@@ -2,6 +2,7 @@
 using System.ComponentModel;
 namespace PhotoLabel.Controls
 {
+    /// <inheritdoc />
     /// <summary>
     /// Standard ToolStripComboBox with DrawItem event.
     /// </summary>
@@ -19,6 +20,7 @@ namespace PhotoLabel.Controls
         {
             // get the underlying control
             _comboBox = Control as ComboBox;
+            if (_comboBox == null) return;
 
             // add event handlers
             _comboBox.DrawItem += (sender, e) =>
@@ -32,10 +34,7 @@ namespace PhotoLabel.Controls
         public DrawMode DrawMode
         {
             get => _comboBox.DrawMode;
-            set
-            {
-                _comboBox.DrawMode = value;
-            }
+            set => _comboBox.DrawMode = value;
         }
 
         protected virtual void OnDrawItem(DrawItemEventArgs e)

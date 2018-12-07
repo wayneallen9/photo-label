@@ -5,33 +5,33 @@ namespace PhotoLabel.Services
     public class LogService : ILogService
     {
         #region variables
-        private int indent = 0;
-        private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+        private int _indent;
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         #endregion
 
         public void TraceEnter()
         {
             // log the entry
-            logger.Trace($"{new String('\t', indent)}Enter");
+            Logger.Trace($"{new string('\t', _indent)}Enter");
 
             // now increase the indentation
-            indent++;
+            _indent++;
         }
 
         public void TraceExit()
         {
             // decrease the indentation
-            indent--;
+            _indent--;
 
             // log the exit
-            logger.Trace($"{new String('\t', indent)}Exit");
+            Logger.Trace($"{new string('\t', _indent)}Exit");
         }
 
         public void Error(Exception ex)
         {
             try
             {
-                logger.Error(ex);
+                Logger.Error(ex);
             }
             catch (Exception)
             {
@@ -41,7 +41,7 @@ namespace PhotoLabel.Services
 
         public void Trace(string message)
         {
-            logger.Trace($"{new String('\t', indent)}{message}");
+            Logger.Trace($"{new string('\t', _indent)}{message}");
         }
     }
 }

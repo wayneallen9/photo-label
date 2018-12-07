@@ -36,7 +36,7 @@ namespace PhotoLabel.Services
                     if (_primary?.Filename == filename)
                     {
                         _logService.Trace($"\"{filename}\" is the primary cached file.  Returning...");
-                        return _primary.Image;
+                        return _primary?.Image;
                     }
                 }
 
@@ -46,7 +46,7 @@ namespace PhotoLabel.Services
                     if (_secondary?.Filename == filename)
                     {
                         _logService.Trace($"\"{filename}\" is the secondary cached file.  Returning...");
-                        return _secondary.Image;
+                        return _secondary?.Image;
                     }
                 }
 
@@ -56,7 +56,7 @@ namespace PhotoLabel.Services
                     if (_tertiary?.Filename == filename)
                     {
                         _logService.Trace($"\"{filename}\" is the tertiary cached file.  Returning...");
-                        return _tertiary.Image;
+                        return _tertiary?.Image;
                     }
                 }
 
@@ -86,7 +86,7 @@ namespace PhotoLabel.Services
                 }
 
                 // remove the loader from the list of active loaders
-                _loaders.TryRemove(filename, out ImageLoader value);
+                _loaders.TryRemove(filename, out _);
 
                 return image;
             }
@@ -106,6 +106,7 @@ namespace PhotoLabel.Services
         {
 
             #region variables
+            private readonly string _filename;
             private Image _image;
             private readonly object _imageLock = new object();
             #endregion
@@ -113,10 +114,8 @@ namespace PhotoLabel.Services
             public ImageLoader(string filename)
             {
                 // save the filename
-                Filename = filename;
+                _filename = filename;
             }
-
-            public string Filename { get; }
 
             public Image Image
             {
@@ -127,7 +126,7 @@ namespace PhotoLabel.Services
                         // do we need to load the image?
                         if (_image == null)
                         {
-                            _image = Image.FromFile(Filename);
+                            _image = Image.FromFile(_filename);
                         }
                     }
 

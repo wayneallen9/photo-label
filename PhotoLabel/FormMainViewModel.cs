@@ -17,6 +17,10 @@ namespace PhotoLabel
 {
     public class FormMainViewModel : INotifyPropertyChanged
     {
+        #region constants
+        private const double Tolerance = double.Epsilon;
+        #endregion
+
         #region delegates
         private delegate void OnErrorDelegate(Exception ex);
         private delegate void OnPreviewLoadedDelegate(string filename, Image image);
@@ -42,13 +46,11 @@ namespace PhotoLabel
         private readonly object _imagesLock = new object();
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
-        private readonly IList<ViewModels.IObserver> _observers = new List<ViewModels.IObserver>();
         private CancellationTokenSource _openCancellationTokenSource;
         private readonly object _openLock = new object();
         private int _position = -1;
-        private readonly object _previewLock = new object();
         private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
-        private Image _secondColourImage;
+
         #endregion
 
         public FormMainViewModel(
@@ -71,7 +73,7 @@ namespace PhotoLabel
 
             // load the second colour image
             if (_configurationService.SecondColour != null)
-                _secondColourImage = _imageService.Circle(_configurationService.SecondColour.Value, 16, 16);
+                SecondColourImage = _imageService.Circle(_configurationService.SecondColour.Value, 16, 16);
         }
 
         private void CacheImage(int position)
@@ -91,7 +93,7 @@ namespace PhotoLabel
 
                 _logService.Trace($"Caching \"{filename}\" on background thread...");
                 Task.Factory.StartNew(() => _imageService.Get(filename), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -110,16 +112,15 @@ namespace PhotoLabel
                 if (Caption == value) return;
 
                 // do we have an existing image?
-                if (_current != null)
-                {
-                    // save the new value
-                    _current.Caption = value;
+                if (_current == null) return;
 
-                    // redraw the image
-                    LoadImage(_position);
+                // save the new value
+                _current.Caption = value;
 
-                    OnPropertyChanged();
-                }
+                // redraw the image
+                LoadImage(_position);
+
+                OnPropertyChanged();
             }
         }
 
@@ -158,7 +159,7 @@ namespace PhotoLabel
 
                 // save the current colour as the secondary colour
                 _configurationService.SecondColour = Colour;
-                _secondColourImage = _imageService.Circle(Colour, 16, 16);
+                SecondColourImage = _imageService.Circle(Colour, 16, 16);
 
                 // save the colour to the image
                 if (_current != null)
@@ -244,13 +245,12 @@ namespace PhotoLabel
             }
         }
 
-        private void ExceptionHandler(Task task, object state)
+        private void OnError(Task task, object state)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Bubbling error up...");
-                for (var i = 0; i < _observers.Count; i++) _observers[i].OnError(task.Exception);
+                OnError(task.Exception);
             }
             finally
             {
@@ -316,7 +316,7 @@ namespace PhotoLabel
             set
             {
                 // only process changes
-                if (FontSize == value) return;
+                if (Math.Abs(FontSize - value) < Tolerance) return;
 
                 // save the default value
                 _configurationService.FontSize = value;
@@ -424,7 +424,7 @@ namespace PhotoLabel
                     _imageCancellationTokenSource = new CancellationTokenSource();
                     Task.Delay(300, _imageCancellationTokenSource.Token)
                         .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null, _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(ExceptionHandler, _imageCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                        .ContinueWith(OnError, _imageCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
                 }
             }
             finally
@@ -443,12 +443,12 @@ namespace PhotoLabel
                 // load the image on another thread
                 if (cancellationToken.IsCancellationRequested) return;
                 var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageModel.Filename), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
-                task.ContinueWith(ExceptionHandler, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+                task.ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
 
                 // load the metadata on another thread
                 var metadataResetEvent = new ManualResetEvent(false);
                 Task.Factory.StartNew(() => MetadataThread(imageModel, metadataResetEvent), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ContinueWith(ExceptionHandler, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+                    .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
 
                 // wait for the metadata to load
                 if (cancellationToken.IsCancellationRequested) return;
@@ -465,7 +465,7 @@ namespace PhotoLabel
                 else
                 {
                     Task.Factory.StartNew(() => ExifThread(imageModel, exifResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(ExceptionHandler, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
                 }
 
                 // wait for the Exif data to load
@@ -486,7 +486,7 @@ namespace PhotoLabel
 
                 // create the caption
                 if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace($"Caption for \"{imageModel.Filename}\" is \"{imageModel.Caption}\".  Creating image...");
+                _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{imageModel.Caption}"".  Creating image...");
                 var captionedImage = _imageService.Caption(image, imageModel.Caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), rotation);
                 try
                 {
@@ -496,10 +496,10 @@ namespace PhotoLabel
                     {
                         if (cancellationToken.IsCancellationRequested) return;
 
-                        _logService.Trace($"Setting \"{imageModel.Filename}\" as current image...");
+                        _logService.Trace($@"Setting ""{imageModel.Filename}"" as current image...");
                         _current = imageModel;
 
-                        _logService.Trace($"Setting image for \"{imageModel.Filename}\"...");
+                        _logService.Trace($@"Setting image for ""{imageModel.Filename}""...");
                         Image = captionedImage;
                     }
                 }
@@ -522,12 +522,12 @@ namespace PhotoLabel
 
         private void MetadataThread(
             ImageModel imageMetadata,
-            ManualResetEvent manualResetEvent)
+            EventWaitHandle manualResetEvent)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Checking if metadata is loaded for \"{imageMetadata.Filename}\"...");
+                _logService.Trace($@"Checking if metadata is loaded for ""{imageMetadata.Filename}""...");
                 if (!imageMetadata.MetadataLoaded)
                 {
                     // only one thread can load the metadata
@@ -537,12 +537,12 @@ namespace PhotoLabel
                         // the metadata in the interim
                         if (!imageMetadata.MetadataLoaded)
                         {
-                            _logService.Trace($"Metadata is not loaded for \"{imageMetadata.Filename}\".  Loading...");
+                            _logService.Trace($@"Metadata is not loaded for ""{imageMetadata.Filename}"".  Loading...");
                             var metadata = _imageMetadataService.Load(imageMetadata.Filename);
 
                             if (metadata != null)
                             {
-                                _logService.Trace($"Populating values from metadata for \"{imageMetadata.Filename}\"...");
+                                _logService.Trace($@"Populating values from metadata for ""{imageMetadata.Filename}""...");
                                 Mapper.Map(metadata, imageMetadata);
                             }
 
@@ -567,17 +567,17 @@ namespace PhotoLabel
             try
             {
                 // find the image being previewed
-                _logService.Trace($"Finding image \"{filename}\"...");
+                _logService.Trace($@"Finding image ""{filename}""...");
                 var imageModel = _images.FirstOrDefault(i => i.Filename == filename);
                 if (imageModel == null)
                 {
-                    _logService.Trace($"Image \"{filename}\" does not exist.  Exiting...");
+                    _logService.Trace($@"Image ""{filename}"" does not exist.  Exiting...");
                     return;
                 }
 
-                _logService.Trace($"Loading preview for \"{filename}\" on a background thread...");
+                _logService.Trace($@"Loading preview for ""{filename}"" on a background thread...");
                 Task.Factory.StartNew(() => PreviewThread(imageModel, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token)
-                    .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -587,8 +587,6 @@ namespace PhotoLabel
 
         private void PreviewThread(ImageModel imageMetadata, CancellationToken cancellationToken)
         {
-            Image preview;
-
             _logService.TraceEnter();
             try
             {
@@ -599,7 +597,7 @@ namespace PhotoLabel
                 Task.Factory.StartNew(() => MetadataThread(imageMetadata, manualResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
 
                 if (cancellationToken.IsCancellationRequested) return;
-                preview = _imageService.Get(imageMetadata.Filename, 128, 128);
+                var preview = _imageService.Get(imageMetadata.Filename, 128, 128);
 
                 // wait for the metadata to load
                 manualResetEvent.WaitOne();
@@ -635,7 +633,7 @@ namespace PhotoLabel
                     return;
                 }
 
-                _logService.Trace($"Notifying error...");
+                _logService.Trace("Notifying error...");
                 Error?.Invoke(this, new ErrorEventArgs(ex));
             }
             finally
@@ -658,7 +656,7 @@ namespace PhotoLabel
                     return;
                 }
 
-                _logService.Trace($"Notifying preview loaded for {filename}...");
+                _logService.Trace($@"Notifying preview loaded for ""{filename}""...");
                 PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs { Filename = filename, Image=image });
             }
             finally
@@ -703,10 +701,10 @@ namespace PhotoLabel
                     _logService.Trace("Clearing current image...");
                     lock (_imageLock) Image = null;
 
-                    _logService.Trace($"Opening \"{directory}\" on a background thread...");
+                    _logService.Trace($@"Opening ""{directory}"" on a background thread...");
                     _openCancellationTokenSource = new CancellationTokenSource();
-                    Task.Factory.StartNew(() => OpenThread(directory, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                    Task.Factory.StartNew(() => OpenThread(directory), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
 
                     OnPropertyChanged(nameof(Image));
                 }
@@ -717,7 +715,7 @@ namespace PhotoLabel
             }
         }
 
-        private void OpenThread(string directory, CancellationToken cancellationToken)
+        private void OpenThread(string directory)
         {
             _logService.TraceEnter();
             try
@@ -731,7 +729,7 @@ namespace PhotoLabel
                     _position = -1;
 
                     if (_openCancellationTokenSource.IsCancellationRequested) return;
-                    _logService.Trace($"Retrieving image filenames from \"{directory}\" and it's subfolders...");
+                    _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
                     var filenames = _imageService.Find(directory);
                     _logService.Trace($"{filenames.Count} image files found");
 
@@ -741,24 +739,24 @@ namespace PhotoLabel
                     {
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
                         _logService.Trace("Building images...");
-                        for (var i = 0; i < filenames.Count; i++)
+                        foreach (var filename in filenames)
                         {
                             if (_openCancellationTokenSource.IsCancellationRequested) break;
                             var imageMetadata = new ImageModel
                             {
-                                Filename = filenames[i]
+                                Filename = filename
                             };
 
                             if (_openCancellationTokenSource.IsCancellationRequested) break;
                             _images.Add(imageMetadata);
-                        };
+                        }
 
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
                         _logService.Trace("Mapping to service layer...");
                         var servicesRecentlyUsedDirectories = Mapper.Map<List<Services.Models.FolderModel>>(_recentlyUsedDirectories);
 
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        _logService.Trace($"Adding \"{directory}\" to list of recently used directories...");
+                        _logService.Trace($@"Adding ""{directory}"" to list of recently used directories...");
                         servicesRecentlyUsedDirectories = _recentlyUsedDirectoriesService.Add(directory, servicesRecentlyUsedDirectories);
 
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
@@ -850,16 +848,15 @@ namespace PhotoLabel
                 if (Rotation == value) return;
 
                 // save the rotation to the image
-                if (_current != null)
-                {
-                    // update the value
-                    _current.Rotation = value;
+                if (_current == null) return;
 
-                    // redraw the image
-                    LoadImage(_position);
+                // update the value
+                _current.Rotation = value;
 
-                    OnPropertyChanged();
-                }
+                // redraw the image
+                LoadImage(_position);
+
+                OnPropertyChanged();
             }
         }
 
@@ -879,7 +876,7 @@ namespace PhotoLabel
                 {
                     lock (Image)
                     {
-                        _logService.Trace($"Saving \"{Filename}\" to \"{filename}\"...");
+                        _logService.Trace($@"Saving ""{Filename}"" to ""{filename}""...");
                         Image.Save(fileStream, ImageFormat.Jpeg);
                     }
                 }
@@ -901,18 +898,17 @@ namespace PhotoLabel
                 _imageMetadataService.Save(metadata, Filename);
 
                 // do we need to flag it as saved?
-                if (!_current.Saved)
-                {
-                    // flag that the current image has metadata
-                    _current.MetadataExists = true;
+                if (_current.Saved) return;
 
-                    // flag that the current image has been saved
-                    _current.Saved = true;
+                // flag that the current image has metadata
+                _current.MetadataExists = true;
 
-                    // reload the preview
-                    Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(ExceptionHandler, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
-                }
+                // flag that the current image has been saved
+                _current.Saved = true;
+
+                // reload the preview
+                Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -922,14 +918,14 @@ namespace PhotoLabel
 
         public Color? SecondColour => _configurationService.SecondColour;
 
-        public Image SecondColourImage => _secondColourImage;
+        public Image SecondColourImage { get; private set; }
 
         public FormWindowState WindowState
         {
             get => _configurationService.WindowState;
             set
             {
-                // ignore when the form is minimized
+                // ignore when the form is minimised
                 if (value == FormWindowState.Minimized) return;
 
                 // only process changes

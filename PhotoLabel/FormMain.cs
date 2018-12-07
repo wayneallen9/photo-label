@@ -1,12 +1,10 @@
 ﻿using PhotoLabel.Services;
-using PhotoLabel.ViewModels;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace PhotoLabel
 {
@@ -19,22 +17,16 @@ namespace PhotoLabel
         #region variables
         private readonly Image _ajaxImage = Properties.Resources.ajax;
         private readonly Image _loadingImage = Properties.Resources.loading;
-        private readonly ILocaleService _localeService;
         private readonly ILogService _logService;
         private readonly FormMainViewModel _mainFormViewModel;
-        private readonly ITimerService _timerService;
         #endregion
 
         public FormMain(
-            ILocaleService localeService,
             ILogService logService,
-            FormMainViewModel mainFormViewModel,
-            ITimerService timerService)
+            FormMainViewModel mainFormViewModel)
         {
             // save dependencies
-            _localeService = localeService;
             _logService = logService;
-            _timerService = timerService;
 
             InitializeComponent();
 
@@ -162,11 +154,11 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                // show the dialog
+                // show the dialogue
                 _logService.Trace("Prompting user for folder to open...");
                 if (folderBrowserDialogImages.ShowDialog() != DialogResult.OK)
                 {
-                    _logService.Trace("User cancelled open dialog.  Exiting...");
+                    _logService.Trace("User cancelled open dialogue.  Exiting...");
                     return;
                 }
                 
@@ -238,7 +230,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Adding fonts to combo box list...");
-                toolStripComboBoxFonts.Items.AddRange(FontFamily.Families.Select(f => f.Name).ToArray());
+                toolStripComboBoxFonts.Items.AddRange(FontFamily.Families.Select(f => f.Name).ToArray<object>());
             }
             finally
             {
@@ -303,7 +295,7 @@ namespace PhotoLabel
             {
                 _logService.Trace($"Updating font selection to \"{mainFormViewModel.FontName}\"...");
                 toolStripComboBoxFonts.Text = mainFormViewModel.FontName;
-                toolStripComboBoxSizes.Text = mainFormViewModel.FontSize.ToString();
+                toolStripComboBoxSizes.Text = mainFormViewModel.FontSize.ToString(CultureInfo.CurrentCulture);
                 toolStripComboBoxType.Text = mainFormViewModel.FontType;
             }
             finally
@@ -416,7 +408,7 @@ namespace PhotoLabel
                 else
                 {
                     _logService.Trace("Updating status bar progress...");
-                    toolStripStatusLabelStatus.Text = $"{mainFormViewModel.Position + 1} of {mainFormViewModel.Count}";
+                    toolStripStatusLabelStatus.Text = $@"{mainFormViewModel.Position + 1} of {mainFormViewModel.Count}";
                     toolStripStatusLabelStatus.Visible = true;
                 }
             }
@@ -643,15 +635,15 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                // set the default color
+                // set the default colour
                 _logService.Trace("Defaulting to current image colour...");
                 colorDialog.Color = _mainFormViewModel.Colour;
 
-                if (colorDialog.ShowDialog() == DialogResult.OK)
-                {
-                    _logService.Trace("Updating colour...");
-                    _mainFormViewModel.Colour = colorDialog.Color;
-                }
+                // did the user click ok?
+                if (colorDialog.ShowDialog() != DialogResult.OK) return;
+
+                _logService.Trace("Updating colour...");
+                _mainFormViewModel.Colour = colorDialog.Color;
             }
             finally
             {
@@ -710,7 +702,7 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Checking if the file exists...");
+                _logService.Trace("Checking if the file exists...");
                 if (Directory.Exists(filename))
                 {
                     _logService.Trace($"Opening \"{filename}\" from recently used file list...");
@@ -719,7 +711,7 @@ namespace PhotoLabel
                 else
                 {
                     _logService.Trace($"\"{filename}\" does not exist");
-                    if (MessageBox.Show($"\"{filename}\" could not be found.  Do you wish to remove it from the list of recently used folders?", "Folder Not Found", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    if (MessageBox.Show($@"""{filename}"" could not be found.  Do you wish to remove it from the list of recently used folders?", @"Folder Not Found", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         _logService.Trace($"Removing \"{filename}\" from list of recently used files...");
                         //_recentlyUsedFilesService.Remove(filename);
@@ -757,14 +749,13 @@ namespace PhotoLabel
                     folderBrowserDialogSave.SelectedPath = _mainFormViewModel.OutputPath;
 
                     // do we have a path to save to already?
-                    if (folderBrowserDialogSave.ShowDialog() == DialogResult.OK)
-                    {
-                        // save the save path
-                        _mainFormViewModel.OutputPath = folderBrowserDialogSave.SelectedPath;
+                    if (folderBrowserDialogSave.ShowDialog() != DialogResult.OK) return;
 
-                        // save the current image
-                        SaveImage();
-                    }
+                    // save the save path
+                    _mainFormViewModel.OutputPath = folderBrowserDialogSave.SelectedPath;
+
+                    // save the current image
+                    SaveImage();
                 }
             }
             finally
@@ -786,11 +777,11 @@ namespace PhotoLabel
                 _logService.Trace($"Destination file is \"{outputPath}\"");
 
                 if (outputPath == _mainFormViewModel.Filename &&
-                    MessageBox.Show("Do you wish to overwrite the original image?", "Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                    MessageBox.Show(@"Do you wish to overwrite the original image?", @"Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
                     return;
 
                 if (File.Exists(outputPath) &&
-                    MessageBox.Show($"The file \"{outputPath}\" already exists.  Do you wish to overwrite it?", "Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                    MessageBox.Show($@"The file ""{outputPath}"" already exists.  Do you wish to overwrite it?", @"Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
                     return;
 
                 Cursor = Cursors.WaitCursor;
@@ -1246,27 +1237,6 @@ namespace PhotoLabel
             }
         }
 
-        private void CheckBoxBottomLeft_CheckedChanged(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Setting caption alignment to bottom left...");
-                SetCaptionAlignment(CaptionAlignments.BottomLeft);
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
-        }
-
         private void CheckBoxBottomRight_Click(object sender, EventArgs e)
         {
             _logService.TraceEnter();
@@ -1299,56 +1269,6 @@ namespace PhotoLabel
                 _logService.Error(ex);
 
                 MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void ToolStripComboBoxZoom_Leave(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                ValidateChildren();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void FocusPreviewList()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if running on UI thread...");
-                if (InvokeRequired)
-                {
-                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(FocusPreviewList);
-
-                    return;
-                }
-                _logService.Trace("Running on UI thread");
-
-                if (_mainFormViewModel.Position == -1)
-                {
-                    listViewPreview.SelectedIndices.Clear();
-                }
-                else if (listViewPreview.Items.Count > _mainFormViewModel.Position &&
-                    !listViewPreview.Items[_mainFormViewModel.Position].Selected)
-                {
-                    listViewPreview.Items[_mainFormViewModel.Position].Selected = true;
-                }
             }
             finally
             {
@@ -1421,6 +1341,9 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                // the latitude and longitude cannot be null
+                if (_mainFormViewModel.Latitude == null || _mainFormViewModel.Longitude == null) return;
+
                 _logService.Trace($"Opening Google maps at {_mainFormViewModel.Latitude.Value},{_mainFormViewModel.Longitude.Value}...");
                 Process.Start(string.Format(Properties.Settings.Default.MapsURL, _mainFormViewModel.Latitude.Value, _mainFormViewModel.Longitude.Value));
             }
@@ -1442,7 +1365,8 @@ namespace PhotoLabel
             try
             {
                 // use the secondary colour as the primary colour
-                _mainFormViewModel.Colour = _mainFormViewModel.SecondColour.Value;
+                if (_mainFormViewModel.SecondColour != null)
+                    _mainFormViewModel.Colour = _mainFormViewModel.SecondColour.Value;
             }
             catch (Exception ex)
             {
@@ -1491,7 +1415,7 @@ namespace PhotoLabel
                         pictureBoxImage.Image = null;
 
                         // let the user know what has happened
-                        MessageBox.Show("No image files found.", "Open Directory", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                        MessageBox.Show(@"No image files found.", @"Open Directory", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     }
 
                     // load the first set of visible images
@@ -1504,41 +1428,6 @@ namespace PhotoLabel
                 {
                     Cursor = Cursors.Default;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public void OnUpdate(FormMainViewModel value)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if running on UI thread...");
-                if (InvokeRequired)
-                {
-                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoke(() => OnUpdate(value));
-
-                    return;
-                }
-
-                // perform the updates
-                ShowBold(value);
-                ShowCaption(value);
-                ShowFilename(value);
-                ShowFont(value);
-                SetWindowState(value);
-                ShowCaptionAlignment(value);
-                ShowLocation(value);
-                ShowOutputPath(value);
-                ShowPicture(value);
-                ShowProgress(value);
-                ShowRecentlyUsedDirectories(value);
-                ShowSecondColour(value);
-                SetToolbarStatus(value);
             }
             finally
             {
@@ -1644,42 +1533,27 @@ namespace PhotoLabel
         private void ToolStripComboBoxFonts_DrawItem(object sender, DrawItemEventArgs e)
         {
             // get the target control
-            var comboBox = sender as ToolStripComboBox;
+            if (!(sender is ToolStripComboBox comboBox)) return;
 
-            if (e.Index > -1 && e.Index < comboBox.Items.Count)
+            // make sure it is within the range
+            if (e.Index <= -1 || e.Index >= comboBox.Items.Count) return;
+
+
+            e.DrawBackground();
+
+            if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
+                e.DrawFocusRectangle();
+
+            using (var textBrush = new SolidBrush(e.ForeColor))
             {
-                e.DrawBackground();
+                // get the name of the font
+                var fontFamilyName = comboBox.Items[e.Index].ToString();
 
-                if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
-                    e.DrawFocusRectangle();
+                // create the font
+                var font = new Font(fontFamilyName, 10, FontStyle.Regular);
 
-                using (SolidBrush textBrush = new SolidBrush(e.ForeColor))
-                {
-                    string fontFamilyName;
-
-                    // get the name of the font
-                    fontFamilyName = comboBox.Items[e.Index].ToString();
-
-                    // create the font
-                    var font = new Font(fontFamilyName, 10, FontStyle.Regular);
-
-                    // draw the font on the control
-                    e.Graphics.DrawString(fontFamilyName, font, textBrush, e.Bounds);
-                }
-            }
-        }
-
-        private void ToolStripComboBoxFonts_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"User has selected font \"{toolStripComboBoxFonts.Text}\"...");
-                _mainFormViewModel.FontName = toolStripComboBoxFonts.Text;
-            }
-            finally
-            {
-                _logService.TraceExit();
+                // draw the font on the control
+                e.Graphics.DrawString(fontFamilyName, font, textBrush, e.Bounds);
             }
         }
 
@@ -1689,7 +1563,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace($"Validating size of \"{toolStripComboBoxSizes.Text}\"...");
-                e.Cancel = !float.TryParse(toolStripComboBoxSizes.Text, out float result);
+                e.Cancel = !float.TryParse(toolStripComboBoxSizes.Text, out _);
             }
             catch (Exception ex)
             {

@@ -1,30 +1,25 @@
 ﻿using Ninject;
-using Ninject.Parameters;
+
 namespace PhotoLabel
 {
     public static class NinjectKernel
     {
         #region variables
-        private static readonly IKernel kernel;
+        private static readonly IKernel Kernel;
         #endregion
 
         static NinjectKernel()
         {
             // create the kernel
-            kernel = new StandardKernel();
+            Kernel = new StandardKernel();
 
             // load the injections
-            kernel.Load("PhotoLabel.*.dll");
+            Kernel.Load("PhotoLabel.*.dll");
         }
 
         public static T Get<T>()
         {
-            return kernel.Get<T>();
-        }
-
-        public static T Get<T>(params IParameter[] parameters)
-        {
-            return kernel.Get<T>(parameters);
+            return Kernel.Get<T>();
         }
     }
 }

@@ -55,15 +55,15 @@ namespace PhotoLabel.Services
                 _logService.Trace("Getting path to recently used directories file...");
                 string filename = GetFilename();
 
-                _logService.Trace($"Checking if recently used directories file \"{filename}\" exists...");
+                _logService.Trace($@"Checking if recently used directories file ""{filename}"" exists...");
                 if (!File.Exists(filename))
                 {
-                    _logService.Trace($"\"{filename}\" does not exist.  Returning...");
+                    _logService.Trace($@"""{filename}"" does not exist.  Returning...");
                     return new List<FolderModel>();
                 }
-                _logService.Trace($"Recently used directories file \"{filename}\" exists");
+                _logService.Trace($@"Recently used directories file ""{filename}"" exists");
 
-                _logService.Trace($"Deserialising \"{filename}\"...");
+                _logService.Trace($@"Deserialising ""{filename}""...");
                 using (var fileStream = new FileStream(filename, FileMode.Open, FileAccess.Read))
                 {
                     // create the XML serializer
@@ -103,13 +103,13 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Adding \"{folder}\" to the list of recently used directories...");
+                _logService.Trace($@"Adding ""{folder}"" to the list of recently used directories...");
 
-                _logService.Trace($"Checking if \"{folder}\" is already in the list...");
+                _logService.Trace($@"Checking if ""{folder}"" is already in the list...");
                 var entry = folders.FirstOrDefault(d => d.Path == folder);
                 if (entry == null)
                 {
-                    _logService.Trace($"\"{folder}\" is not in the list.  Adding it...");
+                    _logService.Trace($@"""{folder}"" is not in the list.  Adding it...");
                     folders.Insert(0, new FolderModel
                     {
                         Caption = GetCaption(folder),
@@ -118,10 +118,10 @@ namespace PhotoLabel.Services
                 }
                 else
                 {
-                    _logService.Trace($"Removing \"{folder}\" from list...");
+                    _logService.Trace($@"Removing ""{folder}"" from list...");
                     folders.Remove(entry);
 
-                    _logService.Trace($"Inserting \"{folder}\" at the top of the list...");
+                    _logService.Trace($@"Inserting ""{folder}"" at the top of the list...");
                     folders.Insert(0, entry);
                 }
 
@@ -144,11 +144,16 @@ namespace PhotoLabel.Services
                 // save the change
                 var filename = GetFilename();
 
-                // create the folder
-                _logService.Trace($"Ensuring that all parent directories exist for \"{filename}\"...");
-                Directory.CreateDirectory(Path.GetDirectoryName(filename));
+                _logService.Trace($@"Getting directory for ""{filename}""...");
+                var directory = Path.GetDirectoryName(filename);
+                if (directory != null)
+                {
+                    // create the folder
+                    _logService.Trace($@"Ensuring that all parent directories exist for ""{filename}""...");
+                    Directory.CreateDirectory(directory);
+                }
 
-                _logService.Trace($"Saving list of recently used directories to \"{filename}\"...");
+                _logService.Trace($@"Saving list of recently used directories to ""{filename}""...");
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
                     // create the serializer
@@ -171,7 +176,7 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Removing \"{folder}\" from the list of recently used directories...");
+                _logService.Trace($@"Removing ""{folder}"" from the list of recently used directories...");
                 folders.RemoveAll(d => d.Path == folder);
 
                 _logService.Trace("Saving list of recently used files...");

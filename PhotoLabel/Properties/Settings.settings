@@ -11,9 +11,6 @@
     <Setting Name="Font" Type="System.Drawing.Font" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="OutputPath" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
     <Setting Name="WindowState" Type="System.Windows.Forms.FormWindowState" Scope="User">
       <Value Profile="(Default)">Normal</Value>
     </Setting>

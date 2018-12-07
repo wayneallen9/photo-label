@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -14,7 +13,7 @@ namespace PhotoLabel.Services
     public class ImageService : IImageService
     {
         #region variables
-        private IImageLoaderService _imageLoaderService;
+        private readonly IImageLoaderService _imageLoaderService;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
         private readonly string _shortDateFormat;
@@ -98,16 +97,13 @@ namespace PhotoLabel.Services
                 // create the object to return
                 var exifData = new ExifData();
 
-                using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
                     var bitmapSource = BitmapFrame.Create(fs);
-                    var bitmapMetadata = (BitmapMetadata)bitmapSource.Metadata;
+                    if (!(bitmapSource.Metadata is BitmapMetadata bitmapMetadata)) return exifData;
 
                     // try and parse the date
-                    if (!DateTime.TryParse(bitmapMetadata.DateTaken, out DateTime dateTaken))
-                        exifData.DateTaken = bitmapMetadata.DateTaken;
-                    else
-                        exifData.DateTaken = dateTaken.Date.ToString(_shortDateFormat);
+                    exifData.DateTaken = !DateTime.TryParse(bitmapMetadata.DateTaken, out var dateTaken) ? bitmapMetadata.DateTaken : dateTaken.Date.ToString(_shortDateFormat);
 
                     // is there a latitude on the image
                     exifData.Latitude = GetLatitude(bitmapMetadata);
@@ -218,13 +214,10 @@ namespace PhotoLabel.Services
 
         public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Rotations rotation)
         {
-            float fontSizeInPoints;
-            FontStyle fontStyle;
-            Bitmap image;
-
             _logService.TraceEnter();
             try
             {
+                Bitmap image;
                 lock (original)
                 {
                     _logService.Trace("Creating a copy of the original image...");
@@ -232,7 +225,7 @@ namespace PhotoLabel.Services
                 }
                 
                 // work out the style of the font
-                fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
+                var fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
 
                 // rotate the original image to it's desired position
                 Rotate(image, rotation);
@@ -253,6 +246,7 @@ namespace PhotoLabel.Services
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
 
                     // how is the caption sized?
+                    float fontSizeInPoints;
                     if (fontType == "pts")
                     {
                         // use the value provided by the user
@@ -273,9 +267,6 @@ namespace PhotoLabel.Services
                     _logService.Trace("Creating font...");
                     using (var font = new Font(fontName, fontSizeInPoints, fontStyle))
                     {
-                        _logService.Trace("Determining size of caption...");
-                        var captionSize = graphics.MeasureString(caption, font);
-
                         _logService.Trace("Determining location for caption...");
                         switch (captionAlignment)
                         {
@@ -316,6 +307,8 @@ namespace PhotoLabel.Services
                                 CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush);
 
                                 break;
+                            default:
+                                throw new ArgumentOutOfRangeException(nameof(captionAlignment), captionAlignment, null);
                         }
                     }
                 }
@@ -465,10 +458,10 @@ namespace PhotoLabel.Services
 
                 // work out the starting position
                 var y = (imageSize.Height - totalLineHeight) / 2;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                foreach (var iterator in lines)
                 {
                     // get this line
-                    var line = lines[lineNumber];
+                    var line = iterator;
 
                     // if the line is empty, make it a space, so it has some size
                     if (line == string.Empty) line = " ";
@@ -503,10 +496,10 @@ namespace PhotoLabel.Services
 
                 // work out the starting position
                 var y = (imageSize.Height - totalLineHeight) / 2;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                foreach (var iterator in lines)
                 {
                     // get this line
-                    var line = lines[lineNumber];
+                    var line = iterator;
 
                     // if the line is empty, make it a space, so it has some size
                     if (line == string.Empty) line = " ";
@@ -541,10 +534,10 @@ namespace PhotoLabel.Services
 
                 // work out the starting position
                 var y = (imageSize.Height - totalLineHeight) / 2;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                foreach (var iterator in lines)
                 {
                     // get this line
-                    var line = lines[lineNumber];
+                    var line = iterator;
 
                     // if the line is empty, make it a space, so it has some size
                     if (line == string.Empty) line = " ";
@@ -575,10 +568,10 @@ namespace PhotoLabel.Services
 
                 // work out the starting position
                 var y = 10f;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                foreach (var iterator in lines)
                 {
                     // get this line
-                    var line = lines[lineNumber];
+                    var line = iterator;
 
                     // if the line is empty, make it a space, so it has some size
                     if (line == string.Empty) line = " ";
@@ -609,10 +602,10 @@ namespace PhotoLabel.Services
 
                 // work out the starting position
                 var y = 10f;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                foreach (var iterator in lines)
                 {
                     // get this line
-                    var line = lines[lineNumber];
+                    var line = iterator;
 
                     // if the line is empty, make it a space, so it has some size
                     if (line == string.Empty) line = " ";
@@ -643,10 +636,10 @@ namespace PhotoLabel.Services
 
                 // work out the starting position
                 var y = 10f;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                foreach (var iterator in lines)
                 {
                     // get this line
-                    var line = lines[lineNumber];
+                    var line = iterator;
 
                     // if the line is empty, make it a space, so it has some size
                     if (line == string.Empty) line = " ";
@@ -699,14 +692,14 @@ namespace PhotoLabel.Services
                 _logService.Trace($"Resizing to fit {width}px x{height}px canvas...");
                 var canvas = new Bitmap(width, height);
 
-                _logService.Trace($"Calculating size of resized image...");
+                _logService.Trace("Calculating size of resized image...");
                 var aspectRatio = Math.Min(width / (float)image.Width, height / (float)image.Height);
                 var newWidth = image.Width * aspectRatio;
                 var newHeight = image.Height * aspectRatio;
                 var newX = (width - newWidth) / 2;
                 var newY = (height - newHeight) / 2;
 
-                _logService.Trace($"Drawing resized image...");
+                _logService.Trace("Drawing resized image...");
                 using (var graphics = Graphics.FromImage(canvas))
                 {
                     // initialise the pen
@@ -744,19 +737,13 @@ namespace PhotoLabel.Services
                             s.EndsWith("*.png", StringComparison.CurrentCultureIgnoreCase)
                         ) &&
                         (File.GetAttributes(s) & FileAttributes.Hidden) == 0)
-                    .OrderBy(f => File.GetCreationTime(f))
+                    .OrderBy(File.GetCreationTime)
                     .ToList();
             }
             finally
             {
                 _logService.TraceExit();
             }
-        }
-
-        private class ImageCache
-        {
-            public string Filename { get; set; }
-            public Image Image { get; set; }
         }
     }
 }

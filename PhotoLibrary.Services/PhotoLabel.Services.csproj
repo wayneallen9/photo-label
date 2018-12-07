@@ -63,15 +63,12 @@
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageService.cs" />
     <Compile Include="ILineWrapService.cs" />
-    <Compile Include="ILocaleService.cs" />
     <Compile Include="ILogService.cs" />
     <Compile Include="ImageLoaderService.cs" />
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="IRecentlyUsedFoldersService.cs" />
-    <Compile Include="ITimerService.cs" />
     <Compile Include="LineWrapService.cs" />
-    <Compile Include="LocaleService.cs" />
     <Compile Include="LogService.cs" />
     <Compile Include="Models\ConfigurationModel.cs" />
     <Compile Include="Models\FolderModel.cs" />
@@ -86,7 +83,6 @@
     </Compile>
     <Compile Include="RecentlyUsedDirectoriesService.cs" />
     <Compile Include="Rotations.cs" />
-    <Compile Include="TimerService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

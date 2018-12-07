@@ -1,7 +1,6 @@
 ﻿using PhotoLabel.Services.Models;
 using System.IO;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Xml.Serialization;
 namespace PhotoLabel.Services
 {
