@@ -1,5 +1,6 @@
 ﻿using PhotoLabel.Services;
 using System.Drawing;
+
 namespace PhotoLabel.Models
 {
     public class ImageModel
@@ -13,10 +14,12 @@ namespace PhotoLabel.Models
         public string FontName { get; set; }
         public float? FontSize { get; set; }
         public string FontType { get; set; }
+        public ImageFormat? ImageFormat { get; set; }
         public float? Latitude { get; set; }
         public float? Longitude { get; set; }
         public bool MetadataExists { get; set; }
         public bool MetadataLoaded { get; set; }
+        public string OutputFilename { get; set; }
         public Rotations? Rotation { get; set; }
         public bool Saved { get; set; }
     }

@@ -10,7 +10,7 @@ namespace PhotoLabel.Services.Models
         public string FontName { get; set; }
         public float FontSize { get; set; }
         public string FontType { get; set; }
-        public bool LoadLastFolder { get; set; }
+        public ImageFormat ImageFormat { get; set; }
         public string OutputPath { get; set; }
         public int? SecondColour { get; set; }
         public FormWindowState WindowState {get;set;}

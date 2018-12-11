@@ -3,6 +3,7 @@ using System.Drawing;
 
 namespace PhotoLabel
 {
+    // ReSharper disable once UnusedMember.Global
     public class AutoMapperProfile : Profile
     {
         public AutoMapperProfile()

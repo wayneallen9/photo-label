@@ -11,6 +11,7 @@ namespace PhotoLabel.Services
         string FontName { get; set; }
         float FontSize { get; set; }
         string FontType { get; set; }
+        ImageFormat ImageFormat { get; set; }
         string OutputPath { get; set; }
         Color? SecondColour { get; set; }
         FormWindowState WindowState { get; set; }

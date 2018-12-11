@@ -745,5 +745,23 @@ namespace PhotoLabel.Services
                 _logService.TraceExit();
             }
         }
+
+        public void Save(Image image, string filename, ImageFormat imageFormat)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($@"Creating ""{filename}""...");
+                using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
+                {
+                    _logService.Trace($@"Saving image to ""{filename}""...");
+                    image.Save(fileStream, imageFormat == ImageFormat.Jpeg ? System.Drawing.Imaging.ImageFormat.Jpeg : System.Drawing.Imaging.ImageFormat.Png);
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
     }
 }

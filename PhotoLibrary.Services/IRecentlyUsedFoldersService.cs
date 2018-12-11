@@ -7,7 +7,6 @@ namespace PhotoLabel.Services
     {
         List<FolderModel> Load();
         List<FolderModel> Add(string folder, List<FolderModel> folders);
-        List<FolderModel> Remove(string folder, List<FolderModel> folders);
         List<FolderModel> Save(List<FolderModel> folders);
     }
 }

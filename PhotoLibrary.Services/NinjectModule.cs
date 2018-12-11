@@ -1,5 +1,6 @@
 ﻿namespace PhotoLabel.Services
 {
+    // ReSharper disable once UnusedMember.Global
     public class NinjectModule : Ninject.Modules.NinjectModule
     {
         public override void Load()
@@ -11,6 +12,7 @@
             Bind<ILogService>().To<LogService>().InSingletonScope();
             Bind<IRecentlyUsedFoldersService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
+            Bind<IXmlFileSerialiser>().To<XmlFileSerialiser>().InSingletonScope();
         }
     }
 }

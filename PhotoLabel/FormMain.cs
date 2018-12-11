@@ -1,26 +1,18 @@
-﻿using PhotoLabel.Services;
-using System;
+﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using PhotoLabel.Properties;
+using PhotoLabel.Services;
+
 namespace PhotoLabel
 {
     public partial class FormMain : Form, IInvoker
     {
-        #region delegates
-        private delegate void ActionDelegate(Action action);
-        #endregion
-
-        #region variables
-        private readonly Image _ajaxImage = Properties.Resources.ajax;
-        private readonly Image _loadingImage = Properties.Resources.loading;
-        private readonly ILogService _logService;
-        private readonly FormMainViewModel _mainFormViewModel;
-        #endregion
-
         public FormMain(
             ILogService logService,
             FormMainViewModel mainFormViewModel)
@@ -43,7 +35,7 @@ namespace PhotoLabel
             _mainFormViewModel.PropertyChanged += PropertyChangedHandler;
         }
 
-        private void PropertyChangedHandler(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void PropertyChangedHandler(object sender, PropertyChangedEventArgs e)
         {
             _logService.TraceEnter();
             try
@@ -74,6 +66,7 @@ namespace PhotoLabel
                         ShowCaption(formMainViewModel);
                         ShowFilename(formMainViewModel);
                         ShowFont(formMainViewModel);
+                        ShowImageFormat(formMainViewModel);
                         ShowCaptionAlignment(formMainViewModel);
                         ShowLocation(formMainViewModel);
                         ShowPicture(formMainViewModel);
@@ -88,7 +81,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -103,7 +97,8 @@ namespace PhotoLabel
             {
                 _logService.Error(e.GetException());
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             catch (Exception)
             {
@@ -116,38 +111,7 @@ namespace PhotoLabel
         }
 
         /// <summary>
-        /// Run an action on the UI thread.
-        /// </summary>
-        /// <param name="action">The <see cref="Action"/> to be executed.</param>
-        private void Invoke(Action action)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if running on the UI thread...");
-                if (InvokeRequired)
-                {
-                    _logService.Trace("Not running on the UI thread.  Delegating to UI thread...");
-                    Invoke(new ActionDelegate(Invoke), action);
-
-                    return;
-                }
-
-                _logService.Trace("Running on the UI thread.  Executing action...");
-                action();
-            }
-            catch (ObjectDisposedException)
-            {
-                // ignore this error - the form has been closed
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        /// <summary>
-        /// Prompt the user for a target folder.
+        ///     Prompt the user for a target folder.
         /// </summary>
         private void OpenFolder()
         {
@@ -161,7 +125,7 @@ namespace PhotoLabel
                     _logService.Trace("User cancelled open dialogue.  Exiting...");
                     return;
                 }
-                
+
                 _logService.Trace($"Folder to open is \"{folderBrowserDialogImages.SelectedPath}\"");
                 OpenFolder(folderBrowserDialogImages.SelectedPath);
             }
@@ -172,7 +136,7 @@ namespace PhotoLabel
         }
 
         /// <summary>
-        /// Retrieve images from a directory.
+        ///     Retrieve images from a directory.
         /// </summary>
         /// <param name="folder">The source path for the images.</param>
         private void OpenFolder(string folder)
@@ -191,8 +155,8 @@ namespace PhotoLabel
         }
 
         /// <summary>
-        /// Disable or enable toolbar controls depending upon the state of the 
-        /// view model.
+        ///     Disable or enable toolbar controls depending upon the state of the
+        ///     view model.
         /// </summary>
         /// <param name="mainFormViewModel">The view model for the form.</param>
         private void SetToolbarStatus(FormMainViewModel mainFormViewModel)
@@ -203,15 +167,15 @@ namespace PhotoLabel
                 _logService.Trace($"The current position is {mainFormViewModel.Position}");
                 colourToolStripMenuItem.Enabled =
                     rotateLeftToolStripMenuItem.Enabled =
-                    rotateRightToolStripMenuItem.Enabled =
-                    saveToolStripMenuItem.Enabled =
-                    saveAsToolStripMenuItem.Enabled = mainFormViewModel.Position > -1;
+                        rotateRightToolStripMenuItem.Enabled =
+                            saveToolStripMenuItem.Enabled =
+                                saveAsToolStripMenuItem.Enabled = mainFormViewModel.Position > -1;
                 toolStripButtonColour.Enabled =
                     toolStripButtonDontSave.Enabled =
-                    toolStripButtonRotateLeft.Enabled =
-                    toolStripButtonRotateRight.Enabled =
-                    toolStripButtonSave.Enabled =
-                    toolStripButtonSaveAs.Enabled = mainFormViewModel.Position > -1;
+                        toolStripButtonRotateLeft.Enabled =
+                            toolStripButtonRotateRight.Enabled =
+                                toolStripButtonSave.Enabled =
+                                    toolStripButtonSaveAs.Enabled = mainFormViewModel.Position > -1;
 
                 toolStripButtonDelete.Enabled = mainFormViewModel.CanDelete;
             }
@@ -222,7 +186,7 @@ namespace PhotoLabel
         }
 
         /// <summary>
-        /// Add the available fonts to the drop down list of fonts
+        ///     Add the available fonts to the drop down list of fonts
         /// </summary>
         private void PopulateFonts()
         {
@@ -309,7 +273,8 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                toolStripButtonLocation.Enabled = mainFormViewModel.Latitude != null && mainFormViewModel.Longitude != null;
+                toolStripButtonLocation.Enabled =
+                    mainFormViewModel.Latitude != null && mainFormViewModel.Longitude != null;
             }
             finally
             {
@@ -404,7 +369,9 @@ namespace PhotoLabel
             {
                 _logService.Trace($"Image count is {mainFormViewModel.Count}");
                 if (mainFormViewModel.Count == 0)
+                {
                     toolStripStatusLabelStatus.Visible = false;
+                }
                 else
                 {
                     _logService.Trace("Updating status bar progress...");
@@ -507,7 +474,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -526,7 +494,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -545,7 +514,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -573,7 +543,8 @@ namespace PhotoLabel
                 else
                 {
                     // set the recently used files
-                    _logService.Trace($"Adding {mainFormViewModel.RecentlyUsedDirectories.Count} recently used directory menu options...");
+                    _logService.Trace(
+                        $"Adding {mainFormViewModel.RecentlyUsedDirectories.Count} recently used directory menu options...");
                     var menuPos = toolStripMenuItemFile.DropDownItems.IndexOf(toolStripMenuItemSeparator) + 1;
                     foreach (var recentlyUsedDirectory in mainFormViewModel.RecentlyUsedDirectories)
                     {
@@ -622,7 +593,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -669,7 +641,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -689,7 +662,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -711,18 +685,19 @@ namespace PhotoLabel
                 else
                 {
                     _logService.Trace($"\"{filename}\" does not exist");
-                    if (MessageBox.Show($@"""{filename}"" could not be found.  Do you wish to remove it from the list of recently used folders?", @"Folder Not Found", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                    {
+                    if (MessageBox.Show(
+                            $@"""{filename}"" could not be found.  Do you wish to remove it from the list of recently used folders?",
+                            @"Folder Not Found", MessageBoxButtons.YesNo, MessageBoxIcon.Question) ==
+                        DialogResult.Yes)
                         _logService.Trace($"Removing \"{filename}\" from list of recently used files...");
-                        //_recentlyUsedFilesService.Remove(filename);
-                    }
                 }
             }
             catch (Exception ex)
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -765,7 +740,6 @@ namespace PhotoLabel
         }
 
         /// <summary>
-        /// 
         /// </summary>
         private void SaveImage()
         {
@@ -773,15 +747,12 @@ namespace PhotoLabel
             try
             {
                 // get the destination path
-                var outputPath = Path.Combine(_mainFormViewModel.OutputPath, Path.GetFileNameWithoutExtension(_mainFormViewModel.Filename) + ".jpg");
+                var outputPath = _mainFormViewModel.OutputFilename;
                 _logService.Trace($"Destination file is \"{outputPath}\"");
 
-                if (outputPath == _mainFormViewModel.Filename &&
-                    MessageBox.Show(@"Do you wish to overwrite the original image?", @"Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
-                    return;
-
                 if (File.Exists(outputPath) &&
-                    MessageBox.Show($@"The file ""{outputPath}"" already exists.  Do you wish to overwrite it?", @"Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                    MessageBox.Show($@"The file ""{outputPath}"" already exists.  Do you wish to overwrite it?",
+                        @"Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
                     return;
 
                 Cursor = Cursors.WaitCursor;
@@ -811,7 +782,8 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"The current position is {_mainFormViewModel.Position + 1} of {_mainFormViewModel.Count}");
+                _logService.Trace(
+                    $"The current position is {_mainFormViewModel.Position + 1} of {_mainFormViewModel.Count}");
 
                 // if there is no currently selected list view item, select the default
                 _logService.Trace($"{listViewPreview.SelectedIndices.Count} item(s) selected");
@@ -819,7 +791,8 @@ namespace PhotoLabel
                 {
                     // is there a last selected file?
                     var lastSelectedFilename = _mainFormViewModel.RecentlyUsedDirectories[0].Filename;
-                    if (!string.IsNullOrWhiteSpace(lastSelectedFilename)) {
+                    if (!string.IsNullOrWhiteSpace(lastSelectedFilename))
+                    {
                         var listViewItems = listViewPreview.Items.Find(lastSelectedFilename, true);
                         if (listViewItems.Length > 0)
                             listViewItems[0].Selected = true;
@@ -847,12 +820,38 @@ namespace PhotoLabel
             }
         }
 
+        private void ShowImageFormat(FormMainViewModel formMainViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Image format is {formMainViewModel.ImageFormat}");
+                if (formMainViewModel.ImageFormat == ImageFormat.Jpeg)
+                {
+                    toolStripComboBoxImageType.SelectedIndex = 0;
+                    toolStripMenuItemJpg.Checked = true;
+                    toolStripMenuItemPng.Checked = false;
+                }
+                else
+                {
+                    toolStripComboBoxImageType.SelectedIndex = 1;
+                    toolStripMenuItemJpg.Checked = false;
+                    toolStripMenuItemPng.Checked = true;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private void SetCaptionAlignment(CaptionAlignments captionAlignment)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Setting caption alignment for \"{_mainFormViewModel.Filename}\" to {captionAlignment}...");
+                _logService.Trace(
+                    $"Setting caption alignment for \"{_mainFormViewModel.Filename}\" to {captionAlignment}...");
                 _mainFormViewModel.CaptionAlignment = captionAlignment;
             }
             finally
@@ -873,7 +872,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -893,7 +893,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -939,7 +940,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -960,7 +962,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -980,7 +983,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1000,7 +1004,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1047,7 +1052,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1067,13 +1073,13 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
                 _logService.TraceExit();
             }
-
         }
 
         private void ToolStripButtonRotateRight_Click(object sender, EventArgs e)
@@ -1088,13 +1094,13 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
                 _logService.TraceExit();
             }
-
         }
 
         private void RotateRight()
@@ -1150,7 +1156,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1170,7 +1177,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1190,7 +1198,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1209,7 +1218,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1229,7 +1239,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1249,7 +1260,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1268,7 +1280,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1288,7 +1301,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1308,7 +1322,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1328,7 +1343,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1344,14 +1360,17 @@ namespace PhotoLabel
                 // the latitude and longitude cannot be null
                 if (_mainFormViewModel.Latitude == null || _mainFormViewModel.Longitude == null) return;
 
-                _logService.Trace($"Opening Google maps at {_mainFormViewModel.Latitude.Value},{_mainFormViewModel.Longitude.Value}...");
-                Process.Start(string.Format(Properties.Settings.Default.MapsURL, _mainFormViewModel.Latitude.Value, _mainFormViewModel.Longitude.Value));
+                _logService.Trace(
+                    $"Opening Google maps at {_mainFormViewModel.Latitude.Value},{_mainFormViewModel.Longitude.Value}...");
+                Process.Start(string.Format(Settings.Default.MapsURL, _mainFormViewModel.Latitude.Value,
+                    _mainFormViewModel.Longitude.Value));
             }
             catch (Exception ex)
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1372,7 +1391,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1400,14 +1420,12 @@ namespace PhotoLabel
                     if (formMainViewModel.Filenames.Count > 0)
                     {
                         foreach (var filename in filenames)
-                        {
                             listViewPreview.Items.Add(new ListViewItem
                             {
                                 ImageIndex = 0,
-                                Name=filename,
+                                Name = filename,
                                 ToolTipText = filename
                             });
-                        }
                     }
                     else
                     {
@@ -1415,7 +1433,8 @@ namespace PhotoLabel
                         pictureBoxImage.Image = null;
 
                         // let the user know what has happened
-                        MessageBox.Show(@"No image files found.", @"Open Directory", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                        MessageBox.Show(@"No image files found.", @"Open Directory", MessageBoxButtons.OK,
+                            MessageBoxIcon.Exclamation);
                     }
 
                     // load the first set of visible images
@@ -1460,7 +1479,6 @@ namespace PhotoLabel
             {
                 _logService.Trace($"Processing {listViewPreview.Items.Count}...");
                 foreach (ListViewItem item in listViewPreview.Items)
-                {
                     if (listViewPreview.ClientRectangle.IntersectsWith(item.GetBounds(ItemBoundsPortion.Entire)))
                     {
                         // has this preview already been loaded?
@@ -1475,7 +1493,6 @@ namespace PhotoLabel
                         // and load the preview
                         _mainFormViewModel.LoadPreview(item.Name);
                     }
-                }
             }
             catch (ArgumentException)
             {
@@ -1503,7 +1520,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1522,7 +1540,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1557,7 +1576,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ToolStripComboBoxSizes_Validating(object sender, System.ComponentModel.CancelEventArgs e)
+        private void ToolStripComboBoxSizes_Validating(object sender, CancelEventArgs e)
         {
             _logService.TraceEnter();
             try
@@ -1569,7 +1588,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1589,7 +1609,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1609,7 +1630,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1629,7 +1651,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1649,13 +1672,13 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
                 _logService.TraceExit();
             }
-
         }
 
         private void ToolStripComboBoxSizes_SelectedIndexChanged(object sender, EventArgs e)
@@ -1673,13 +1696,13 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
                 _logService.TraceExit();
             }
-
         }
 
         private void ToolStripComboBoxType_SelectedIndexChanged(object sender, EventArgs e)
@@ -1697,13 +1720,13 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
                 _logService.TraceExit();
             }
-
         }
 
         private void ToolStripButtonBold_CheckedChanged(object sender, EventArgs e)
@@ -1718,7 +1741,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1738,7 +1762,8 @@ namespace PhotoLabel
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1759,12 +1784,98 @@ namespace PhotoLabel
 
                 _logService.Trace("Setting default window state...");
                 SetWindowState(_mainFormViewModel);
+
+                _logService.Trace("Showing default file type...");
+                ShowImageFormat(_mainFormViewModel);
+
+                ShowBold(_mainFormViewModel);
+                ShowFont(_mainFormViewModel);
+                ShowSecondColour(_mainFormViewModel);
             }
             catch (Exception ex)
             {
                 _logService.Error(ex);
 
-                MessageBox.Show(Properties.Resources.ERROR_TEXT, Properties.Resources.ERROR_CAPTION, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        #region delegates
+
+        #endregion
+
+        #region variables
+
+        private readonly Image _ajaxImage = Resources.ajax;
+        private readonly Image _loadingImage = Resources.loading;
+        private readonly ILogService _logService;
+        private readonly FormMainViewModel _mainFormViewModel;
+
+        #endregion
+
+        private void ToolStripComboBoxImageType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Updating image type...");
+                _mainFormViewModel.ImageFormat =
+                    toolStripComboBoxImageType.SelectedIndex == 0 ? ImageFormat.Jpeg : ImageFormat.Png;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+
+        private void ToolStripMenuItemJpg_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Setting image type to Jpeg...");
+                _mainFormViewModel.ImageFormat = ImageFormat.Jpeg;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripMenuItemPng_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Setting image type to Png...");
+                _mainFormViewModel.ImageFormat = ImageFormat.Png;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {

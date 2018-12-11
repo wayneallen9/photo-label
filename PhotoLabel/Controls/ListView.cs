@@ -1,12 +1,17 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+
 namespace PhotoLabel.Controls
 {
     public class ListView : System.Windows.Forms.ListView
     {
         #region enumerations
-        private enum SBOrientation : int
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        [SuppressMessage("ReSharper", "UnusedMember.Global")]
+        [SuppressMessage("ReSharper", "UnusedMember.Local")]
+        private enum SBOrientation
         {
             SB_HORZ = 0x0,
             SB_VERT = 0x1,
@@ -14,6 +19,8 @@ namespace PhotoLabel.Controls
             SB_BOTH = 0x3
         }
 
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        [SuppressMessage("ReSharper", "UnusedMember.Global")]
         public enum ScrollInfoMask : uint
         {
             SIF_RANGE = 0x1,
@@ -26,8 +33,11 @@ namespace PhotoLabel.Controls
         #endregion
 
         #region structures
-        [Serializable, StructLayout(LayoutKind.Sequential)]
-        private struct SCROLLINFO
+        [Serializable]
+        [StructLayout(LayoutKind.Sequential)]
+        [SuppressMessage("ReSharper", "MemberCanBePrivate.Local")]
+        [SuppressMessage("ReSharper", "FieldCanBeMadeReadOnly.Local")]
+        private struct ScrollInfo
         {
             public uint cbSize;
             public uint fMask;
@@ -41,7 +51,7 @@ namespace PhotoLabel.Controls
 
         #region api
         [DllImport("user32.dll")]
-        private static extern bool GetScrollInfo(IntPtr hwnd, int fnBar, ref SCROLLINFO lpsi);
+        private static extern bool GetScrollInfo(IntPtr hwnd, int fnBar, ref ScrollInfo lpsi);
         #endregion
 
         #region events
@@ -49,7 +59,7 @@ namespace PhotoLabel.Controls
         #endregion
 
         #region variables
-        private int _scrollY = 0;
+        private int _scrollY;
         #endregion
 
         public ListView()
@@ -110,7 +120,7 @@ namespace PhotoLabel.Controls
         private int GetVerticalScrollbarPosition()
         {
             // set-up the structure to hold the scrollbar information
-            var info = new SCROLLINFO();
+            var info = new ScrollInfo();
             info.cbSize = (uint)Marshal.SizeOf(info);
             info.fMask = (int)ScrollInfoMask.SIF_ALL;
 

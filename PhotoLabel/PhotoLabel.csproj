@@ -200,9 +200,7 @@
   <ItemGroup>
     <None Include="Resources\icons8-watch-filled-100 %281%29.png" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="ViewModels\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="Resources\icons8-bold-filled-16.png" />
   </ItemGroup>

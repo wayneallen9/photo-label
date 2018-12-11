@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -74,6 +73,9 @@ namespace PhotoLabel
             // load the second colour image
             if (_configurationService.SecondColour != null)
                 SecondColourImage = _imageService.Circle(_configurationService.SecondColour.Value, 16, 16);
+
+            // do we automatically load the last used directory?
+            if (_recentlyUsedDirectories.Any()) Open(_recentlyUsedDirectories.First().Path);
         }
 
         private void CacheImage(int position)
@@ -204,38 +206,20 @@ namespace PhotoLabel
                 _current.Rotation = Rotations.Zero;
                 _current.Saved = false;
 
+                _logService.Trace("Checking that the output file can be deleted...");
+                if (_current.OutputFilename != null && 
+                    _current.OutputFilename != _current.Filename && 
+                    File.Exists(_current.OutputFilename))
+                {
+                    _logService.Trace($"Deleting \"{_current.OutputFilename}\"...");
+                    File.Delete(_current.OutputFilename);
+                }
+
                 _logService.Trace("Reloading image...");
                 LoadImage(_position);
 
                 _logService.Trace("Reloading preview...");
                 LoadPreview(_current.Filename);
-
-                _logService.Trace("Checking if there is a current output path...");
-                if (string.IsNullOrWhiteSpace(OutputPath))
-                {
-                    _logService.Trace("There is no current output path.  Returning...");
-                    return true;
-                }
-
-                _logService.Trace($"Getting output filename for \"{_current.Filename}\"...");
-                var outputPath = Path.Combine(OutputPath, Path.GetFileNameWithoutExtension(Filename) + ".jpg");
-
-                _logService.Trace($"Checking that \"{outputPath}\" is not \"{_current.Filename}\"...");
-                if (outputPath == _current.Filename)
-                {
-                    _logService.Trace($"\"{outputPath}\" is \"{_current.Filename}\".  Returning...");
-                    return true;
-                }
-
-                _logService.Trace($"Checking if \"{outputPath}\" exists...");
-                if (!File.Exists(outputPath))
-                {
-                    _logService.Trace($"\"{outputPath}\" does not exist.  Returning...");
-                    return true;
-                }
-
-                _logService.Trace($"Deleting \"{outputPath}\"...");
-                File.Delete(outputPath);
 
                 return true;
             }
@@ -433,6 +417,39 @@ namespace PhotoLabel
             }
         }
 
+        public ImageFormat ImageFormat
+        {
+            get => _current?.ImageFormat ?? _configurationService.ImageFormat;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(ImageFormat)} has changed...");
+                    if (Equals(_configurationService.ImageFormat, value))
+                    {
+                        _logService.Trace($"Value of {nameof(ImageFormat)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($@"Setting value of {nameof(ImageFormat)} to {value}...");
+                    _configurationService.ImageFormat = value;
+
+                    _logService.Trace("Checking if there is a current image...");
+                    if (_current != null)
+                    {
+                        _logService.Trace("There is a current image.  Updating image format...");
+                        _current.ImageFormat = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
         private void ImageThread(ImageModel imageModel, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
@@ -671,7 +688,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Checking if running on UI thread...");
-                if (Invoker.InvokeRequired)
+                if (Invoker?.InvokeRequired ?? false)
                 {
                     _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
                     Invoker.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged), propertyName);
@@ -750,7 +767,7 @@ namespace PhotoLabel
                             if (_openCancellationTokenSource.IsCancellationRequested) break;
                             _images.Add(imageMetadata);
                         }
-
+                        
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
                         _logService.Trace("Mapping to service layer...");
                         var servicesRecentlyUsedDirectories = Mapper.Map<List<Services.Models.FolderModel>>(_recentlyUsedDirectories);
@@ -776,6 +793,11 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
         }
+
+        public string OutputFilename => _current == null
+            ? string.Empty
+            : Path.Combine(OutputPath,
+                $"{Path.GetFileName(_current.Filename)}.{(_current.ImageFormat == ImageFormat.Jpeg ? "jpg" : "png")}");
 
         public string OutputPath
         {
@@ -872,14 +894,8 @@ namespace PhotoLabel
                 _imageManualResetEvent.WaitOne();
 
                 // save the image
-                using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
-                {
-                    lock (Image)
-                    {
-                        _logService.Trace($@"Saving ""{Filename}"" to ""{filename}""...");
-                        Image.Save(fileStream, ImageFormat.Jpeg);
-                    }
-                }
+                _logService.Trace("Saving image to disk...");
+                lock (Image) _imageService.Save(Image, filename, ImageFormat);
 
                 // save the metadata
                 var metadata = new Services.Models.Metadata
@@ -891,11 +907,16 @@ namespace PhotoLabel
                     FontFamily = FontName,
                     FontSize = FontSize,
                     FontType = FontType,
+                    ImageFormat = ImageFormat,
                     Latitude = Latitude,
                     Longitude = Longitude,
+                    OutputFilename = filename,
                     Rotation = Rotation
                 };
                 _imageMetadataService.Save(metadata, Filename);
+
+                // save the output file for the image
+                _current.OutputFilename = filename;
 
                 // do we need to flag it as saved?
                 if (_current.Saved) return;

@@ -13,5 +13,6 @@ namespace PhotoLabel.Services
         Image Get(string filename);
         Image Get(string filename, int width, int height);
         Image Overlay(Image image, Image overlay, int x, int y);
+        void Save(Image image, string filename, ImageFormat format);
     }
 }

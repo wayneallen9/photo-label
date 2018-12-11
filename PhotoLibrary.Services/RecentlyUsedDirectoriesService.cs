@@ -170,24 +170,5 @@ namespace PhotoLabel.Services
                 _logService.TraceExit();
             }
         }
-
-        public List<FolderModel> Remove(string folder, List<FolderModel> folders)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($@"Removing ""{folder}"" from the list of recently used directories...");
-                folders.RemoveAll(d => d.Path == folder);
-
-                _logService.Trace("Saving list of recently used files...");
-                Save(folders);
-
-                return folders;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
     }
 }

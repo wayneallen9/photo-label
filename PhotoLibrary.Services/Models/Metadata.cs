@@ -11,8 +11,10 @@ namespace PhotoLabel.Services.Models
         public string FontFamily { get; set; }
         public float FontSize { get; set; }
         public string FontType { get; set; }
+        public ImageFormat? ImageFormat { get; set; }
         public float? Latitude { get; set;}
         public float? Longitude { get; set; }
+        public string OutputFilename { get; set; }
         public Rotations Rotation { get; set; }
     }
 }

@@ -1,23 +1,25 @@
-﻿using PhotoLabel.Services.Models;
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using System.Xml.Serialization;
+
 namespace PhotoLabel.Services
 {
     public class ConfigurationService : IConfigurationService
     {
         #region variables
-        private readonly ConfigurationModel _configurationModel;
+        private readonly Models.ConfigurationModel _configurationModel;
         private readonly ILogService _logService;
+        private readonly IXmlFileSerialiser _xmlFileSerialiser;
         #endregion
 
         public ConfigurationService(
-            ILogService logService)
+            ILogService logService,
+            IXmlFileSerialiser xmlFileSerialiser)
         {
             // save dependency injections
             _logService = logService;
+            _xmlFileSerialiser = xmlFileSerialiser;
 
             // load the values from file
             _configurationModel = Load();
@@ -93,15 +95,47 @@ namespace PhotoLabel.Services
             get => _configurationModel.FontType;
             set
             {
-                // update the value
-                _configurationModel.FontType = value;
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace("Checking new value is valid...");
+                    if (value != "%" && value != "pts") throw new ArgumentOutOfRangeException(nameof(FontType));
 
-                // persist the change
-                Save();
+                    // update the value
+                    _configurationModel.FontType = value;
+
+                    // persist the change
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
             }
         }
 
-        private ConfigurationModel Load()
+        public ImageFormat ImageFormat
+        {
+            get => _configurationModel.ImageFormat;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($@"Setting value of {nameof(ImageFormat)} to {value}...");
+                    _configurationModel.ImageFormat = value;
+
+                    _logService.Trace("Saving change...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        private Models.ConfigurationModel Load()
         {
             _logService.TraceEnter();
             try
@@ -114,13 +148,13 @@ namespace PhotoLabel.Services
                 }
 
                 _logService.Trace("Getting path to configuration file...");
-                string filename = GetFilename();
+                var filename = GetFilename();
 
                 _logService.Trace($@"Checking if configuration file ""{filename}"" exists...");
                 if (!File.Exists(filename))
                 {
                     _logService.Trace($@"Configuration file ""{filename}"" does not exist.  Creating configuration...");
-                    return new ConfigurationModel
+                    return new Models.ConfigurationModel
                     {
                         Colour = Color.White.ToArgb(),
                         FontName = SystemFonts.DefaultFont.Name,
@@ -132,21 +166,14 @@ namespace PhotoLabel.Services
                 {
                     try
                     {
-                        using (var fileStream = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                        {
-                            // create the deserialiser
-                            var serialise = new XmlSerializer(typeof(ConfigurationModel));
-
-                            // deserialise the file
-                            return serialise.Deserialize(fileStream) as ConfigurationModel;
-                        }
+                        return _xmlFileSerialiser.Deserialise<Models.ConfigurationModel>(filename);
                     }
                     catch (Exception ex)
                     {
                         // the configuration could not be loaded, default it
                         _logService.Error(ex);
 
-                        return new ConfigurationModel
+                        return new Models.ConfigurationModel
                         {
                             FontName = SystemFonts.DefaultFont.Name,
                             FontSize = SystemFonts.DefaultFont.SizeInPoints,
@@ -158,34 +185,6 @@ namespace PhotoLabel.Services
             finally
             {
                 _logService.TraceExit();
-            }
-        }
-
-        public bool LoadLastFolder
-        {
-            get => _configurationModel.LoadLastFolder;
-            set
-            {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Checking if value of {nameof(LoadLastFolder)} has changed...");
-                    if (_configurationModel.LoadLastFolder == value)
-                    {
-                        _logService.Trace($"Value of {nameof(LoadLastFolder)} has not changed.  Exiting...");
-                        return;
-                    }
-
-                    _logService.Trace($"Setting value of {nameof(LoadLastFolder)} to {value}...");
-                    _configurationModel.LoadLastFolder = value;
-
-                    _logService.Trace("Persisting change...");
-                    Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
-                }
             }
         }
 
@@ -211,9 +210,6 @@ namespace PhotoLabel.Services
                 _logService.TraceEnter();
                 try
                 {
-                    // only process changes
-                    if (_configurationModel.OutputPath == value) return;
-
                     _logService.Trace($"Saving new value for {nameof(OutputPath)}...");
                     _configurationModel.OutputPath = value;
 
@@ -244,12 +240,7 @@ namespace PhotoLabel.Services
                 }
 
                 _logService.Trace($"Saving configuration to \"{filename}\"...");
-                using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
-                {
-                    var serialiser = new XmlSerializer(_configurationModel.GetType());
-
-                    serialiser.Serialize(fileStream, _configurationModel);
-                }
+                _xmlFileSerialiser.Serialise(_configurationModel, filename);
             }
             finally
             {
@@ -283,13 +274,6 @@ namespace PhotoLabel.Services
                 _logService.TraceEnter();
                 try
                 {
-                    _logService.Trace($"Checking if value of {nameof(WindowState)} has changed...");
-                    if (_configurationModel.WindowState == value)
-                    {
-                        _logService.Trace($"Value of {nameof(WindowState)} has not changed.  Exiting...");
-                        return;
-                    }
-
                     _logService.Trace($"Setting new value of {nameof(WindowState)} to {value}...");
                     _configurationModel.WindowState = value;
 
