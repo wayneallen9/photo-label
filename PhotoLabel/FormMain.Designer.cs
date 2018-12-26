@@ -86,6 +86,7 @@
             this.checkBoxTopRight = new System.Windows.Forms.CheckBox();
             this.checkBoxTopCentre = new System.Windows.Forms.CheckBox();
             this.checkBoxTopLeft = new System.Windows.Forms.CheckBox();
+            this.checkBoxAppendDateTakenToCaption = new System.Windows.Forms.CheckBox();
             this.imageListLarge = new System.Windows.Forms.ImageList(this.components);
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
@@ -131,7 +132,7 @@
             this.openToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.open;
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
             this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(155, 22);
             this.openToolStripMenuItem.Text = "&Open...";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.OpenToolStripMenuItem_Click);
             // 
@@ -141,7 +142,7 @@
             this.saveToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.save;
             this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
             this.saveToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
-            this.saveToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(155, 22);
             this.saveToolStripMenuItem.Text = "&Save";
             this.saveToolStripMenuItem.Click += new System.EventHandler(this.SaveToolStripMenuItem_Click);
             // 
@@ -150,26 +151,26 @@
             this.saveAsToolStripMenuItem.Enabled = false;
             this.saveAsToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.saveas;
             this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
-            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(155, 22);
             this.saveAsToolStripMenuItem.Text = "Save &As...";
             this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.SaveAsToolStripMenuItemSaveAs_Click);
             // 
             // toolStripMenuItemSeparator
             // 
             this.toolStripMenuItemSeparator.Name = "toolStripMenuItemSeparator";
-            this.toolStripMenuItemSeparator.Size = new System.Drawing.Size(177, 6);
+            this.toolStripMenuItemSeparator.Size = new System.Drawing.Size(152, 6);
             this.toolStripMenuItemSeparator.Visible = false;
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(177, 6);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(152, 6);
             // 
             // toolStripMenuItemExit
             // 
             this.toolStripMenuItemExit.Name = "toolStripMenuItemExit";
             this.toolStripMenuItemExit.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.X)));
-            this.toolStripMenuItemExit.Size = new System.Drawing.Size(180, 22);
+            this.toolStripMenuItemExit.Size = new System.Drawing.Size(155, 22);
             this.toolStripMenuItemExit.Text = "E&xit";
             this.toolStripMenuItemExit.Click += new System.EventHandler(this.ExitToolStripMenuItem_Click);
             // 
@@ -191,21 +192,21 @@
             this.colourToolStripMenuItem.Enabled = false;
             this.colourToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.colour;
             this.colourToolStripMenuItem.Name = "colourToolStripMenuItem";
-            this.colourToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.colourToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.colourToolStripMenuItem.Text = "&Colour...";
             this.colourToolStripMenuItem.Click += new System.EventHandler(this.ColourToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(177, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(139, 6);
             // 
             // rotateLeftToolStripMenuItem
             // 
             this.rotateLeftToolStripMenuItem.Enabled = false;
             this.rotateLeftToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_left;
             this.rotateLeftToolStripMenuItem.Name = "rotateLeftToolStripMenuItem";
-            this.rotateLeftToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.rotateLeftToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.rotateLeftToolStripMenuItem.Text = "Rotate &Left";
             this.rotateLeftToolStripMenuItem.Click += new System.EventHandler(this.RotateLeftToolStripMenuItem_Click);
             // 
@@ -214,14 +215,14 @@
             this.rotateRightToolStripMenuItem.Enabled = false;
             this.rotateRightToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_right;
             this.rotateRightToolStripMenuItem.Name = "rotateRightToolStripMenuItem";
-            this.rotateRightToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.rotateRightToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.rotateRightToolStripMenuItem.Text = "Rotate &Right";
             this.rotateRightToolStripMenuItem.Click += new System.EventHandler(this.RotateRightToolStripMenuItem_Click);
             // 
             // toolStripMenuItem3
             // 
             this.toolStripMenuItem3.Name = "toolStripMenuItem3";
-            this.toolStripMenuItem3.Size = new System.Drawing.Size(177, 6);
+            this.toolStripMenuItem3.Size = new System.Drawing.Size(139, 6);
             // 
             // fileFormatToolStripMenuItem
             // 
@@ -229,7 +230,7 @@
             this.toolStripMenuItemJpg,
             this.toolStripMenuItemPng});
             this.fileFormatToolStripMenuItem.Name = "fileFormatToolStripMenuItem";
-            this.fileFormatToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.fileFormatToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.fileFormatToolStripMenuItem.Text = "&File Format...";
             // 
             // toolStripMenuItemJpg
@@ -508,30 +509,31 @@
             this.tableLayoutPanel1.ColumnCount = 2;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.textBoxCaption, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.pictureBoxImage, 0, 0);
             this.tableLayoutPanel1.Controls.Add(this.labelFilename, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.panel1, 1, 2);
+            this.tableLayoutPanel1.Controls.Add(this.checkBoxAppendDateTakenToCaption, 0, 3);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 3;
+            this.tableLayoutPanel1.RowCount = 4;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 128F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(500, 379);
             this.tableLayoutPanel1.TabIndex = 4;
             // 
             // textBoxCaption
             // 
             this.textBoxCaption.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxCaption.Location = new System.Drawing.Point(10, 261);
-            this.textBoxCaption.Margin = new System.Windows.Forms.Padding(10);
+            this.textBoxCaption.Location = new System.Drawing.Point(10, 231);
+            this.textBoxCaption.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
             this.textBoxCaption.Multiline = true;
             this.textBoxCaption.Name = "textBoxCaption";
-            this.textBoxCaption.Size = new System.Drawing.Size(380, 108);
+            this.textBoxCaption.Size = new System.Drawing.Size(380, 118);
             this.textBoxCaption.TabIndex = 3;
             this.textBoxCaption.TextChanged += new System.EventHandler(this.TextBoxCaption_TextChanged);
             // 
@@ -543,7 +545,7 @@
             this.pictureBoxImage.Location = new System.Drawing.Point(10, 10);
             this.pictureBoxImage.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
             this.pictureBoxImage.Name = "pictureBoxImage";
-            this.pictureBoxImage.Size = new System.Drawing.Size(480, 209);
+            this.pictureBoxImage.Size = new System.Drawing.Size(480, 179);
             this.pictureBoxImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBoxImage.TabIndex = 0;
             this.pictureBoxImage.TabStop = false;
@@ -553,7 +555,7 @@
             this.labelFilename.AutoSize = true;
             this.tableLayoutPanel1.SetColumnSpan(this.labelFilename, 2);
             this.labelFilename.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelFilename.Location = new System.Drawing.Point(10, 219);
+            this.labelFilename.Location = new System.Drawing.Point(10, 189);
             this.labelFilename.Margin = new System.Windows.Forms.Padding(10, 0, 10, 10);
             this.labelFilename.Name = "labelFilename";
             this.labelFilename.Size = new System.Drawing.Size(480, 22);
@@ -572,10 +574,11 @@
             this.panel1.Controls.Add(this.checkBoxTopCentre);
             this.panel1.Controls.Add(this.checkBoxTopLeft);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(400, 261);
+            this.panel1.Location = new System.Drawing.Point(400, 231);
             this.panel1.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(90, 108);
+            this.tableLayoutPanel1.SetRowSpan(this.panel1, 2);
+            this.panel1.Size = new System.Drawing.Size(90, 138);
             this.panel1.TabIndex = 7;
             // 
             // checkBoxBottomRight
@@ -691,6 +694,18 @@
             this.checkBoxTopLeft.TabIndex = 0;
             this.checkBoxTopLeft.UseVisualStyleBackColor = true;
             this.checkBoxTopLeft.Click += new System.EventHandler(this.CheckBoxTopLeft_Click);
+            // 
+            // checkBoxAppendDateTakenToCaption
+            // 
+            this.checkBoxAppendDateTakenToCaption.AutoSize = true;
+            this.checkBoxAppendDateTakenToCaption.Location = new System.Drawing.Point(10, 352);
+            this.checkBoxAppendDateTakenToCaption.Margin = new System.Windows.Forms.Padding(10, 3, 10, 0);
+            this.checkBoxAppendDateTakenToCaption.Name = "checkBoxAppendDateTakenToCaption";
+            this.checkBoxAppendDateTakenToCaption.Size = new System.Drawing.Size(123, 17);
+            this.checkBoxAppendDateTakenToCaption.TabIndex = 8;
+            this.checkBoxAppendDateTakenToCaption.Text = "&Append date taken?";
+            this.checkBoxAppendDateTakenToCaption.UseVisualStyleBackColor = true;
+            this.checkBoxAppendDateTakenToCaption.Click += new System.EventHandler(this.CheckBoxAppendDateTakenToCaption_Click);
             // 
             // imageListLarge
             // 
@@ -837,6 +852,7 @@
         private System.Windows.Forms.ToolStripMenuItem fileFormatToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemJpg;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemPng;
+        private System.Windows.Forms.CheckBox checkBoxAppendDateTakenToCaption;
     }
 }
 

@@ -25,6 +25,19 @@ namespace PhotoLabel.Services
             _configurationModel = Load();
         }
 
+        public bool AppendDateTakenToCaption
+        {
+            get => _configurationModel.AppendDateTakenToCaption;
+            set
+            {
+                // update the value
+                _configurationModel.AppendDateTakenToCaption = value;
+
+                // save the change
+                Save();
+            }
+        }
+
         public CaptionAlignments CaptionAlignment
         {
             get => _configurationModel.CaptionAlignment;
@@ -49,6 +62,17 @@ namespace PhotoLabel.Services
                 // persist the change
                 Save();
             }
+        }
+
+        private Models.ConfigurationModel CreateConfigurationModel()
+        {
+            return new Models.ConfigurationModel
+            {
+                Colour = Color.White.ToArgb(),
+                FontName = SystemFonts.DefaultFont.Name,
+                FontSize = 10f,
+                FontType = "%"
+            };
         }
 
         public bool FontBold
@@ -154,13 +178,7 @@ namespace PhotoLabel.Services
                 if (!File.Exists(filename))
                 {
                     _logService.Trace($@"Configuration file ""{filename}"" does not exist.  Creating configuration...");
-                    return new Models.ConfigurationModel
-                    {
-                        Colour = Color.White.ToArgb(),
-                        FontName = SystemFonts.DefaultFont.Name,
-                        FontSize = SystemFonts.DefaultFont.SizeInPoints,
-                        FontType = "pts"
-                    };
+                    return CreateConfigurationModel();
                 }
                 else
                 {
@@ -173,12 +191,7 @@ namespace PhotoLabel.Services
                         // the configuration could not be loaded, default it
                         _logService.Error(ex);
 
-                        return new Models.ConfigurationModel
-                        {
-                            FontName = SystemFonts.DefaultFont.Name,
-                            FontSize = SystemFonts.DefaultFont.SizeInPoints,
-                            FontType = "pts"
-                        };
+                        return CreateConfigurationModel();
                     }
                 }
             }

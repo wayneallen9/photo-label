@@ -61,6 +61,7 @@ namespace PhotoLabel
 
                         break;
                     default:
+                        SetAppendDateTakenToCaption(formMainViewModel);
                         SetToolbarStatus(formMainViewModel);
                         ShowBold(formMainViewModel);
                         ShowCaption(formMainViewModel);
@@ -845,6 +846,34 @@ namespace PhotoLabel
             }
         }
 
+        private void SetAppendDateTakenToCaption(FormMainViewModel formMainViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                if (formMainViewModel.DateTaken != null)
+                {
+                    _logService.Trace("User can append date taken...");
+                    checkBoxAppendDateTakenToCaption.Visible = true;
+
+                    _logService.Trace($"Setting append date taken to caption to {formMainViewModel.AppendDateTakenToCaption}...");
+                    checkBoxAppendDateTakenToCaption.Checked = formMainViewModel.AppendDateTakenToCaption;
+
+                    _logService.Trace($"Setting append date taken to caption text...");
+                    checkBoxAppendDateTakenToCaption.Text = $"Append {formMainViewModel.DateTaken}?";
+                }
+                else
+                {
+                    _logService.Trace("User cannot append date taken...");
+                    checkBoxAppendDateTakenToCaption.Visible = false;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private void SetCaptionAlignment(CaptionAlignments captionAlignment)
         {
             _logService.TraceEnter();
@@ -1417,7 +1446,7 @@ namespace PhotoLabel
                     imageListLarge.Images.Add(_loadingImage);
                     listViewPreview.Clear();
 
-                    if (formMainViewModel.Filenames.Count > 0)
+                    if (filenames.Count > 0)
                     {
                         foreach (var filename in filenames)
                             listViewPreview.Items.Add(new ListViewItem
@@ -1426,6 +1455,12 @@ namespace PhotoLabel
                                 Name = filename,
                                 ToolTipText = filename
                             });
+
+                        // load the first set of visible images
+                        LoadVisiblePreviews();
+
+                        // select the first item
+                        SelectImage();
                     }
                     else
                     {
@@ -1436,12 +1471,6 @@ namespace PhotoLabel
                         MessageBox.Show(@"No image files found.", @"Open Directory", MessageBoxButtons.OK,
                             MessageBoxIcon.Exclamation);
                     }
-
-                    // load the first set of visible images
-                    LoadVisiblePreviews();
-
-                    // select the first item
-                    SelectImage();
                 }
                 finally
                 {
@@ -1776,6 +1805,9 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                _logService.Trace($"Showing append date taken to caption...");
+                SetAppendDateTakenToCaption(_mainFormViewModel);
+
                 _logService.Trace($"Showing default output path \"{_mainFormViewModel.OutputPath}\"...");
                 ShowOutputPath(_mainFormViewModel);
 
@@ -1881,6 +1913,27 @@ namespace PhotoLabel
             {
                 _logService.TraceExit();
             }
+        }
+
+        private void CheckBoxAppendDateTakenToCaption_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _mainFormViewModel.AppendDateTakenToCaption = checkBoxAppendDateTakenToCaption.Checked;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+
         }
     }
 }

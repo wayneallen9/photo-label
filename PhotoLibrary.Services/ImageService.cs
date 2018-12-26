@@ -108,6 +108,9 @@ namespace PhotoLabel.Services
                     // is there a latitude on the image
                     exifData.Latitude = GetLatitude(bitmapMetadata);
                     if (exifData.Latitude.HasValue) exifData.Longitude = GetLongitude(bitmapMetadata);
+
+                    // is there a title on the image?
+                    exifData.Title = bitmapMetadata.Title;
                 }
 
                 return exifData;
@@ -731,10 +734,11 @@ namespace PhotoLabel.Services
                     .Where(s =>
                         (
                             s.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) ||
-                            s.EndsWith("*.jpeg", StringComparison.CurrentCultureIgnoreCase) ||
-                            s.EndsWith("*.gif", StringComparison.CurrentCultureIgnoreCase) ||
-                            s.EndsWith("*.bmp", StringComparison.CurrentCultureIgnoreCase) ||
-                            s.EndsWith("*.png", StringComparison.CurrentCultureIgnoreCase)
+                            s.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith(".gif", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith(".bmp", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith(".png", StringComparison.CurrentCultureIgnoreCase) ||
+                            s.EndsWith(".tif", StringComparison.CurrentCultureIgnoreCase)
                         ) &&
                         (File.GetAttributes(s) & FileAttributes.Hidden) == 0)
                     .OrderBy(File.GetCreationTime)

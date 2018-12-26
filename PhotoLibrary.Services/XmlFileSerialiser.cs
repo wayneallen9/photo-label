@@ -22,7 +22,7 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($@"Opening ""{path}""...");
-                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Write))
+                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
                 {
                     _logService.Trace($@"Deserialising from ""{path}""...");
                     var serialiser = new XmlSerializer(typeof(T));

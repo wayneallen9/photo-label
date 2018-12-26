@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace PhotoLabel
 {
@@ -76,6 +77,42 @@ namespace PhotoLabel
 
             // do we automatically load the last used directory?
             if (_recentlyUsedDirectories.Any()) Open(_recentlyUsedDirectories.First().Path);
+        }
+
+        public bool AppendDateTakenToCaption
+        {
+            get => _current?.AppendDateTakenToCaption?? _configurationService.AppendDateTakenToCaption;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(AppendDateTakenToCaption)} has changed...");
+                    if (_configurationService.AppendDateTakenToCaption == value) {
+                        _logService.Trace($"Value of {nameof(AppendDateTakenToCaption)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting value of {nameof(AppendDateTakenToCaption)}...");
+                    _configurationService.AppendDateTakenToCaption = value;
+
+                    // save the colour to the image
+                    if (_current != null)
+                    {
+                        // save the value on the image
+                        _current.AppendDateTakenToCaption = value;
+
+                        // redraw the image on a background thread
+                        LoadImage(_position);
+                    }
+
+                    OnPropertyChanged();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
         }
 
         private void CacheImage(int position)
@@ -183,6 +220,11 @@ namespace PhotoLabel
         public int Count => _images.Count;
 
         public IList<DirectoryModel> RecentlyUsedDirectories => _recentlyUsedDirectories;
+
+        public string DateTaken
+        {
+            get => _current?.DateTaken;
+        }
 
         public bool Delete()
         {
@@ -365,7 +407,8 @@ namespace PhotoLabel
                     {
                         _logService.Trace($"Populating values from Exif data for \"{imageModel.Filename}\"...");
                         _logService.Trace($"Date taken for \"{imageModel.Filename}\" is \"{exifData.DateTaken}\"");
-                        imageModel.Caption = exifData.DateTaken;
+                        imageModel.Caption = exifData.Title ?? Path.GetFileNameWithoutExtension(imageModel.Filename);
+                        imageModel.DateTaken = exifData.DateTaken;
                         imageModel.Latitude = exifData.Latitude;
                         imageModel.Longitude = exifData.Longitude;
                     }
@@ -450,6 +493,7 @@ namespace PhotoLabel
                 }
             }
         }
+
         private void ImageThread(ImageModel imageModel, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
@@ -501,10 +545,22 @@ namespace PhotoLabel
                 var fontType = imageModel.FontType ?? _configurationService.FontType;
                 var rotation = imageModel.Rotation ?? Rotations.Zero;
 
+                // what is the caption?
+                var captionBuilder = new StringBuilder(imageModel.Caption);
+
+                // is there a date taken?
+                _logService.Trace($@"Checking if ""{imageModel.Filename}"" has a date taken set...");
+                if (imageModel.DateTaken != null && (imageModel.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption)) {
+                    if (captionBuilder.Length > 0) captionBuilder.Append(" - ");
+
+                    captionBuilder.Append(imageModel.DateTaken);
+                }
+                var caption = captionBuilder.ToString();
+
                 // create the caption
                 if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{imageModel.Caption}"".  Creating image...");
-                var captionedImage = _imageService.Caption(image, imageModel.Caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), rotation);
+                _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{caption}"".  Creating image...");
+                var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), rotation);
                 try
                 {
                     // update the image in a thread safe manner
@@ -783,6 +839,11 @@ namespace PhotoLabel
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
                         OnPropertyChanged(nameof(RecentlyUsedDirectories));
                     }
+                    else
+                    {
+                        // clear any current image
+                        _current = null;
+                    }
 
                     if (_openCancellationTokenSource.IsCancellationRequested) return;
                     OnPropertyChanged(nameof(Filenames));
@@ -903,6 +964,7 @@ namespace PhotoLabel
                     Caption = Caption,
                     CaptionAlignment = CaptionAlignment,
                     Colour = Colour.ToArgb(),
+                    DateTaken = DateTaken,
                     FontBold = FontBold,
                     FontFamily = FontName,
                     FontSize = FontSize,
