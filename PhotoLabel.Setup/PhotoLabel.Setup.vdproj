@@ -141,7 +141,7 @@
         "DisplayName" = "8:Debug"
         "IsDebugOnly" = "11:TRUE"
         "IsReleaseOnly" = "11:FALSE"
-        "OutputFilename" = "8:Debug\\PhotoLabel.Setup.msi"
+        "OutputFilename" = "8:Debug\\Photo Label Setup.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -294,7 +294,7 @@
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:PhotoLabel.Services, Version=1.2.1.0, Culture=neutral, processorArchitecture=MSIL"
+            "AssemblyAsmDisplayName" = "8:PhotoLabel.Services, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
                     "_A540563FA7D14DC93E0741A4D8BFF1E0"
@@ -501,15 +501,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Photo Label"
-        "ProductCode" = "8:{5665298C-65CF-4F30-891A-82881C834096}"
-        "PackageCode" = "8:{882A575E-CCA6-4B0E-B63C-DE2FBC0DCC89}"
+        "ProductCode" = "8:{7839D0FD-AF44-4967-9CC6-3C069B4747BF}"
+        "PackageCode" = "8:{C8BC48CC-83CB-4D73-8CFA-D59E8082C229}"
         "UpgradeCode" = "8:{D90C8F12-E181-4180-B044-02E94E7F3C25}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:1.3.0"
+        "ProductVersion" = "8:1.4.0"
         "Manufacturer" = "8:Wayne Allen"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -1037,7 +1037,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_39CE1685175142DC9AA2704A8D457FA0"
             {
-            "SourcePath" = "8:..\\PhotoLabel\\obj\\Debug\\PhotoLabel.exe"
+            "SourcePath" = "8:..\\PhotoLabel\\obj\\Release\\PhotoLabel.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_789423B483D147F4857F82F78DB65D23"
