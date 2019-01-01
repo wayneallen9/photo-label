@@ -38,6 +38,27 @@ namespace PhotoLabel.Services
             }
         }
 
+        public Color BackgroundColour
+        {
+            get => Color.FromArgb(_configurationModel.BackgroundColour);
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Setting new value of {nameof(BackgroundColour)}...");
+                    _configurationModel.BackgroundColour = value.ToArgb();
+
+                    _logService.Trace($"Persisting new value of {nameof(BackgroundColour)}...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         public CaptionAlignments CaptionAlignment
         {
             get => _configurationModel.CaptionAlignment;

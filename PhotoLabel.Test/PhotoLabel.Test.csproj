@@ -30,6 +30,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -67,15 +68,42 @@
   <ItemGroup>
     <Compile Include="ConfigurationServiceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="CaptionTest.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Resources\TopLeftWithCaption.dat" />
+    <None Include="Resources\TopLeftWithoutCaption.dat" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PhotoLibrary.Services\PhotoLabel.Services.csproj">
       <Project>{9071c57f-7b49-4c31-899b-666910064a61}</Project>
       <Name>PhotoLabel.Services</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TopLeftWithCaption.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TopLeftWithoutCaption.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TopCentreWithCaption.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TopCentreWithoutCaption.bmp" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

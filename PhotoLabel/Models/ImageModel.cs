@@ -6,6 +6,7 @@ namespace PhotoLabel.Models
     public class ImageModel
     {
         public bool? AppendDateTakenToCaption { get; set; }
+        public Color? BackgroundColour { get; set; }
         public string Caption { get; set; }
         public CaptionAlignments? CaptionAlignment { get; set; }
         public Color? Colour { get; set; }

@@ -9,6 +9,7 @@ namespace PhotoLabel
         public AutoMapperProfile()
         {
             CreateMap<Services.Models.Metadata, Models.ImageModel>()
+                .ForMember(d => d.BackgroundColour, o => o.MapFrom(s => Color.FromArgb(s.BackgroundColour)))
                 .ForMember(d => d.Colour, o => o.MapFrom(s => Color.FromArgb(s.Colour)))
                 .ForMember(d => d.ExifLoaded, o => o.Ignore())
                 .ForMember(d => d.MetadataExists, o => o.UseValue(true))

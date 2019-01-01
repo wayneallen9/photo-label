@@ -6,6 +6,7 @@ namespace PhotoLabel.Services
     public interface IConfigurationService
     {
         bool AppendDateTakenToCaption { get; set; }
+        Color BackgroundColour { get; set; }
         CaptionAlignments CaptionAlignment { get; set; }
         Color Colour { get; set; }
         bool FontBold { get; set; }

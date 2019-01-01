@@ -57,6 +57,9 @@
             this.toolStripButtonBold = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonColour = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonSecondColour = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            this.toolStripButtonBackgroundColour = new System.Windows.Forms.ToolStripButton();
+            this.toolStripComboBoxTransparency = new PhotoLabel.Controls.ToolStripComboBox();
             this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonRotateLeft = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonRotateRight = new System.Windows.Forms.ToolStripButton();
@@ -91,6 +94,7 @@
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.listViewPreview = new PhotoLabel.Controls.ListView();
+            this.toolTipForm = new System.Windows.Forms.ToolTip(this.components);
             this.menuStrip1.SuspendLayout();
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
@@ -265,6 +269,9 @@
             this.toolStripButtonBold,
             this.toolStripButtonColour,
             this.toolStripButtonSecondColour,
+            this.toolStripSeparator2,
+            this.toolStripButtonBackgroundColour,
+            this.toolStripComboBoxTransparency,
             this.toolStripSeparator4,
             this.toolStripButtonRotateLeft,
             this.toolStripButtonRotateRight,
@@ -278,7 +285,6 @@
             this.toolStripButtonLocation});
             this.toolStripToolbar.Location = new System.Drawing.Point(0, 24);
             this.toolStripToolbar.Name = "toolStripToolbar";
-            this.toolStripToolbar.ShowItemToolTips = false;
             this.toolStripToolbar.Size = new System.Drawing.Size(800, 25);
             this.toolStripToolbar.TabIndex = 1;
             this.toolStripToolbar.Text = "toolStrip1";
@@ -323,6 +329,7 @@
             "100"});
             this.toolStripComboBoxSizes.Name = "toolStripComboBoxSizes";
             this.toolStripComboBoxSizes.Size = new System.Drawing.Size(50, 23);
+            this.toolStripComboBoxSizes.ToolTipText = "Font Size";
             this.toolStripComboBoxSizes.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxSizes_SelectedIndexChanged);
             this.toolStripComboBoxSizes.Validating += new System.ComponentModel.CancelEventHandler(this.ToolStripComboBoxSizes_Validating);
             this.toolStripComboBoxSizes.Validated += new System.EventHandler(this.ToolStripComboBoxSizes_Validated);
@@ -336,6 +343,7 @@
             "pts"});
             this.toolStripComboBoxType.Name = "toolStripComboBoxType";
             this.toolStripComboBoxType.Size = new System.Drawing.Size(40, 23);
+            this.toolStripComboBoxType.ToolTipText = "Font Scale";
             this.toolStripComboBoxType.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxType_SelectedIndexChanged);
             this.toolStripComboBoxType.Validated += new System.EventHandler(this.ToolStripComboBoxType_Validated);
             // 
@@ -371,9 +379,36 @@
             this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 0, 0, 2);
             this.toolStripButtonSecondColour.Name = "toolStripButtonSecondColour";
             this.toolStripButtonSecondColour.Size = new System.Drawing.Size(23, 23);
-            this.toolStripButtonSecondColour.ToolTipText = "Change colour";
+            this.toolStripButtonSecondColour.ToolTipText = "Use Previous Colour";
             this.toolStripButtonSecondColour.Visible = false;
             this.toolStripButtonSecondColour.Click += new System.EventHandler(this.ToolStripButtonSecondColour_Click);
+            // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 25);
+            // 
+            // toolStripButtonBackgroundColour
+            // 
+            this.toolStripButtonBackgroundColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonBackgroundColour.Image = global::PhotoLabel.Properties.Resources.fill;
+            this.toolStripButtonBackgroundColour.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonBackgroundColour.Name = "toolStripButtonBackgroundColour";
+            this.toolStripButtonBackgroundColour.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonBackgroundColour.Text = "Caption Background Colour";
+            this.toolStripButtonBackgroundColour.ToolTipText = "Caption Background Colour";
+            this.toolStripButtonBackgroundColour.Click += new System.EventHandler(this.ToolStripButtonBackgroundColour_Click);
+            // 
+            // toolStripComboBoxTransparency
+            // 
+            this.toolStripComboBoxTransparency.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.toolStripComboBoxTransparency.Name = "toolStripComboBoxTransparency";
+            this.toolStripComboBoxTransparency.Size = new System.Drawing.Size(80, 25);
+            this.toolStripComboBoxTransparency.ToolTipText = "Change Background Transparency";
+            this.toolStripComboBoxTransparency.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.ToolStripComboBoxTransparency_DrawItem);
+            this.toolStripComboBoxTransparency.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxTransparency_SelectedIndexChanged);
+            this.toolStripComboBoxTransparency.Validating += new System.ComponentModel.CancelEventHandler(this.ToolStripComboBoxTransparency_Validating);
+            this.toolStripComboBoxTransparency.Validated += new System.EventHandler(this.ToolStripComboBoxTransparency_Validated);
             // 
             // toolStripSeparator4
             // 
@@ -437,7 +472,7 @@
             this.toolStripButtonDontSave.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonDontSave.Name = "toolStripButtonDontSave";
             this.toolStripButtonDontSave.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButtonDontSave.Text = "Do not save";
+            this.toolStripButtonDontSave.Text = "Next >";
             this.toolStripButtonDontSave.Click += new System.EventHandler(this.ToolStripButtonDontSave_Click);
             // 
             // toolStripComboBoxImageType
@@ -448,6 +483,7 @@
             "PNG"});
             this.toolStripComboBoxImageType.Name = "toolStripComboBoxImageType";
             this.toolStripComboBoxImageType.Size = new System.Drawing.Size(75, 25);
+            this.toolStripComboBoxImageType.ToolTipText = "Save File Type";
             this.toolStripComboBoxImageType.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxImageType_SelectedIndexChanged);
             // 
             // toolStripButtonDelete
@@ -458,7 +494,8 @@
             this.toolStripButtonDelete.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonDelete.Name = "toolStripButtonDelete";
             this.toolStripButtonDelete.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButtonDelete.Text = "Delete";
+            this.toolStripButtonDelete.Text = "Delete Caption";
+            this.toolStripButtonDelete.ToolTipText = "Delete Caption";
             this.toolStripButtonDelete.Click += new System.EventHandler(this.ToolStripButtonDelete_Click);
             // 
             // toolStripSeparator5
@@ -503,6 +540,7 @@
             // colorDialog
             // 
             this.colorDialog.AnyColor = true;
+            this.colorDialog.FullOpen = true;
             // 
             // tableLayoutPanel1
             // 
@@ -692,6 +730,7 @@
             this.checkBoxTopLeft.Name = "checkBoxTopLeft";
             this.checkBoxTopLeft.Size = new System.Drawing.Size(30, 30);
             this.checkBoxTopLeft.TabIndex = 0;
+            this.toolTipForm.SetToolTip(this.checkBoxTopLeft, "Caption Top Left");
             this.checkBoxTopLeft.UseVisualStyleBackColor = true;
             this.checkBoxTopLeft.Click += new System.EventHandler(this.CheckBoxTopLeft_Click);
             // 
@@ -853,6 +892,10 @@
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemJpg;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemPng;
         private System.Windows.Forms.CheckBox checkBoxAppendDateTakenToCaption;
+        private System.Windows.Forms.ToolStripButton toolStripButtonBackgroundColour;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
+        private Controls.ToolStripComboBox toolStripComboBoxTransparency;
+        private System.Windows.Forms.ToolTip toolTipForm;
     }
 }
 
