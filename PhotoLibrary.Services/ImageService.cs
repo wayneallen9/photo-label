@@ -48,7 +48,7 @@ namespace PhotoLabel.Services
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-                    graphics.FillEllipse(brush, 1, 1, width-2, height-2);
+                    graphics.FillEllipse(brush, 1, 1, width - 2, height - 2);
                 }
 
                 return image;
@@ -215,7 +215,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Rotations rotation)
+        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, Rotations rotation)
         {
             _logService.TraceEnter();
             try
@@ -224,9 +224,9 @@ namespace PhotoLabel.Services
                 lock (original)
                 {
                     _logService.Trace("Creating a copy of the original image...");
-                    image = new Bitmap(original);
+                    image = Duplicate(original);
                 }
-                
+
                 // work out the style of the font
                 var fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
 
@@ -235,9 +235,9 @@ namespace PhotoLabel.Services
 
                 // create a copy of the rotated image (to workaround the problem drawing strings
                 // outside the bounds of the unrotated image)
-                var rotatedImage = new Bitmap(image);
+                var rotatedImage = Duplicate(image);
 
-                // is there a caption to display
+                // is there a caption to display?
                 if (string.IsNullOrWhiteSpace(caption)) return rotatedImage;
 
                 _logService.Trace("Getting graphics manager for new image...");
@@ -274,40 +274,40 @@ namespace PhotoLabel.Services
                         switch (captionAlignment)
                         {
                             case CaptionAlignments.BottomCentre:
-                                CaptionBottomCentre(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionBottomCentre(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.BottomLeft:
                                 // draw them on the image
-                                CaptionBottomLeft(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionBottomLeft(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.BottomRight:
-                                CaptionBottomRight(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionBottomRight(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleCentre:
-                                CaptionMiddleCentre(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionMiddleCentre(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleLeft:
-                                CaptionMiddleLeft(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionMiddleLeft(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleRight:
-                                CaptionMiddleRight(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionMiddleRight(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopCentre:
-                                CaptionTopCentre(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionTopCentre(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopLeft:
-                                CaptionTopLeft(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionTopLeft(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopRight:
-                                CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush);
+                                CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
 
                                 break;
                             default:
@@ -320,6 +320,33 @@ namespace PhotoLabel.Services
                 image.Dispose();
 
                 return rotatedImage;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private Bitmap Duplicate(Image source)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Creating image {source.Width}px x {source.Height}px...");
+                var image = new Bitmap(source.Width, source.Height, source.PixelFormat);
+
+                _logService.Trace("Copying source image onto copy...");
+                using (var imageGraphics = Graphics.FromImage(image))
+                {
+                    _logService.Trace("Setting up graphics manager...");
+                    imageGraphics.SmoothingMode = SmoothingMode.HighQuality;
+                    imageGraphics.CompositingQuality = CompositingQuality.HighQuality;
+                    imageGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                    imageGraphics.DrawImage(source, 0, 0, source.Width, source.Height);
+                }
+
+                return image;
             }
             finally
             {
@@ -344,7 +371,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionBottomCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionBottomCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -354,7 +381,7 @@ namespace PhotoLabel.Services
                 var lines = _lineWrapService.WrapToFitFromBottom(graphics, imageSize, caption, font);
 
                 // draw each line from the bottom
-                var y = imageSize.Height - 10f;
+                float y = imageSize.Height;
                 for (var lineNumber = lines.Count - 1; lineNumber != -1; lineNumber--)
                 {
                     // get this line
@@ -369,6 +396,11 @@ namespace PhotoLabel.Services
                     // workout the location for this line
                     y -= lineSize.Height;
                     var location = new PointF((imageSize.Width - lineSize.Width) / 2, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                 }
             }
@@ -378,7 +410,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionBottomLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionBottomLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -388,7 +420,7 @@ namespace PhotoLabel.Services
                 var lines = _lineWrapService.WrapToFitFromBottom(graphics, imageSize, caption, font);
 
                 // draw each line from the bottom
-                var y = imageSize.Height - 10f;
+                float y = imageSize.Height;
                 for (var lineNumber = lines.Count - 1; lineNumber != -1; lineNumber--)
                 {
                     // get this line
@@ -402,7 +434,12 @@ namespace PhotoLabel.Services
 
                     // workout the location for this line
                     y -= lineSize.Height;
-                    var location = new PointF(10, y);
+                    var location = new PointF(0, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                 }
             }
@@ -412,7 +449,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionBottomRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionBottomRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -422,7 +459,7 @@ namespace PhotoLabel.Services
                 var lines = _lineWrapService.WrapToFitFromBottom(graphics, imageSize, caption, font);
 
                 // draw each line from the bottom
-                var y = imageSize.Height - 10f;
+                float y = imageSize.Height;
                 for (var lineNumber = lines.Count - 1; lineNumber != -1; lineNumber--)
                 {
                     // get this line
@@ -436,7 +473,12 @@ namespace PhotoLabel.Services
 
                     // workout the location for this line
                     y -= lineSize.Height;
-                    var location = new PointF(imageSize.Width - lineSize.Width - 10, y);
+                    var location = new PointF(imageSize.Width - lineSize.Width, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                 }
             }
@@ -446,7 +488,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionMiddleCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionMiddleCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -474,7 +516,13 @@ namespace PhotoLabel.Services
 
                     // workout the location for this line
                     var location = new PointF((imageSize.Width - lineSize.Width) / 2, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
+
                     y += lineSize.Height;
                 }
             }
@@ -484,7 +532,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionMiddleLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionMiddleLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -511,7 +559,12 @@ namespace PhotoLabel.Services
                     var lineSize = graphics.MeasureString(line, font);
 
                     // workout the location for this line
-                    var location = new PointF(10, y);
+                    var location = new PointF(0, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
@@ -522,7 +575,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionMiddleRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionMiddleRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -549,7 +602,12 @@ namespace PhotoLabel.Services
                     var lineSize = graphics.MeasureString(line, font);
 
                     // workout the location for this line
-                    var location = new PointF(imageSize.Width - lineSize.Width - 10, y);
+                    var location = new PointF(imageSize.Width - lineSize.Width, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
@@ -560,7 +618,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionTopCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionTopCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -570,7 +628,7 @@ namespace PhotoLabel.Services
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // work out the starting position
-                var y = 10f;
+                var y = 0f;
                 foreach (var iterator in lines)
                 {
                     // get this line
@@ -584,6 +642,11 @@ namespace PhotoLabel.Services
 
                     // workout the location for this line
                     var location = new PointF((imageSize.Width - lineSize.Width) / 2, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
@@ -594,7 +657,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionTopLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionTopLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -604,7 +667,7 @@ namespace PhotoLabel.Services
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // work out the starting position
-                var y = 10f;
+                var y = 0f;
                 foreach (var iterator in lines)
                 {
                     // get this line
@@ -617,7 +680,12 @@ namespace PhotoLabel.Services
                     var lineSize = graphics.MeasureString(line, font);
 
                     // workout the location for this line
-                    var location = new PointF(10, y);
+                    var location = new PointF(0, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
@@ -628,7 +696,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void CaptionTopRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush)
+        private void CaptionTopRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
             _logService.TraceEnter();
             try
@@ -638,7 +706,7 @@ namespace PhotoLabel.Services
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // work out the starting position
-                var y = 10f;
+                var y = 0f;
                 foreach (var iterator in lines)
                 {
                     // get this line
@@ -651,7 +719,12 @@ namespace PhotoLabel.Services
                     var lineSize = graphics.MeasureString(line, font);
 
                     // workout the location for this line
-                    var location = new PointF(imageSize.Width - lineSize.Width - 10, y);
+                    var location = new PointF(imageSize.Width - lineSize.Width, y);
+
+                    // draw the background
+                    graphics.FillRectangle(new SolidBrush(backgroundColour), location.X, location.Y, lineSize.Width, lineSize.Height);
+
+                    // draw the caption
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
@@ -752,14 +825,33 @@ namespace PhotoLabel.Services
 
         public void Save(Image image, string filename, ImageFormat imageFormat)
         {
+            System.Drawing.Imaging.ImageFormat imagingImageFormat;
+
             _logService.TraceEnter();
             try
             {
+                _logService.Trace("Getting format to save...");
+                switch (imageFormat)
+                {
+                    case ImageFormat.Bmp:
+                        imagingImageFormat = System.Drawing.Imaging.ImageFormat.Bmp;
+
+                        break;
+                    case ImageFormat.Jpeg:
+                        imagingImageFormat = System.Drawing.Imaging.ImageFormat.Jpeg;
+
+                        break;
+                    default:
+                        imagingImageFormat = System.Drawing.Imaging.ImageFormat.Png;
+
+                        break;
+                }
+
                 _logService.Trace($@"Creating ""{filename}""...");
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
                     _logService.Trace($@"Saving image to ""{filename}""...");
-                    image.Save(fileStream, imageFormat == ImageFormat.Jpeg ? System.Drawing.Imaging.ImageFormat.Jpeg : System.Drawing.Imaging.ImageFormat.Png);
+                    image.Save(fileStream, imagingImageFormat);
                 }
             }
             finally

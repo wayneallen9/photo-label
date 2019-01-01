@@ -115,6 +115,42 @@ namespace PhotoLabel
             }
         }
 
+        public Color BackgroundColour
+        {
+            get => _current?.BackgroundColour ?? _configurationService.BackgroundColour;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($@"Checking if value of {nameof(BackgroundColour)} has changed...");
+                    if (BackgroundColour == value)
+                    {
+                        _logService.Trace($@"Value of {nameof(BackgroundColour)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    if (_current != null)
+                    {
+                        _logService.Trace($@"Setting new value of {nameof(BackgroundColour)} for existing image...");
+                        _current.BackgroundColour = value;
+
+                        // redraw the image
+                        LoadImage(_position);
+                    }
+
+                    // save this as the default background color
+                    _configurationService.BackgroundColour = value;
+
+                    OnPropertyChanged();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         private void CacheImage(int position)
         {
             _logService.TraceEnter();
@@ -537,6 +573,7 @@ namespace PhotoLabel
                 var image = task.Result;
 
                 // work out the values to use
+                var backgroundColour = imageModel.BackgroundColour ?? _configurationService.BackgroundColour;
                 var captionAlignment = imageModel.CaptionAlignment ?? _configurationService.CaptionAlignment;
                 var colour = imageModel.Colour ?? _configurationService.Colour;
                 var fontBold = imageModel.FontBold ?? _configurationService.FontBold;
@@ -560,7 +597,7 @@ namespace PhotoLabel
                 // create the caption
                 if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{caption}"".  Creating image...");
-                var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), rotation);
+                var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), backgroundColour, rotation);
                 try
                 {
                     // update the image in a thread safe manner
@@ -858,7 +895,7 @@ namespace PhotoLabel
         public string OutputFilename => _current == null
             ? string.Empty
             : Path.Combine(OutputPath,
-                $"{Path.GetFileName(_current.Filename)}.{(_current.ImageFormat == ImageFormat.Jpeg ? "jpg" : "png")}");
+                $"{Path.GetFileName(_current.Filename)}.{(_current.ImageFormat == ImageFormat.Jpeg ? "jpg" : _current.ImageFormat == ImageFormat.Bmp ? "bmp" : "png")}");
 
         public string OutputPath
         {
@@ -908,8 +945,8 @@ namespace PhotoLabel
                 _logService.Trace($"Current folder is \"{folder.Path}\"");
 
                 // save this file as the last used file for this folder
-                _logService.Trace($"Last selected file in folder \"{folder.Path}\" is \"{_current?.Filename}\"");
-                folder.Filename = _current?.Filename;
+                _logService.Trace($"Last selected file in folder \"{folder.Path}\" is \"{Filenames[_position]}\"");
+                folder.Filename = Filenames[_position];
 
                 // map to the service layer
                 _logService.Trace("Saving recently used folder change...");
@@ -961,6 +998,7 @@ namespace PhotoLabel
                 // save the metadata
                 var metadata = new Services.Models.Metadata
                 {
+                    BackgroundColour = BackgroundColour.ToArgb(),
                     Caption = Caption,
                     CaptionAlignment = CaptionAlignment,
                     Colour = Colour.ToArgb(),

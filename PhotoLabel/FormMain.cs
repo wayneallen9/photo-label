@@ -1,29 +1,39 @@
-﻿using System;
+﻿using PhotoLabel.Properties;
+using PhotoLabel.Services;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using PhotoLabel.Properties;
-using PhotoLabel.Services;
 
 namespace PhotoLabel
 {
     public partial class FormMain : Form, IInvoker
     {
+        #region variables
+        private readonly IPercentageService _percentageService;
+        #endregion
+
         public FormMain(
             ILogService logService,
+            IPercentageService percentageService,
             FormMainViewModel mainFormViewModel)
         {
             // save dependencies
             _logService = logService;
+            _percentageService = percentageService;
 
             InitializeComponent();
 
             // initialise the font list
             PopulateFonts();
+
+            // initialise the transparency list
+            PopulateTransparency();
 
             // initialise the view model
             _mainFormViewModel = mainFormViewModel;
@@ -73,6 +83,7 @@ namespace PhotoLabel
                         ShowPicture(formMainViewModel);
                         ShowProgress(formMainViewModel);
                         ShowSecondColour(formMainViewModel);
+                        ShowTransparency(formMainViewModel);
                         SetToolbarStatus(formMainViewModel);
 
                         break;
@@ -170,8 +181,12 @@ namespace PhotoLabel
                     rotateLeftToolStripMenuItem.Enabled =
                         rotateRightToolStripMenuItem.Enabled =
                             saveToolStripMenuItem.Enabled =
-                                saveAsToolStripMenuItem.Enabled = mainFormViewModel.Position > -1;
+                                saveAsToolStripMenuItem.Enabled = 
+                                    toolStripButtonBackgroundColour.Enabled = 
+                                        toolStripComboBoxTransparency.Enabled = 
+                                            mainFormViewModel.Position > -1;
                 toolStripButtonColour.Enabled =
+                    toolStripButtonSecondColour.Enabled = 
                     toolStripButtonDontSave.Enabled =
                         toolStripButtonRotateLeft.Enabled =
                             toolStripButtonRotateRight.Enabled =
@@ -456,6 +471,32 @@ namespace PhotoLabel
                 {
                     toolStripButtonSecondColour.Image = _mainFormViewModel.SecondColourImage;
                     toolStripButtonSecondColour.Visible = true;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowTransparency(FormMainViewModel formMainViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // get the alpha of the background colour
+                var alpha = formMainViewModel.BackgroundColour.A;
+
+                if (alpha == 0)
+                {
+                    toolStripComboBoxTransparency.Text = "Off";
+                }
+                else
+                {
+                    // get the percentage
+                    var percentage = _percentageService.ConvertToString(alpha / 255f);
+
+                    toolStripComboBoxTransparency.Text = percentage;
                 }
             }
             finally
@@ -1483,6 +1524,29 @@ namespace PhotoLabel
             }
         }
 
+        private void PopulateTransparency()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // add the option to turn the background off
+                toolStripComboBoxTransparency.Items.Add("Off");
+
+                // get the format for percentages
+                var numberFormatInfo = CultureInfo.CurrentCulture.NumberFormat.Clone() as NumberFormatInfo;
+                numberFormatInfo.PercentDecimalDigits = 0;
+
+                toolStripComboBoxTransparency.Items.Add(0.25.ToString("P", numberFormatInfo));
+                toolStripComboBoxTransparency.Items.Add(0.5.ToString("P", numberFormatInfo));
+                toolStripComboBoxTransparency.Items.Add(0.75.ToString("P", numberFormatInfo));
+                toolStripComboBoxTransparency.Items.Add(1.ToString("P", numberFormatInfo));
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         public void PreviewLoadedHandler(object sender, PreviewLoadedEventArgs e)
         {
             _logService.TraceEnter();
@@ -1823,6 +1887,7 @@ namespace PhotoLabel
                 ShowBold(_mainFormViewModel);
                 ShowFont(_mainFormViewModel);
                 ShowSecondColour(_mainFormViewModel);
+                ShowTransparency(_mainFormViewModel);
             }
             catch (Exception ex)
             {
@@ -1934,6 +1999,199 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
 
+        }
+
+        private void ToolStripButtonBackgroundColour_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Setting default background color...");
+                colorDialog.Color = _mainFormViewModel.BackgroundColour;
+
+                _logService.Trace("Showing color dialog...");
+                if (colorDialog.ShowDialog() != DialogResult.OK) return;
+
+                _logService.Trace("Getting transparency...");
+                var transparency = toolStripComboBoxTransparency.Text == "Off" ? 0 : _percentageService.ConvertToFloat(toolStripComboBoxTransparency.Text);
+
+                _logService.Trace("Setting background color...");
+                _mainFormViewModel.BackgroundColour = Color.FromArgb((byte)(transparency * 255), colorDialog.Color);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxTransparency_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // get the target control
+                if (!(sender is ToolStripComboBox comboBox)) return;
+
+                // make sure it is within the range
+                if (e.Index <= -1 || e.Index >= comboBox.Items.Count) return;
+
+                // draw the background
+                e.DrawBackground();
+
+                if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
+                    e.DrawFocusRectangle();
+
+                // get the transparency
+                var transparency = comboBox.Items[e.Index].ToString();
+                byte alpha = 255;
+                if (transparency != "Off")
+                {
+                    // get the percentage value
+                    var transparencyValue = _percentageService.ConvertToFloat(transparency);
+                    alpha = (byte)(255 * transparencyValue);
+                }
+
+                // create the colour
+                var textColour = Color.FromArgb(alpha, e.ForeColor);
+
+                using (var textBrush = new SolidBrush(textColour))
+                {
+                    // get the name of the font
+                    var fontFamilyName = comboBox.Items[e.Index].ToString();
+
+                    // create the font
+                    var font = new Font(fontFamilyName, 10, FontStyle.Regular);
+
+                    // draw the font on the control
+                    e.Graphics.DrawString(fontFamilyName, font, textBrush, e.Bounds);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxTransparency_Validating(object sender, CancelEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace(@"Checking for ""Off""...");
+                if (toolStripComboBoxTransparency.Text == "Off")
+                {
+                    _logService.Trace(@"Value is ""Off"".  Returning...");
+                    e.Cancel = false;
+
+                    return;
+                }
+
+                _logService.Trace($@"Trying to parse ""{toolStripComboBoxTransparency.Text}"" as a percentage...");
+                _percentageService.ConvertToFloat(toolStripComboBoxTransparency.Text);
+
+                _logService.Trace($@"""{toolStripComboBoxTransparency.Text}"" is a valid percentage");
+                e.Cancel = false;
+            }
+            catch (FormatException)
+            {
+                _logService.Trace($@"""{toolStripComboBoxTransparency.Text}"" is not a valid percentage");
+                e.Cancel = true;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxTransparency_Validated(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace(@"Checking for ""Off""...");
+                if (toolStripComboBoxTransparency.Text == "Off")
+                {
+                    _logService.Trace(@"Value is ""Off"".  Returning...");
+                    _mainFormViewModel.BackgroundColour = Color.FromArgb(0, _mainFormViewModel.BackgroundColour);
+
+                    return;
+                }
+                
+                _logService.Trace($@"Trying to parse ""{toolStripComboBoxTransparency.Text}"" as a percentage...");
+                var percentage = _percentageService.ConvertToFloat(toolStripComboBoxTransparency.Text);
+
+                _logService.Trace($@"""{toolStripComboBoxTransparency.Text}"" is a valid percentage");
+                toolStripComboBoxTransparency.Text = _percentageService.ConvertToString(percentage);
+
+                _logService.Trace($@"Setting backgrond colour...");
+                _mainFormViewModel.BackgroundColour = Color.FromArgb((int)(255 * percentage), _mainFormViewModel.BackgroundColour);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripComboBoxTransparency_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                switch (toolStripComboBoxTransparency.SelectedIndex)
+                {
+                    case -1:
+                        break;
+                    case 0:
+                        _mainFormViewModel.BackgroundColour = Color.FromArgb(0, _mainFormViewModel.BackgroundColour);
+
+                        break;
+                    default:
+                        var percentage = _percentageService.ConvertToFloat(toolStripComboBoxTransparency.Text);
+
+                        _mainFormViewModel.BackgroundColour = Color.FromArgb((byte)(percentage * 255), _mainFormViewModel.BackgroundColour);
+
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ namespace PhotoLabel.Services.Models
     public class ConfigurationModel
     {
         public bool AppendDateTakenToCaption { get; set; }
+        public int BackgroundColour { get; set; }
         public CaptionAlignments CaptionAlignment { get; set; }
         public int Colour { get; set; }
         public bool FontBold { get; set; }

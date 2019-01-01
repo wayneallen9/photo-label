@@ -28,6 +28,20 @@ namespace PhotoLabel.Test
         }
 
         [TestMethod]
+        public void BackgroundColour()
+        {
+            var configurationService = new Services.ConfigurationService(_logService, _xmlFileSerialiser)
+            {
+                BackgroundColour=Color.AliceBlue
+            };
+
+            // test the get
+            var backgroundColour = configurationService.BackgroundColour;
+
+            Assert.AreEqual(Color.AliceBlue.ToArgb(), backgroundColour.ToArgb());
+        }
+
+        [TestMethod]
         public void CaptionAlignment()
         {
             var configurationService = new Services.ConfigurationService(_logService, _xmlFileSerialiser)
