@@ -73,7 +73,7 @@
     <Compile Include="IXmlFileSerialiser.cs" />
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LogService.cs" />
-    <Compile Include="Models\ConfigurationModel.cs" />
+    <Compile Include="Models\Configuration.cs" />
     <Compile Include="Models\FolderModel.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />

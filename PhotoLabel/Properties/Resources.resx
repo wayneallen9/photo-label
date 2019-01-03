@@ -136,9 +136,6 @@
   <data name="top_right" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\top-right.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="ERROR_CAPTION" xml:space="preserve">
-    <value>Unexpected Error</value>
-  </data>
   <data name="rotate_left" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\icons8-rotate-left-16.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -198,5 +195,8 @@
   </data>
   <data name="fill" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\fill.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ERROR_CAPTION" xml:space="preserve">
+    <value>Unexpected Error</value>
   </data>
 </root>

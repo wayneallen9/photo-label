@@ -59,6 +59,7 @@
             this.toolStripButtonSecondColour = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonBackgroundColour = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButtonBackgroundSecondColour = new System.Windows.Forms.ToolStripButton();
             this.toolStripComboBoxTransparency = new PhotoLabel.Controls.ToolStripComboBox();
             this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButtonRotateLeft = new System.Windows.Forms.ToolStripButton();
@@ -271,6 +272,7 @@
             this.toolStripButtonSecondColour,
             this.toolStripSeparator2,
             this.toolStripButtonBackgroundColour,
+            this.toolStripButtonBackgroundSecondColour,
             this.toolStripComboBoxTransparency,
             this.toolStripSeparator4,
             this.toolStripButtonRotateLeft,
@@ -366,7 +368,7 @@
             this.toolStripButtonColour.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonColour.Name = "toolStripButtonColour";
             this.toolStripButtonColour.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButtonColour.Text = "Colour";
+            this.toolStripButtonColour.Text = "Choose Colour...";
             this.toolStripButtonColour.Click += new System.EventHandler(this.ToolStripButtonColour_Click);
             // 
             // toolStripButtonSecondColour
@@ -379,7 +381,8 @@
             this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 0, 0, 2);
             this.toolStripButtonSecondColour.Name = "toolStripButtonSecondColour";
             this.toolStripButtonSecondColour.Size = new System.Drawing.Size(23, 23);
-            this.toolStripButtonSecondColour.ToolTipText = "Use Previous Colour";
+            this.toolStripButtonSecondColour.Text = "Set Colour";
+            this.toolStripButtonSecondColour.ToolTipText = "Set Colour";
             this.toolStripButtonSecondColour.Visible = false;
             this.toolStripButtonSecondColour.Click += new System.EventHandler(this.ToolStripButtonSecondColour_Click);
             // 
@@ -391,20 +394,31 @@
             // toolStripButtonBackgroundColour
             // 
             this.toolStripButtonBackgroundColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonBackgroundColour.Enabled = false;
             this.toolStripButtonBackgroundColour.Image = global::PhotoLabel.Properties.Resources.fill;
             this.toolStripButtonBackgroundColour.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonBackgroundColour.Name = "toolStripButtonBackgroundColour";
             this.toolStripButtonBackgroundColour.Size = new System.Drawing.Size(23, 22);
-            this.toolStripButtonBackgroundColour.Text = "Caption Background Colour";
-            this.toolStripButtonBackgroundColour.ToolTipText = "Caption Background Colour";
+            this.toolStripButtonBackgroundColour.Text = "Choose Background Colour...";
+            this.toolStripButtonBackgroundColour.ToolTipText = "Choose Background Colour...";
             this.toolStripButtonBackgroundColour.Click += new System.EventHandler(this.ToolStripButtonBackgroundColour_Click);
+            // 
+            // toolStripButtonBackgroundSecondColour
+            // 
+            this.toolStripButtonBackgroundSecondColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonBackgroundSecondColour.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButtonBackgroundSecondColour.Name = "toolStripButtonBackgroundSecondColour";
+            this.toolStripButtonBackgroundSecondColour.Size = new System.Drawing.Size(23, 22);
+            this.toolStripButtonBackgroundSecondColour.Text = "Set Background Colour";
+            this.toolStripButtonBackgroundSecondColour.Visible = false;
+            this.toolStripButtonBackgroundSecondColour.Click += new System.EventHandler(this.ToolStripButtonBackgroundSecondColour_Click);
             // 
             // toolStripComboBoxTransparency
             // 
             this.toolStripComboBoxTransparency.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
             this.toolStripComboBoxTransparency.Name = "toolStripComboBoxTransparency";
             this.toolStripComboBoxTransparency.Size = new System.Drawing.Size(80, 25);
-            this.toolStripComboBoxTransparency.ToolTipText = "Change Background Transparency";
+            this.toolStripComboBoxTransparency.ToolTipText = "Background Transparency";
             this.toolStripComboBoxTransparency.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.ToolStripComboBoxTransparency_DrawItem);
             this.toolStripComboBoxTransparency.SelectedIndexChanged += new System.EventHandler(this.ToolStripComboBoxTransparency_SelectedIndexChanged);
             this.toolStripComboBoxTransparency.Validating += new System.ComponentModel.CancelEventHandler(this.ToolStripComboBoxTransparency_Validating);
@@ -896,6 +910,7 @@
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private Controls.ToolStripComboBox toolStripComboBoxTransparency;
         private System.Windows.Forms.ToolTip toolTipForm;
+        private System.Windows.Forms.ToolStripButton toolStripButtonBackgroundSecondColour;
     }
 }
 

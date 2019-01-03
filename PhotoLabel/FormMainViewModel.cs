@@ -71,7 +71,10 @@ namespace PhotoLabel
             _imageManualResetEvent = new ManualResetEvent(true);
             _recentlyUsedDirectories = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
 
-            // load the second colour image
+            // load the second colour images
+            if (_configurationService.BackgroundSecondColour != null)
+                BackgroundSecondColourImage = _imageService.Circle(_configurationService.BackgroundSecondColour.Value, 16, 16);
+
             if (_configurationService.SecondColour != null)
                 SecondColourImage = _imageService.Circle(_configurationService.SecondColour.Value, 16, 16);
 
@@ -130,6 +133,9 @@ namespace PhotoLabel
                         return;
                     }
 
+                    // save the current colour as the secondary background colour
+                    BackgroundSecondColour = BackgroundColour;
+
                     if (_current != null)
                     {
                         _logService.Trace($@"Setting new value of {nameof(BackgroundColour)} for existing image...");
@@ -139,6 +145,7 @@ namespace PhotoLabel
                         LoadImage(_position);
                     }
 
+                    // save the current background colour as the secondary background colour
                     // save this as the default background color
                     _configurationService.BackgroundColour = value;
 
@@ -150,6 +157,47 @@ namespace PhotoLabel
                 }
             }
         }
+
+        public Color? BackgroundSecondColour
+        {
+            get => _configurationService.BackgroundSecondColour;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($@"Checking if value of {nameof(BackgroundSecondColour)} has changed...");
+                    if (BackgroundSecondColour == value)
+                    {
+                        _logService.Trace($@"Value of {nameof(BackgroundSecondColour)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    // create the new background colour image
+                    if (value == null)
+                    {
+                        BackgroundSecondColourImage = null;
+                    }
+                    else if (value.Value.A == 0)
+                    {
+                        BackgroundSecondColourImage = null;
+                    }
+                    else
+                    {
+                        BackgroundSecondColourImage = _imageService.Circle(value.Value, 16, 16);
+                    }
+
+                    // save the new value
+                    _configurationService.BackgroundSecondColour = value;
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        public Image BackgroundSecondColourImage { get; private set; }
 
         private void CacheImage(int position)
         {
@@ -234,7 +282,6 @@ namespace PhotoLabel
 
                 // save the current colour as the secondary colour
                 _configurationService.SecondColour = Colour;
-                SecondColourImage = _imageService.Circle(Colour, 16, 16);
 
                 // save the colour to the image
                 if (_current != null)
@@ -1037,9 +1084,55 @@ namespace PhotoLabel
             }
         }
 
-        public Color? SecondColour => _configurationService.SecondColour;
+        public Color? SecondColour
+        {
+            get => _configurationService.SecondColour;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($@"Checking if value of {nameof(SecondColour)} has changed...");
+                    if (SecondColour == value)
+                    {
+                        _logService.Trace($@"Value of {nameof(SecondColour)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    // create the new background colour image
+                    if (value == null)
+                    {
+                        SecondColourImage = null;
+                    }
+                    else
+                    {
+                        SecondColourImage = _imageService.Circle(value.Value, 16, 16);
+                    }
+
+                    // save the new value
+                    _configurationService.SecondColour = value;
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
 
         public Image SecondColourImage { get; private set; }
+
+        public void UseBackgroundSecondColour()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Setting {nameof(BackgroundColour)} to value of {nameof(BackgroundSecondColour)}...");
+                BackgroundColour = BackgroundSecondColour.Value;
+            }
+            finally {
+                _logService.TraceExit();
+            }
+        }
 
         public FormWindowState WindowState
         {

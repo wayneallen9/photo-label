@@ -8,7 +8,7 @@ namespace PhotoLabel.Services
     public class ConfigurationService : IConfigurationService
     {
         #region variables
-        private readonly Models.ConfigurationModel _configurationModel;
+        private readonly Models.Configuration _configurationModel;
         private readonly ILogService _logService;
         private readonly IXmlFileSerialiser _xmlFileSerialiser;
         #endregion
@@ -59,6 +59,27 @@ namespace PhotoLabel.Services
             }
         }
 
+        public Color? BackgroundSecondColour
+        {
+            get => _configurationModel.BackgroundSecondColour == null ? (Color?)null : Color.FromArgb(_configurationModel.BackgroundSecondColour.Value);
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Setting new value of {nameof(BackgroundSecondColour)}...");
+                    _configurationModel.BackgroundSecondColour = value == null ? (int?)null : value.Value.ToArgb();
+
+                    _logService.Trace($"Persisting new value of {nameof(BackgroundSecondColour)}...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         public CaptionAlignments CaptionAlignment
         {
             get => _configurationModel.CaptionAlignment;
@@ -85,9 +106,9 @@ namespace PhotoLabel.Services
             }
         }
 
-        private Models.ConfigurationModel CreateConfigurationModel()
+        private Models.Configuration CreateConfigurationModel()
         {
-            return new Models.ConfigurationModel
+            return new Models.Configuration
             {
                 Colour = Color.White.ToArgb(),
                 FontName = SystemFonts.DefaultFont.Name,
@@ -180,7 +201,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private Models.ConfigurationModel Load()
+        private Models.Configuration Load()
         {
             _logService.TraceEnter();
             try
@@ -205,7 +226,7 @@ namespace PhotoLabel.Services
                 {
                     try
                     {
-                        return _xmlFileSerialiser.Deserialise<Models.ConfigurationModel>(filename);
+                        return _xmlFileSerialiser.Deserialise<Models.Configuration>(filename);
                     }
                     catch (Exception ex)
                     {

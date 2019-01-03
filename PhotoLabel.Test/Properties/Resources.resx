@@ -130,4 +130,10 @@
   <data name="TopLeftWithoutCaption" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\TopLeftWithoutCaption.bmp;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="TopRightWithCaption" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TopRightWithCaption.bmp;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="TopRightWithoutCaption" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TopRightWithoutCaption.bmp;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
 </root>

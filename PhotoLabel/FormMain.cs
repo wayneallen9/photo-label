@@ -73,6 +73,7 @@ namespace PhotoLabel
                     default:
                         SetAppendDateTakenToCaption(formMainViewModel);
                         SetToolbarStatus(formMainViewModel);
+                        ShowBackgroundSecondColour(formMainViewModel);
                         ShowBold(formMainViewModel);
                         ShowCaption(formMainViewModel);
                         ShowFilename(formMainViewModel);
@@ -401,13 +402,39 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowBold(FormMainViewModel mainFormViewModel)
+        private void ShowBackgroundSecondColour(FormMainViewModel formMainViewModel)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Setting bold value to {mainFormViewModel.FontBold}...");
-                toolStripButtonBold.Checked = mainFormViewModel.FontBold;
+                _logService.Trace($"Checking if there is a secondary background colour...");
+                if (formMainViewModel.BackgroundSecondColour == null)
+                {
+                    toolStripButtonBackgroundSecondColour.Visible = false;
+                }
+                else if (formMainViewModel.BackgroundSecondColour.Value.A == 0)
+                {
+                    toolStripButtonBackgroundSecondColour.Visible = false;
+                }
+                else
+                {
+                    toolStripButtonBackgroundSecondColour.Image = formMainViewModel.BackgroundSecondColourImage;
+                    toolStripButtonBackgroundSecondColour.Visible = true;
+                }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowBold(FormMainViewModel formMainViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Setting bold value to {formMainViewModel.FontBold}...");
+                toolStripButtonBold.Checked = formMainViewModel.FontBold;
             }
             finally
             {
@@ -1884,6 +1911,7 @@ namespace PhotoLabel
                 _logService.Trace("Showing default file type...");
                 ShowImageFormat(_mainFormViewModel);
 
+                ShowBackgroundSecondColour(_mainFormViewModel);
                 ShowBold(_mainFormViewModel);
                 ShowFont(_mainFormViewModel);
                 ShowSecondColour(_mainFormViewModel);
@@ -2180,6 +2208,27 @@ namespace PhotoLabel
 
                         break;
                 }
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ToolStripButtonBackgroundSecondColour_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Setting background colour...");
+                _mainFormViewModel.UseBackgroundSecondColour();
             }
             catch (Exception ex)
             {

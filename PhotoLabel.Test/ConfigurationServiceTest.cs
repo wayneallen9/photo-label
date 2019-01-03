@@ -18,8 +18,8 @@ namespace PhotoLabel.Test
         public static void ClassInitialize(TestContext testContext)
         {
             var xmlFileSerialiserMock = new Mock<Services.IXmlFileSerialiser>();
-            xmlFileSerialiserMock.Setup(o => o.Deserialise<Services.Models.ConfigurationModel>(It.IsAny<string>()))
-                .Returns(() => new Services.Models.ConfigurationModel());
+            xmlFileSerialiserMock.Setup(o => o.Deserialise<Services.Models.Configuration>(It.IsAny<string>()))
+                .Returns(() => new Services.Models.Configuration());
             _xmlFileSerialiser = xmlFileSerialiserMock.Object;
 
             _logService = new Mock<Services.ILogService>().Object;
@@ -40,6 +40,21 @@ namespace PhotoLabel.Test
 
             Assert.AreEqual(Color.AliceBlue.ToArgb(), backgroundColour.ToArgb());
         }
+
+        [TestMethod]
+        public void BackgroundSecondColour()
+        {
+            var configurationService = new Services.ConfigurationService(_logService, _xmlFileSerialiser)
+            {
+                BackgroundSecondColour = Color.AliceBlue
+            };
+
+            // get the new value
+            var newValue = configurationService.BackgroundSecondColour;
+
+            Assert.AreEqual(Color.AliceBlue.ToArgb(), newValue.Value.ToArgb());
+        }
+
 
         [TestMethod]
         public void CaptionAlignment()
