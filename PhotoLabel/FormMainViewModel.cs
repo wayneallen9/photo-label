@@ -278,10 +278,11 @@ namespace PhotoLabel
             set
             {
                 // only process changes
-                if (Colour == value) return;
+                if (Colour.Equals(value)) return;
+                //if (Colour.ToArgb() == value.ToArgb()) return;
 
                 // save the current colour as the secondary colour
-                _configurationService.SecondColour = Colour;
+                SecondColour = Colour;
 
                 // save the colour to the image
                 if (_current != null)
@@ -1093,7 +1094,7 @@ namespace PhotoLabel
                 try
                 {
                     _logService.Trace($@"Checking if value of {nameof(SecondColour)} has changed...");
-                    if (SecondColour == value)
+                    if (SecondColour?.ToArgb() == value?.ToArgb())
                     {
                         _logService.Trace($@"Value of {nameof(SecondColour)} has not changed.  Exiting...");
                         return;
