@@ -47,7 +47,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public List<FolderModel> Load()
+        public List<DirectoryModel> Load()
         {
             _logService.TraceEnter();
             try
@@ -59,7 +59,7 @@ namespace PhotoLabel.Services
                 if (!File.Exists(filename))
                 {
                     _logService.Trace($@"""{filename}"" does not exist.  Returning...");
-                    return new List<FolderModel>();
+                    return new List<DirectoryModel>();
                 }
                 _logService.Trace($@"Recently used directories file ""{filename}"" exists");
 
@@ -67,16 +67,16 @@ namespace PhotoLabel.Services
                 using (var fileStream = new FileStream(filename, FileMode.Open, FileAccess.Read))
                 {
                     // create the XML serializer
-                    var serializer = new XmlSerializer(typeof(List<FolderModel>));
+                    var serializer = new XmlSerializer(typeof(List<DirectoryModel>));
 
                     // now deserialize it
-                    return serializer.Deserialize(fileStream) as List<FolderModel>;
+                    return serializer.Deserialize(fileStream) as List<DirectoryModel>;
                 }
             }
             catch (InvalidOperationException)
             {
                 // the XML is invalid, ignore it
-                return new List<FolderModel>();
+                return new List<DirectoryModel>();
             }
             finally
             {
@@ -98,7 +98,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public List<FolderModel> Add(string folder, List<FolderModel> folders)
+        public List<DirectoryModel> Add(string folder, List<DirectoryModel> folders)
         {
             _logService.TraceEnter();
             try
@@ -110,7 +110,7 @@ namespace PhotoLabel.Services
                 if (entry == null)
                 {
                     _logService.Trace($@"""{folder}"" is not in the list.  Adding it...");
-                    folders.Insert(0, new FolderModel
+                    folders.Insert(0, new DirectoryModel
                     {
                         Caption = GetCaption(folder),
                         Path = folder
@@ -136,7 +136,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public List<FolderModel> Save(List<FolderModel> folders)
+        public List<DirectoryModel> Save(List<DirectoryModel> folders)
         {
             _logService.TraceEnter();
             try

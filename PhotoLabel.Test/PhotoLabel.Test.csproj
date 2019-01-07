@@ -74,6 +74,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="QuickCaptionTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -110,6 +111,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\TopRightWithoutCaption.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\MiddleLeftWithCaption.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\MiddleLeftWithoutCaption.bmp" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

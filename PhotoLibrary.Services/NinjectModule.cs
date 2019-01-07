@@ -13,6 +13,7 @@
             Bind<IPercentageService>().To<PercentageService>().InSingletonScope();
             Bind<IRecentlyUsedFoldersService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
+            Bind<IQuickCaptionService>().To<QuickCaptionService>().InSingletonScope();
             Bind<IXmlFileSerialiser>().To<XmlFileSerialiser>().InSingletonScope();
         }
     }

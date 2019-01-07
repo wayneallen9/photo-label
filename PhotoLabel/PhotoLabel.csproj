@@ -117,6 +117,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\PhotoLabel.Extensions\PhotoLabel.Extensions.csproj">
+      <Project>{8d3cef97-5153-4297-9bbf-9cbd9ea64001}</Project>
+      <Name>PhotoLabel.Extensions</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PhotoLibrary.Services\PhotoLabel.Services.csproj">
       <Project>{9071c57f-7b49-4c31-899b-666910064a61}</Project>
       <Name>PhotoLabel.Services</Name>

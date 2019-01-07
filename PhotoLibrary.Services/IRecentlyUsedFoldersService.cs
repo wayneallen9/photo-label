@@ -5,8 +5,8 @@ namespace PhotoLabel.Services
 {
     public interface IRecentlyUsedFoldersService
     {
-        List<FolderModel> Load();
-        List<FolderModel> Add(string folder, List<FolderModel> folders);
-        List<FolderModel> Save(List<FolderModel> folders);
+        List<DirectoryModel> Load();
+        List<DirectoryModel> Add(string folder, List<DirectoryModel> folders);
+        List<DirectoryModel> Save(List<DirectoryModel> folders);
     }
 }

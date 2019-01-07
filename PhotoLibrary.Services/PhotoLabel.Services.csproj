@@ -69,12 +69,13 @@
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="IPercentageServices.cs" />
+    <Compile Include="IQuickCaptionService.cs" />
     <Compile Include="IRecentlyUsedFoldersService.cs" />
     <Compile Include="IXmlFileSerialiser.cs" />
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LogService.cs" />
     <Compile Include="Models\Configuration.cs" />
-    <Compile Include="Models\FolderModel.cs" />
+    <Compile Include="Models\DirectoryModel.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />
     <Compile Include="NinjectModule.cs" />
@@ -85,6 +86,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="QuickCaptionService.cs" />
     <Compile Include="RecentlyUsedDirectoriesService.cs" />
     <Compile Include="Rotations.cs" />
     <Compile Include="XmlFileSerialiser.cs" />
