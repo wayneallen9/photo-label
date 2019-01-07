@@ -63,6 +63,26 @@ namespace PhotoLabel.Test.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap MiddleLeftWithCaption {
+            get {
+                object obj = ResourceManager.GetObject("MiddleLeftWithCaption", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap MiddleLeftWithoutCaption {
+            get {
+                object obj = ResourceManager.GetObject("MiddleLeftWithoutCaption", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap TopCentreWithCaption {
             get {
                 object obj = ResourceManager.GetObject("TopCentreWithCaption", resourceCulture);

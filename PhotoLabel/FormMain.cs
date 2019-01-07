@@ -7,7 +7,6 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace PhotoLabel
@@ -60,6 +59,10 @@ namespace PhotoLabel
                         break;
                     case "OutputPath":
                         ShowOutputPath(formMainViewModel);
+
+                        break;
+                    case "QuickCaptions":
+                        ShowQuickCaptions(formMainViewModel);
 
                         break;
                     case "RecentlyUsedDirectories":
@@ -585,6 +588,36 @@ namespace PhotoLabel
 
                 MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowQuickCaptions(FormMainViewModel formMainViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Clearing existing quick captions...");
+                flowLayoutPanelQuickCaption.Controls.Clear();
+
+                _logService.Trace("Adding quick captions for this image...");
+                foreach (var quickCaption in formMainViewModel.QuickCaptions)
+                {
+                    _logService.Trace($@"Creating quick caption button for ""{quickCaption}""...");
+                    var quickCaptionButton = new Button
+                    {
+                        AutoSize = true,
+                        Text = quickCaption
+                    };
+
+                    _logService.Trace("Adding event handler for quick caption button...");
+                    quickCaptionButton.Click += (sender, e) => { textBoxCaption.Text = quickCaption; };
+                    
+                    flowLayoutPanelQuickCaption.Controls.Add(quickCaptionButton);
+                }
             }
             finally
             {
@@ -1914,6 +1947,7 @@ namespace PhotoLabel
                 ShowBackgroundSecondColour(_mainFormViewModel);
                 ShowBold(_mainFormViewModel);
                 ShowFont(_mainFormViewModel);
+                ShowQuickCaptions(_mainFormViewModel);
                 ShowSecondColour(_mainFormViewModel);
                 ShowTransparency(_mainFormViewModel);
             }

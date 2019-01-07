@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using PhotoLabel.Extensions;
 using PhotoLabel.Models;
 using PhotoLabel.Services;
 using System;
@@ -7,11 +8,11 @@ using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace PhotoLabel
 {
@@ -49,6 +50,7 @@ namespace PhotoLabel
         private CancellationTokenSource _openCancellationTokenSource;
         private readonly object _openLock = new object();
         private int _position = -1;
+        private readonly IQuickCaptionService _quickCaptionService;
         private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
 
         #endregion
@@ -58,6 +60,7 @@ namespace PhotoLabel
             IImageMetadataService imageMetadataService,
             IImageService imageService,
             ILogService logService,
+            IQuickCaptionService quickCaptionService,
             IRecentlyUsedFoldersService recentlyUsedDirectoriesService)
         {
             // save dependency injections
@@ -65,6 +68,7 @@ namespace PhotoLabel
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logService = logService;
+            _quickCaptionService = quickCaptionService;
             _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
 
             // initialise variables
@@ -305,10 +309,7 @@ namespace PhotoLabel
 
         public IList<DirectoryModel> RecentlyUsedDirectories => _recentlyUsedDirectories;
 
-        public string DateTaken
-        {
-            get => _current?.DateTaken;
-        }
+        public string DateTaken => _current?.DateTaken;
 
         public bool Delete()
         {
@@ -477,7 +478,7 @@ namespace PhotoLabel
 
         public float? Latitude => _current?.Latitude;
 
-        private void ExifThread(ImageModel imageModel, ManualResetEvent manualResetEvent)
+        private void ExifThread(ImageModel imageModel, EventWaitHandle manualResetEvent)
         {
             _logService.TraceEnter();
             try
@@ -491,7 +492,7 @@ namespace PhotoLabel
                     {
                         _logService.Trace($"Populating values from Exif data for \"{imageModel.Filename}\"...");
                         _logService.Trace($"Date taken for \"{imageModel.Filename}\" is \"{exifData.DateTaken}\"");
-                        imageModel.Caption = exifData.Title ?? Path.GetFileNameWithoutExtension(imageModel.Filename);
+                        imageModel.Caption = exifData.Title;
                         imageModel.DateTaken = exifData.DateTaken;
                         imageModel.Latitude = exifData.Latitude;
                         imageModel.Longitude = exifData.Longitude;
@@ -522,6 +523,9 @@ namespace PhotoLabel
                     // cancel any in progress load
                     _imageCancellationTokenSource?.Cancel();
 
+                    _logService.Trace("Creating new cancellation token...");
+                    _imageCancellationTokenSource = new CancellationTokenSource();
+
                     // flag that the image is loading
                     _imageManualResetEvent.Reset();
 
@@ -532,7 +536,6 @@ namespace PhotoLabel
                     var imageToLoad = _images[position];
 
                     // load the image on a background thread
-                    _imageCancellationTokenSource = new CancellationTokenSource();
                     Task.Delay(300, _imageCancellationTokenSource.Token)
                         .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null, _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning, TaskScheduler.Current)
                         .ContinueWith(OnError, _imageCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
@@ -587,34 +590,56 @@ namespace PhotoLabel
 
                 // load the image on another thread
                 if (cancellationToken.IsCancellationRequested) return;
-                var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageModel.Filename), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
+                var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageModel.Filename), cancellationToken,
+                    TaskCreationOptions.LongRunning, TaskScheduler.Current);
                 task.ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
 
-                // load the metadata on another thread
-                var metadataResetEvent = new ManualResetEvent(false);
-                Task.Factory.StartNew(() => MetadataThread(imageModel, metadataResetEvent), _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+                // do we need to load the metadata?
+                _logService.Trace($@"Checking if metadata is already loaded for ""{imageModel.Filename}""...");
+                if (!imageModel.MetadataLoaded)
+                {
+                    _logService.Trace($@"Creating signal for loading metadata for ""{imageModel.Filename}""...");
+                    var metadataResetEvent = new ManualResetEvent(false);
 
-                // wait for the metadata to load
-                if (cancellationToken.IsCancellationRequested) return;
-                metadataResetEvent.WaitOne();
+                    // load the metadata on another thread
+                    Task.Factory.StartNew(() => MetadataThread(imageModel, metadataResetEvent),
+                            _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+
+                    // wait for the metadata to load
+                    if (cancellationToken.IsCancellationRequested) return;
+                    metadataResetEvent.WaitOne();
+                }
 
                 // if there was no metadata file, we need to load the Exif 
                 // data to get the default caption
-                var exifResetEvent = new ManualResetEvent(false);
-                if (imageModel.MetadataExists)
+                if (!imageModel.MetadataExists && !imageModel.ExifLoaded)
                 {
-                    // no need to load the Exif data
-                    exifResetEvent.Set();
+                    var exifResetEvent = new ManualResetEvent(false);
+
+                    Task.Factory.StartNew(() => ExifThread(imageModel, exifResetEvent), cancellationToken,
+                            TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+
+                    // wait for the Exif data to load
+                    exifResetEvent.WaitOne();
+                }
+
+                _logService.Trace("Creating signal for quick caption thread...");
+                var quickCaptionEvent = new ManualResetEvent(false);
+
+                _logService.Trace($@"Checking if quick captions need to be loaded for ""{imageModel.Filename}""...");
+                if (imageModel.Filename != _current?.Filename)
+                {
+                    Task.Factory.StartNew(() => QuickCaptionThread(imageModel, quickCaptionEvent), cancellationToken,
+                            TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
                 }
                 else
                 {
-                    Task.Factory.StartNew(() => ExifThread(imageModel, exifResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+                    _logService.Trace($@"Quick captions are already loaded for ""{imageModel.Filename}""");
+                    quickCaptionEvent.Set();
                 }
-
-                // wait for the Exif data to load
-                exifResetEvent.WaitOne();
 
                 // get the image
                 // this will wait until the thread has completed
@@ -665,6 +690,9 @@ namespace PhotoLabel
                 {
                     if (cancellationToken.IsCancellationRequested) captionedImage.Dispose();
                 }
+
+                _logService.Trace("Waiting for quick captions to load...");
+                quickCaptionEvent.WaitOne();
 
                 // flag that the image has loaded
                 _imageManualResetEvent.Set();
@@ -749,16 +777,7 @@ namespace PhotoLabel
             try
             {
                 if (cancellationToken.IsCancellationRequested) return;
-
-                if (cancellationToken.IsCancellationRequested) return;
-                var manualResetEvent = new ManualResetEvent(false);
-                Task.Factory.StartNew(() => MetadataThread(imageMetadata, manualResetEvent), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Current);
-
-                if (cancellationToken.IsCancellationRequested) return;
                 var preview = _imageService.Get(imageMetadata.Filename, 128, 128);
-
-                // wait for the metadata to load
-                manualResetEvent.WaitOne();
 
                 if (cancellationToken.IsCancellationRequested) return;
                 if (imageMetadata.Saved)
@@ -886,6 +905,9 @@ namespace PhotoLabel
                     _images.Clear();
                     _position = -1;
 
+                    _logService.Trace("Clearing quick captions...");
+                    _quickCaptionService.Clear();
+
                     if (_openCancellationTokenSource.IsCancellationRequested) return;
                     _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
                     var filenames = _imageService.Find(directory);
@@ -900,18 +922,35 @@ namespace PhotoLabel
                         foreach (var filename in filenames)
                         {
                             if (_openCancellationTokenSource.IsCancellationRequested) break;
+                            _logService.Trace($@"Creating model for ""{filename}""...");
                             var imageMetadata = new ImageModel
                             {
-                                Filename = filename
+                                ExifLoaded = false,
+                                Filename = filename,
+                                MetadataExists = false,
+                                MetadataLoaded = false
                             };
 
-                            if (_openCancellationTokenSource.IsCancellationRequested) break;
+                            _logService.Trace($@"Checking if metadata exists for ""{filename}""...");
+                            var imageMetadataServices = _imageMetadataService.Load(filename);
+                            if (imageMetadataServices != null)
+                            {
+                                Mapper.Map(imageMetadataServices, imageMetadata);
+
+                                imageMetadata.MetadataLoaded = true;
+                            }
+
+                        if (_openCancellationTokenSource.IsCancellationRequested) break;
                             _images.Add(imageMetadata);
+
+                            if (_openCancellationTokenSource.IsCancellationRequested) return;
+                            _logService.Trace($@"Adding ""{filename}"" to quick caption...");
+                            _quickCaptionService.Add(imageMetadata.DateTaken, imageMetadata.Caption);
                         }
-                        
+
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
                         _logService.Trace("Mapping to service layer...");
-                        var servicesRecentlyUsedDirectories = Mapper.Map<List<Services.Models.FolderModel>>(_recentlyUsedDirectories);
+                        var servicesRecentlyUsedDirectories = Mapper.Map<List<Services.Models.DirectoryModel>>(_recentlyUsedDirectories);
 
                         if (_openCancellationTokenSource.IsCancellationRequested) return;
                         _logService.Trace($@"Adding ""{directory}"" to list of recently used directories...");
@@ -983,6 +1022,33 @@ namespace PhotoLabel
             }
         }
 
+        public IList<string> QuickCaptions {get; } = new List<string>();
+
+        private void QuickCaptionThread(ImageModel imageModel, EventWaitHandle manualResetEvent)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Clearing existing quick captions...");
+                QuickCaptions.Clear();
+
+                _logService.Trace($@"Adding filename a first quick caption for ""{imageModel.Filename}""...");
+                QuickCaptions.Add(Path.GetFileNameWithoutExtension(imageModel.Filename));
+
+                _logService.Trace($@"Retrieving quick captions for ""{imageModel.Filename}""...");
+                QuickCaptions.AddRange(_quickCaptionService.Get(imageModel.DateTaken));
+
+                OnPropertyChanged(nameof(QuickCaptions));
+
+                _logService.Trace("Flagging that quick captions have loaded...");
+                manualResetEvent.Set();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private void SaveLastSelectedFilename()
         {
             _logService.TraceEnter();
@@ -998,7 +1064,7 @@ namespace PhotoLabel
 
                 // map to the service layer
                 _logService.Trace("Saving recently used folder change...");
-                var folders = Mapper.Map<List<Services.Models.FolderModel>>(_recentlyUsedDirectories);
+                var folders = Mapper.Map<List<Services.Models.DirectoryModel>>(_recentlyUsedDirectories);
                 _recentlyUsedDirectoriesService.Save(folders);
             }
             finally
@@ -1075,6 +1141,9 @@ namespace PhotoLabel
                 // flag that the current image has been saved
                 _current.Saved = true;
 
+                // save the quick caption
+                _quickCaptionService.Add(_current.DateTaken, _current.Caption);
+
                 // reload the preview
                 Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                     .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
@@ -1128,7 +1197,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace($"Setting {nameof(BackgroundColour)} to value of {nameof(BackgroundSecondColour)}...");
-                BackgroundColour = BackgroundSecondColour.Value;
+                BackgroundColour = BackgroundSecondColour ?? Color.Black;
             }
             finally {
                 _logService.TraceExit();

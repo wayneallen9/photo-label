@@ -77,9 +77,9 @@
             this.toolStripStatusLabelOutputDirectory = new System.Windows.Forms.ToolStripStatusLabel();
             this.colorDialog = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.textBoxCaption = new System.Windows.Forms.TextBox();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
             this.labelFilename = new System.Windows.Forms.Label();
+            this.checkBoxAppendDateTakenToCaption = new System.Windows.Forms.CheckBox();
             this.panel1 = new System.Windows.Forms.Panel();
             this.checkBoxBottomRight = new System.Windows.Forms.CheckBox();
             this.checkBoxBottomCentre = new System.Windows.Forms.CheckBox();
@@ -90,12 +90,15 @@
             this.checkBoxTopRight = new System.Windows.Forms.CheckBox();
             this.checkBoxTopCentre = new System.Windows.Forms.CheckBox();
             this.checkBoxTopLeft = new System.Windows.Forms.CheckBox();
-            this.checkBoxAppendDateTakenToCaption = new System.Windows.Forms.CheckBox();
+            this.textBoxCaption = new System.Windows.Forms.TextBox();
             this.imageListLarge = new System.Windows.Forms.ImageList(this.components);
             this.folderBrowserDialogSave = new System.Windows.Forms.FolderBrowserDialog();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.listViewPreview = new PhotoLabel.Controls.ListView();
             this.toolTipForm = new System.Windows.Forms.ToolTip(this.components);
+            this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
+            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanelQuickCaption = new System.Windows.Forms.FlowLayoutPanel();
             this.menuStrip1.SuspendLayout();
             this.toolStripToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
@@ -106,6 +109,8 @@
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
+            this.tableLayoutPanel2.SuspendLayout();
+            this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -558,46 +563,29 @@
             // 
             // tableLayoutPanel1
             // 
-            this.tableLayoutPanel1.ColumnCount = 2;
+            this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
-            this.tableLayoutPanel1.Controls.Add(this.textBoxCaption, 0, 2);
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.pictureBoxImage, 0, 0);
             this.tableLayoutPanel1.Controls.Add(this.labelFilename, 0, 1);
-            this.tableLayoutPanel1.Controls.Add(this.panel1, 1, 2);
-            this.tableLayoutPanel1.Controls.Add(this.checkBoxAppendDateTakenToCaption, 0, 3);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 4;
+            this.tableLayoutPanel1.RowCount = 2;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 128F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(500, 379);
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(500, 252);
             this.tableLayoutPanel1.TabIndex = 4;
-            // 
-            // textBoxCaption
-            // 
-            this.textBoxCaption.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxCaption.Location = new System.Drawing.Point(10, 231);
-            this.textBoxCaption.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
-            this.textBoxCaption.Multiline = true;
-            this.textBoxCaption.Name = "textBoxCaption";
-            this.textBoxCaption.Size = new System.Drawing.Size(380, 118);
-            this.textBoxCaption.TabIndex = 3;
-            this.textBoxCaption.TextChanged += new System.EventHandler(this.TextBoxCaption_TextChanged);
             // 
             // pictureBoxImage
             // 
             this.pictureBoxImage.BackColor = System.Drawing.Color.Black;
-            this.tableLayoutPanel1.SetColumnSpan(this.pictureBoxImage, 2);
             this.pictureBoxImage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pictureBoxImage.Location = new System.Drawing.Point(10, 10);
             this.pictureBoxImage.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
             this.pictureBoxImage.Name = "pictureBoxImage";
-            this.pictureBoxImage.Size = new System.Drawing.Size(480, 179);
+            this.pictureBoxImage.Size = new System.Drawing.Size(480, 210);
             this.pictureBoxImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBoxImage.TabIndex = 0;
             this.pictureBoxImage.TabStop = false;
@@ -605,14 +593,25 @@
             // labelFilename
             // 
             this.labelFilename.AutoSize = true;
-            this.tableLayoutPanel1.SetColumnSpan(this.labelFilename, 2);
             this.labelFilename.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelFilename.Location = new System.Drawing.Point(10, 189);
+            this.labelFilename.Location = new System.Drawing.Point(10, 220);
             this.labelFilename.Margin = new System.Windows.Forms.Padding(10, 0, 10, 10);
             this.labelFilename.Name = "labelFilename";
             this.labelFilename.Size = new System.Drawing.Size(480, 22);
             this.labelFilename.TabIndex = 5;
             this.labelFilename.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // checkBoxAppendDateTakenToCaption
+            // 
+            this.checkBoxAppendDateTakenToCaption.AutoSize = true;
+            this.checkBoxAppendDateTakenToCaption.Location = new System.Drawing.Point(10, 355);
+            this.checkBoxAppendDateTakenToCaption.Margin = new System.Windows.Forms.Padding(10, 3, 10, 0);
+            this.checkBoxAppendDateTakenToCaption.Name = "checkBoxAppendDateTakenToCaption";
+            this.checkBoxAppendDateTakenToCaption.Size = new System.Drawing.Size(123, 17);
+            this.checkBoxAppendDateTakenToCaption.TabIndex = 8;
+            this.checkBoxAppendDateTakenToCaption.Text = "&Append date taken?";
+            this.checkBoxAppendDateTakenToCaption.UseVisualStyleBackColor = true;
+            this.checkBoxAppendDateTakenToCaption.Click += new System.EventHandler(this.CheckBoxAppendDateTakenToCaption_Click);
             // 
             // panel1
             // 
@@ -626,11 +625,10 @@
             this.panel1.Controls.Add(this.checkBoxTopCentre);
             this.panel1.Controls.Add(this.checkBoxTopLeft);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(400, 231);
-            this.panel1.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
+            this.panel1.Location = new System.Drawing.Point(700, 262);
+            this.panel1.Margin = new System.Windows.Forms.Padding(0, 10, 10, 0);
             this.panel1.Name = "panel1";
-            this.tableLayoutPanel1.SetRowSpan(this.panel1, 2);
-            this.panel1.Size = new System.Drawing.Size(90, 138);
+            this.panel1.Size = new System.Drawing.Size(90, 90);
             this.panel1.TabIndex = 7;
             // 
             // checkBoxBottomRight
@@ -748,17 +746,16 @@
             this.checkBoxTopLeft.UseVisualStyleBackColor = true;
             this.checkBoxTopLeft.Click += new System.EventHandler(this.CheckBoxTopLeft_Click);
             // 
-            // checkBoxAppendDateTakenToCaption
+            // textBoxCaption
             // 
-            this.checkBoxAppendDateTakenToCaption.AutoSize = true;
-            this.checkBoxAppendDateTakenToCaption.Location = new System.Drawing.Point(10, 352);
-            this.checkBoxAppendDateTakenToCaption.Margin = new System.Windows.Forms.Padding(10, 3, 10, 0);
-            this.checkBoxAppendDateTakenToCaption.Name = "checkBoxAppendDateTakenToCaption";
-            this.checkBoxAppendDateTakenToCaption.Size = new System.Drawing.Size(123, 17);
-            this.checkBoxAppendDateTakenToCaption.TabIndex = 8;
-            this.checkBoxAppendDateTakenToCaption.Text = "&Append date taken?";
-            this.checkBoxAppendDateTakenToCaption.UseVisualStyleBackColor = true;
-            this.checkBoxAppendDateTakenToCaption.Click += new System.EventHandler(this.CheckBoxAppendDateTakenToCaption_Click);
+            this.textBoxCaption.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.textBoxCaption.Location = new System.Drawing.Point(10, 262);
+            this.textBoxCaption.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
+            this.textBoxCaption.Multiline = true;
+            this.textBoxCaption.Name = "textBoxCaption";
+            this.textBoxCaption.Size = new System.Drawing.Size(330, 90);
+            this.textBoxCaption.TabIndex = 3;
+            this.textBoxCaption.TextChanged += new System.EventHandler(this.TextBoxCaption_TextChanged);
             // 
             // imageListLarge
             // 
@@ -772,8 +769,9 @@
             // 
             // splitContainer1
             // 
+            this.tableLayoutPanel2.SetColumnSpan(this.splitContainer1, 3);
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(0, 49);
+            this.splitContainer1.Location = new System.Drawing.Point(0, 0);
             this.splitContainer1.Margin = new System.Windows.Forms.Padding(0);
             this.splitContainer1.Name = "splitContainer1";
             // 
@@ -785,9 +783,9 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.listViewPreview);
-            this.splitContainer1.Panel2.Padding = new System.Windows.Forms.Padding(0, 10, 10, 10);
+            this.splitContainer1.Panel2.Padding = new System.Windows.Forms.Padding(10);
             this.splitContainer1.Panel2MinSize = 192;
-            this.splitContainer1.Size = new System.Drawing.Size(800, 379);
+            this.splitContainer1.Size = new System.Drawing.Size(800, 252);
             this.splitContainer1.SplitterDistance = 500;
             this.splitContainer1.TabIndex = 0;
             // 
@@ -796,24 +794,67 @@
             this.listViewPreview.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listViewPreview.HideSelection = false;
             this.listViewPreview.LargeImageList = this.imageListLarge;
-            this.listViewPreview.Location = new System.Drawing.Point(0, 10);
+            this.listViewPreview.Location = new System.Drawing.Point(10, 10);
             this.listViewPreview.Margin = new System.Windows.Forms.Padding(0, 10, 10, 10);
             this.listViewPreview.MultiSelect = false;
             this.listViewPreview.Name = "listViewPreview";
             this.listViewPreview.ShowGroups = false;
             this.listViewPreview.ShowItemToolTips = true;
-            this.listViewPreview.Size = new System.Drawing.Size(286, 359);
+            this.listViewPreview.Size = new System.Drawing.Size(276, 232);
             this.listViewPreview.TabIndex = 8;
             this.listViewPreview.UseCompatibleStateImageBehavior = false;
             this.listViewPreview.Scroll += new System.Windows.Forms.ScrollEventHandler(this.ListViewPreview_Scroll);
             this.listViewPreview.SelectedIndexChanged += new System.EventHandler(this.ListViewPreview_SelectedIndexChanged);
+            // 
+            // tableLayoutPanel2
+            // 
+            this.tableLayoutPanel2.ColumnCount = 3;
+            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
+            this.tableLayoutPanel2.Controls.Add(this.checkBoxAppendDateTakenToCaption, 0, 2);
+            this.tableLayoutPanel2.Controls.Add(this.panel1, 2, 1);
+            this.tableLayoutPanel2.Controls.Add(this.textBoxCaption, 0, 1);
+            this.tableLayoutPanel2.Controls.Add(this.splitContainer1, 0, 0);
+            this.tableLayoutPanel2.Controls.Add(this.groupBox1, 1, 1);
+            this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel2.Location = new System.Drawing.Point(0, 49);
+            this.tableLayoutPanel2.Margin = new System.Windows.Forms.Padding(0);
+            this.tableLayoutPanel2.Name = "tableLayoutPanel2";
+            this.tableLayoutPanel2.RowCount = 3;
+            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 100F));
+            this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 27F));
+            this.tableLayoutPanel2.Size = new System.Drawing.Size(800, 379);
+            this.tableLayoutPanel2.TabIndex = 0;
+            // 
+            // groupBox1
+            // 
+            this.groupBox1.Controls.Add(this.flowLayoutPanelQuickCaption);
+            this.groupBox1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.groupBox1.Location = new System.Drawing.Point(360, 262);
+            this.groupBox1.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
+            this.groupBox1.Name = "groupBox1";
+            this.groupBox1.Size = new System.Drawing.Size(330, 90);
+            this.groupBox1.TabIndex = 9;
+            this.groupBox1.TabStop = false;
+            this.groupBox1.Text = "Quick Caption";
+            // 
+            // flowLayoutPanelQuickCaption
+            // 
+            this.flowLayoutPanelQuickCaption.AutoScroll = true;
+            this.flowLayoutPanelQuickCaption.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanelQuickCaption.Location = new System.Drawing.Point(3, 16);
+            this.flowLayoutPanelQuickCaption.Name = "flowLayoutPanelQuickCaption";
+            this.flowLayoutPanelQuickCaption.Size = new System.Drawing.Size(324, 71);
+            this.flowLayoutPanelQuickCaption.TabIndex = 0;
             // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.splitContainer1);
+            this.Controls.Add(this.tableLayoutPanel2);
             this.Controls.Add(this.statusStrip);
             this.Controls.Add(this.toolStripToolbar);
             this.Controls.Add(this.menuStrip1);
@@ -838,6 +879,9 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
+            this.tableLayoutPanel2.ResumeLayout(false);
+            this.tableLayoutPanel2.PerformLayout();
+            this.groupBox1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -858,6 +902,7 @@
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabelStatus;
         private System.Windows.Forms.ColorDialog colorDialog;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripButton toolStripButtonColour;
         private System.Windows.Forms.TextBox textBoxCaption;
@@ -911,6 +956,8 @@
         private Controls.ToolStripComboBox toolStripComboBoxTransparency;
         private System.Windows.Forms.ToolTip toolTipForm;
         private System.Windows.Forms.ToolStripButton toolStripButtonBackgroundSecondColour;
+        private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelQuickCaption;
     }
 }
 

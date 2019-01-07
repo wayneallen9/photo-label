@@ -109,8 +109,15 @@ namespace PhotoLabel.Services
                     exifData.Latitude = GetLatitude(bitmapMetadata);
                     if (exifData.Latitude.HasValue) exifData.Longitude = GetLongitude(bitmapMetadata);
 
-                    // is there a title on the image?
-                    exifData.Title = bitmapMetadata.Title;
+                    try
+                    {
+                        // is there a title on the image?
+                        exifData.Title = bitmapMetadata.Title;
+                    }
+                    catch (NotSupportedException)
+                    {
+                        // ignore this exception
+                    }
                 }
 
                 return exifData;
@@ -172,10 +179,16 @@ namespace PhotoLabel.Services
                 }
 
                 _logService.Trace("Converting to a float...");
-                var latitudeDecimal = float.Parse(latitudeMatch.Groups[1].Value) + float.Parse(latitudeMatch.Groups[2].Value) / 60;
+                var latitudeDecimal = float.Parse(latitudeMatch.Groups[1].Value) +
+                                      float.Parse(latitudeMatch.Groups[2].Value) / 60;
                 if (latitudeMatch.Groups[3].Value == "S") latitudeDecimal *= -1;
 
                 return latitudeDecimal;
+            }
+            catch (NotSupportedException)
+            {
+                _logService.Trace("Unable to query for latitude.  Returning...");
+                return null;
             }
             finally
             {
