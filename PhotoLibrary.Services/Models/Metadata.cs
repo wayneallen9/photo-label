@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Xml.Serialization;
+
 namespace PhotoLabel.Services.Models
 {
     [Serializable]
@@ -11,12 +13,16 @@ namespace PhotoLabel.Services.Models
         public int Colour { get; set; }
         public string DateTaken { get; set; }
         public bool FontBold { get; set; }
+        [XmlIgnore]
+        public string Filename { get; set; }
         public string FontFamily { get; set; }
         public float FontSize { get; set; }
         public string FontType { get; set; }
         public ImageFormat? ImageFormat { get; set; }
         public float? Latitude { get; set;}
         public float? Longitude { get; set; }
+        [XmlIgnore]
+        public bool IsMetadataLoaded { get; set; }
         public string OutputFilename { get; set; }
         public Rotations Rotation { get; set; }
     }

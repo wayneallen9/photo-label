@@ -72,6 +72,9 @@
     <Compile Include="Controls\ToolStripComboBox.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="ImageFoundEventArgs.cs" />
+    <Compile Include="OpenedEventArgs.cs" />
+    <Compile Include="OpeningEventArgs.cs" />
     <Compile Include="PreviewLoadedEventArgs.cs" />
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
@@ -80,12 +83,14 @@
       <DependentUpon>FormMain.cs</DependentUpon>
     </Compile>
     <Compile Include="IInvoker.cs" />
-    <Compile Include="Models\DirectoryModel.cs" />
+    <Compile Include="Models\Directory.cs" />
     <Compile Include="Models\ImageModel.cs" />
     <Compile Include="NinjectKernel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="FormMainViewModel.cs" />
+    <Compile Include="QuickCaptionEventArgs.cs" />
+    <Compile Include="RecentlyUsedDirectoryEventArgs.cs" />
     <EmbeddedResource Include="FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>

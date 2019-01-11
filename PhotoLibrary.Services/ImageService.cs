@@ -1,5 +1,4 @@
-﻿using PhotoLabel.Services.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -8,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Media.Imaging;
+
 namespace PhotoLabel.Services
 {
     public class ImageService : IImageService
@@ -89,13 +89,13 @@ namespace PhotoLabel.Services
             }
         }
 
-        public ExifData GetExifData(string filename)
+        public Models.ExifData GetExifData(string filename)
         {
             _logService.TraceEnter();
             try
             {
                 // create the object to return
-                var exifData = new ExifData();
+                var exifData = new Models.ExifData();
 
                 using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {

@@ -358,6 +358,7 @@
             // 
             this.toolStripButtonBold.CheckOnClick = true;
             this.toolStripButtonBold.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonBold.Enabled = false;
             this.toolStripButtonBold.Image = global::PhotoLabel.Properties.Resources.bold;
             this.toolStripButtonBold.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonBold.Name = "toolStripButtonBold";
@@ -381,6 +382,7 @@
             this.toolStripButtonSecondColour.BackColor = System.Drawing.SystemColors.Control;
             this.toolStripButtonSecondColour.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.toolStripButtonSecondColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonSecondColour.Enabled = false;
             this.toolStripButtonSecondColour.ForeColor = System.Drawing.SystemColors.ControlText;
             this.toolStripButtonSecondColour.ImageTransparentColor = System.Drawing.SystemColors.Control;
             this.toolStripButtonSecondColour.Margin = new System.Windows.Forms.Padding(0, 0, 0, 2);
@@ -411,6 +413,7 @@
             // toolStripButtonBackgroundSecondColour
             // 
             this.toolStripButtonBackgroundSecondColour.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolStripButtonBackgroundSecondColour.Enabled = false;
             this.toolStripButtonBackgroundSecondColour.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonBackgroundSecondColour.Name = "toolStripButtonBackgroundSecondColour";
             this.toolStripButtonBackgroundSecondColour.Size = new System.Drawing.Size(23, 22);
@@ -421,6 +424,7 @@
             // toolStripComboBoxTransparency
             // 
             this.toolStripComboBoxTransparency.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.toolStripComboBoxTransparency.Enabled = false;
             this.toolStripComboBoxTransparency.Name = "toolStripComboBoxTransparency";
             this.toolStripComboBoxTransparency.Size = new System.Drawing.Size(80, 25);
             this.toolStripComboBoxTransparency.ToolTipText = "Background Transparency";
@@ -862,6 +866,7 @@
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "FormMain";
             this.Text = "Photo Label";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormMain_FormClosed);
             this.Load += new System.EventHandler(this.FormMain_Load);
             this.SizeChanged += new System.EventHandler(this.FormMain_SizeChanged);
             this.menuStrip1.ResumeLayout(false);

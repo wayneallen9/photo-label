@@ -1,8 +1,4 @@
-﻿using AutoMapper;
-using PhotoLabel.Extensions;
-using PhotoLabel.Models;
-using PhotoLabel.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -13,58 +9,73 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using AutoMapper;
+using PhotoLabel.Properties;
+using PhotoLabel.Services;
 
 namespace PhotoLabel
 {
-    public class FormMainViewModel : INotifyPropertyChanged
+    public class FormMainViewModel : IDisposable, INotifyPropertyChanged, IDirectoryOpenerObserver,
+        IQuickCaptionObserver, IRecentlyUsedDirectoriesObserver
     {
-        #region constants
-        private const double Tolerance = double.Epsilon;
+        #region delegates
+        public delegate void ImageFoundEventHandler(object sender, ImageFoundEventArgs e);
+        public delegate void OpeningEventHandler(object sender, OpeningEventArgs e);
+        public delegate void QuickCaptionHandler(object sender, QuickCaptionEventArgs e);
+        public delegate void RecentlyUsedDirectoryHandler(object sender, RecentlyUsedDirectoryEventArgs e);
+
+        private delegate void OnDelegate();
+        private delegate void OnQuickCaptionDelegate(string caption);
+        private delegate void OnRecentlyUsedDirectoryDelegate(Models.Directory recentlyUsedDirectory);
         #endregion
 
-        #region delegates
-        private delegate void OnErrorDelegate(Exception ex);
-        private delegate void OnPreviewLoadedDelegate(string filename, Image image);
-        private delegate void OnPropertyChangedDelegate(string propertyName);
-        public delegate void PreviewLoadedEventHandler(object sender, PreviewLoadedEventArgs e);
+        #region constants
+
+        private const double Tolerance = double.Epsilon;
+
         #endregion
 
         #region events
-        public event ErrorEventHandler Error;
-        public event PreviewLoadedEventHandler PreviewLoaded;
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event ImageFoundEventHandler ImageFound;
+        public event QuickCaptionHandler QuickCaption;
+        public event EventHandler QuickCaptionCleared;
+        public event EventHandler RecentlyUsedDirectoriesCleared;
+        public event RecentlyUsedDirectoryHandler RecentlyUsedDirectory;
         #endregion
 
         #region variables
         private readonly IConfigurationService _configurationService;
-        private ImageModel _current;
-        private List<DirectoryModel> _recentlyUsedDirectories;
-        private CancellationTokenSource _imageCancellationTokenSource;
+        private readonly IDirectoryOpenerService _directoryOpenerService;
         private readonly object _imageLock = new object();
-        private readonly IImageMetadataService _imageMetadataService;
         private readonly ManualResetEvent _imageManualResetEvent;
-        private readonly IList<ImageModel> _images = new List<ImageModel>();
-        private readonly object _imagesLock = new object();
+        private readonly IImageMetadataService _imageMetadataService;
+        private readonly IList<Models.ImageModel> _images = new List<Models.ImageModel>();
         private readonly IImageService _imageService;
+        private readonly object _imagesLock = new object();
         private readonly ILogService _logService;
-        private CancellationTokenSource _openCancellationTokenSource;
-        private readonly object _openLock = new object();
-        private int _position = -1;
         private readonly IQuickCaptionService _quickCaptionService;
-        private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
-
+        private readonly IRecentlyUsedDirectoriesService _recentlyUsedDirectoriesService;
+        private Models.ImageModel _current;
+        private bool _disposed;
+        private Image _image;
+        private CancellationTokenSource _imageCancellationTokenSource;
+        private CancellationTokenSource _openCancellationTokenSource;
+        private int _position = -1;
+        private CancellationTokenSource _recentlyUsedDirectoriesCancellationTokenSource;
         #endregion
 
         public FormMainViewModel(
             IConfigurationService configurationService,
+            IDirectoryOpenerService directoryOpenerService,
             IImageMetadataService imageMetadataService,
             IImageService imageService,
             ILogService logService,
             IQuickCaptionService quickCaptionService,
-            IRecentlyUsedFoldersService recentlyUsedDirectoriesService)
+            IRecentlyUsedDirectoriesService recentlyUsedDirectoriesService)
         {
             // save dependency injections
             _configurationService = configurationService;
+            _directoryOpenerService = directoryOpenerService;
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logService = logService;
@@ -72,30 +83,35 @@ namespace PhotoLabel
             _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
 
             // initialise variables
+            _disposed = false;
+            _image = new Bitmap(1, 1);
             _imageManualResetEvent = new ManualResetEvent(true);
-            _recentlyUsedDirectories = Mapper.Map<List<DirectoryModel>>(_recentlyUsedDirectoriesService.Load());
 
             // load the second colour images
             if (_configurationService.BackgroundSecondColour != null)
-                BackgroundSecondColourImage = _imageService.Circle(_configurationService.BackgroundSecondColour.Value, 16, 16);
+                BackgroundSecondColourImage =
+                    _imageService.Circle(_configurationService.BackgroundSecondColour.Value, 16, 16);
 
             if (_configurationService.SecondColour != null)
                 SecondColourImage = _imageService.Circle(_configurationService.SecondColour.Value, 16, 16);
 
-            // do we automatically load the last used directory?
-            if (_recentlyUsedDirectories.Any()) Open(_recentlyUsedDirectories.First().Path);
+            // subscribe to events from the services
+            _directoryOpenerService.Subscribe(this);
+            _quickCaptionService.Subscribe(this);
+            _recentlyUsedDirectoriesService.Subscribe(this);
         }
 
         public bool AppendDateTakenToCaption
         {
-            get => _current?.AppendDateTakenToCaption?? _configurationService.AppendDateTakenToCaption;
+            get => _current?.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption;
             set
             {
                 _logService.TraceEnter();
                 try
                 {
                     _logService.Trace($"Checking if value of {nameof(AppendDateTakenToCaption)} has changed...");
-                    if (_configurationService.AppendDateTakenToCaption == value) {
+                    if (_configurationService.AppendDateTakenToCaption == value)
+                    {
                         _logService.Trace($"Value of {nameof(AppendDateTakenToCaption)} has not changed.  Exiting...");
                         return;
                     }
@@ -179,17 +195,11 @@ namespace PhotoLabel
 
                     // create the new background colour image
                     if (value == null)
-                    {
                         BackgroundSecondColourImage = null;
-                    }
                     else if (value.Value.A == 0)
-                    {
                         BackgroundSecondColourImage = null;
-                    }
                     else
-                    {
                         BackgroundSecondColourImage = _imageService.Circle(value.Value, 16, 16);
-                    }
 
                     // save the new value
                     _configurationService.BackgroundSecondColour = value;
@@ -203,32 +213,7 @@ namespace PhotoLabel
 
         public Image BackgroundSecondColourImage { get; private set; }
 
-        private void CacheImage(int position)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Position to cache is {position}");
-                if (position > _images.Count - 2)
-                {
-                    _logService.Trace("There is no image to cache.  Exiting...");
-                    return;
-                }
-
-                // get the name of the file to be cached
-                var filename = _images[position].Filename;
-
-                _logService.Trace($"Caching \"{filename}\" on background thread...");
-                Task.Factory.StartNew(() => _imageService.Get(filename), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public bool CanDelete => _current?.MetadataExists ?? false;
+        public bool CanDelete => _current?.IsMetadataLoaded ?? false;
 
         public string Caption
         {
@@ -307,71 +292,9 @@ namespace PhotoLabel
 
         public int Count => _images.Count;
 
-        public IList<DirectoryModel> RecentlyUsedDirectories => _recentlyUsedDirectories;
-
         public string DateTaken => _current?.DateTaken;
 
-        public bool Delete()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Is there a current image?");
-                if (_current == null)
-                {
-                    _logService.Trace("There is no current image.  Returning...");
-                    return false;
-                }
-
-                _logService.Trace($"Deleting metadata for \"{_current.Filename}\"...");
-                if (!_imageMetadataService.Delete(_current.Filename)) return false;
-
-                _logService.Trace("Resetting image...");
-                _current.ExifLoaded = false;
-                _current.MetadataExists = false;
-                _current.MetadataLoaded = false;
-                _current.Rotation = Rotations.Zero;
-                _current.Saved = false;
-
-                _logService.Trace("Checking that the output file can be deleted...");
-                if (_current.OutputFilename != null && 
-                    _current.OutputFilename != _current.Filename && 
-                    File.Exists(_current.OutputFilename))
-                {
-                    _logService.Trace($"Deleting \"{_current.OutputFilename}\"...");
-                    File.Delete(_current.OutputFilename);
-                }
-
-                _logService.Trace("Reloading image...");
-                LoadImage(_position);
-
-                _logService.Trace("Reloading preview...");
-                LoadPreview(_current.Filename);
-
-                return true;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void OnError(Task task, object state)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                OnError(task.Exception);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         public string Filename => _current?.Filename;
-
-        public IList<string> Filenames => _images.Select(i => i.Filename).ToList();
 
         public bool FontBold
         {
@@ -426,6 +349,9 @@ namespace PhotoLabel
             get => _current?.FontSize ?? _configurationService.FontSize;
             set
             {
+                _logService.Trace("Checking if value is greater than 0...");
+                if (value <= 0f) throw new ArgumentOutOfRangeException();
+
                 // only process changes
                 if (Math.Abs(FontSize - value) < Tolerance) return;
 
@@ -472,78 +398,30 @@ namespace PhotoLabel
             }
         }
 
-        public Image Image { get; private set; }
-
-        public IInvoker Invoker { get; set; }
-
-        public float? Latitude => _current?.Latitude;
-
-        private void ExifThread(ImageModel imageModel, EventWaitHandle manualResetEvent)
+        public Image Image
         {
-            _logService.TraceEnter();
-            try
+            get => _image;
+            private set
             {
-                _logService.Trace($"Checking if Exif data is already loaded for \"{imageModel.Filename}\"...");
-                if (!imageModel.ExifLoaded)
+                _logService.TraceEnter();
+                try
                 {
-                    _logService.Trace($"Loading Exif data for \"{imageModel.Filename}\"...");
-                    var exifData = _imageService.GetExifData(imageModel.Filename);
-                    if (exifData != null)
+                    _logService.Trace($"Checking if {nameof(Image)} value has changed...");
+                    if (_image == value)
                     {
-                        _logService.Trace($"Populating values from Exif data for \"{imageModel.Filename}\"...");
-                        _logService.Trace($"Date taken for \"{imageModel.Filename}\" is \"{exifData.DateTaken}\"");
-                        imageModel.Caption = exifData.Title;
-                        imageModel.DateTaken = exifData.DateTaken;
-                        imageModel.Latitude = exifData.Latitude;
-                        imageModel.Longitude = exifData.Longitude;
+                        _logService.Trace($"Value of {nameof(Image)} has not changed.  Exiting...");
+                        return;
                     }
 
-                    // flag that the Exif data is loaded
-                    imageModel.ExifLoaded = true;
+                    _logService.Trace($"Seeting new value of {nameof(Image)}...");
+                    _image = value;
+
+                    OnPropertyChanged();
                 }
-                else
-                    _logService.Trace($"Exif data is already loaded for \"{imageModel.Filename}\".  Caption is \"{imageModel.Caption}\"");
-
-                // flag that the Exif is loaded
-                manualResetEvent.Set();
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void LoadImage(int position)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                lock (_imageLock)
+                finally
                 {
-                    // cancel any in progress load
-                    _imageCancellationTokenSource?.Cancel();
-
-                    _logService.Trace("Creating new cancellation token...");
-                    _imageCancellationTokenSource = new CancellationTokenSource();
-
-                    // flag that the image is loading
-                    _imageManualResetEvent.Reset();
-
-                    // clear the image
-                    Image = null;
-
-                    // get the image to load
-                    var imageToLoad = _images[position];
-
-                    // load the image on a background thread
-                    Task.Delay(300, _imageCancellationTokenSource.Token)
-                        .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null, _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(OnError, _imageCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                    _logService.TraceExit();
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
@@ -581,7 +459,480 @@ namespace PhotoLabel
             }
         }
 
-        private void ImageThread(ImageModel imageModel, CancellationToken cancellationToken)
+        public IInvoker Invoker { get; set; }
+
+        public float? Latitude => _current?.Latitude;
+
+        public float? Longitude => _current?.Longitude;
+
+        public string OutputFilename => _current == null
+            ? string.Empty
+            : Path.Combine(OutputPath,
+                $"{Path.GetFileName(_current.Filename)}.{(_current.ImageFormat == ImageFormat.Jpeg ? "jpg" : _current.ImageFormat == ImageFormat.Bmp ? "bmp" : "png")}");
+
+        public string OutputPath
+        {
+            get => _configurationService.OutputPath;
+            set
+            {
+                _configurationService.OutputPath = value;
+
+                OnPropertyChanged();
+            }
+        }
+
+        public int Position
+        {
+            get => _position;
+            set
+            {
+                // only process changes
+                if (_position == value) return;
+
+                // save the change
+                _position = value;
+
+                // set the current image
+                _current = _images[value];
+
+                // save the last selected filename for this folder
+                _recentlyUsedDirectoriesService.SetLastSelectedFile(_current.Filename);
+
+                // redraw the image on a background thread
+                LoadImage(value);
+
+                // cache the next image on a background thread
+                CacheImage(value + 1);
+
+                OnPropertyChanged();
+            }
+        }
+
+        public Rotations Rotation
+        {
+            get => _current?.Rotation ?? Rotations.Zero;
+            set
+            {
+                // only process changes
+                if (Rotation == value) return;
+
+                // save the rotation to the image
+                if (_current == null) return;
+
+                // update the value
+                _current.Rotation = value;
+
+                // redraw the image
+                LoadImage(_position);
+
+                OnPropertyChanged();
+            }
+        }
+
+        public Color? SecondColour
+        {
+            get => _configurationService.SecondColour;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($@"Checking if value of {nameof(SecondColour)} has changed...");
+                    if (SecondColour?.ToArgb() == value?.ToArgb())
+                    {
+                        _logService.Trace($@"Value of {nameof(SecondColour)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    // create the new background colour image
+                    if (value == null)
+                        SecondColourImage = null;
+                    else
+                        SecondColourImage = _imageService.Circle(value.Value, 16, 16);
+
+                    // save the new value
+                    _configurationService.SecondColour = value;
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        public Image SecondColourImage { get; private set; }
+
+        public FormWindowState WindowState
+        {
+            get => _configurationService.WindowState;
+            set
+            {
+                // ignore when the form is minimised
+                if (value == FormWindowState.Minimized) return;
+
+                // only process changes
+                if (_configurationService.WindowState == value) return;
+
+                // save the new value
+                _configurationService.WindowState = value;
+
+                OnPropertyChanged();
+            }
+        }
+
+        void IDirectoryOpenerObserver.OnOpening(string directory)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Resetting state...");
+                _images.Clear();
+                _quickCaptionService.Clear();
+                _current = null;
+                Image = null;
+                Position = -1;
+
+                _logService.Trace("Letting UI know that a directory is being opened...");
+                OnOpening(directory);
+
+                _logService.Trace("Resetting property values...");
+                OnPropertyChanged(nameof(Caption));
+                OnPropertyChanged(nameof(CaptionAlignment));
+                OnPropertyChanged(nameof(Colour));
+                OnPropertyChanged(nameof(Count));
+                OnPropertyChanged(nameof(DateTaken));
+                OnPropertyChanged(nameof(Filename));
+                OnPropertyChanged(nameof(FontBold));
+                OnPropertyChanged(nameof(FontName));
+                OnPropertyChanged(nameof(FontSize));
+                OnPropertyChanged(nameof(FontType));
+                OnPropertyChanged(nameof(ImageFormat));
+                OnPropertyChanged(nameof(Latitude));
+                OnPropertyChanged(nameof(Rotation));
+                OnPropertyChanged(nameof(Longitude));
+                OnPropertyChanged(nameof(OutputFilename));
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        void IDirectoryOpenerObserver.OnOpened(string directory, int count)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Notifying UI that directory has been opened...");
+                OnOpened(directory, count);
+
+                _logService.Trace("Checking if any images were found...");
+                if (count == 0)
+                {
+                    _logService.Trace("No images were found.  Exiting...");
+                    return;
+                }
+
+                _logService.Trace(
+                    $"{count} images were found.  Getting most recently used file for most recently used directory...");
+                var mostRecentlyUsedFile = _recentlyUsedDirectoriesService.GetMostRecentlyUsedFile();
+
+                _logService.Trace("Checking if there is a most recently used file...");
+                if (string.IsNullOrWhiteSpace(mostRecentlyUsedFile))
+                {
+                    _logService.Trace("There is no most recently used file.  Defaulting to first image...");
+                    Position = 0;
+
+                    return;
+                }
+
+                _logService.Trace($@"Finding position of ""{mostRecentlyUsedFile}""...");
+                var imageModel = _images.FirstOrDefault(i => i.Filename == mostRecentlyUsedFile);
+
+                _logService.Trace($@"Checking if position of ""{mostRecentlyUsedFile}"" could be found...");
+                if (imageModel == null)
+                {
+                    _logService.Trace($@"Position of ""{mostRecentlyUsedFile}"" could not be found.  Exiting...");
+                    return;
+                }
+
+                var position = _images.IndexOf(imageModel);
+
+                _logService.Trace($"Setting position to {position}...");
+                Position = position;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public void OnError(Exception ex)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnErrorDelegate(OnError), ex);
+
+                    return;
+                }
+
+                _logService.Trace("Notifying error...");
+                Error?.Invoke(this, new ErrorEventArgs(ex));
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public void OnImageFound(string directory, Services.Models.Metadata file)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($@"Adding ""{directory}"" to recently used directories list...");
+                _recentlyUsedDirectoriesService.Add(directory);
+
+                _logService.Trace("Creating image model...");
+                var imageModel = Mapper.Map<Models.ImageModel>(file);
+
+                _logService.Trace($@"Adding ""{file.Filename}"" to image list...");
+                _images.Add(imageModel);
+
+                _logService.Trace("Mapping to service layer...");
+                var metadata = Mapper.Map<Services.Models.Metadata>(imageModel);
+
+                _logService.Trace($@"Adding ""{metadata.Caption}"" to quick captions...");
+                _quickCaptionService.Add(metadata);
+
+                OnImageFound(file.Filename);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public void Dispose()
+        {
+            // dispose of managed resources
+            Dispose(true);
+
+            // suppress finalisation
+            GC.SuppressFinalize(this);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        void IQuickCaptionObserver.OnClear()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Bubbling up to UI...");
+                OnQuickCaptionCleared();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        void IQuickCaptionObserver.OnCompleted()
+        {
+            // nothing required
+        }
+
+        public void OnNext(string caption)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($@"Adding ""{caption}"" to quick captions...");
+                OnQuickCaption(caption);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        void IRecentlyUsedDirectoriesObserver.OnClear()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Notifying UI that recently used directories have been cleared...");
+                OnRecentlyUsedDirectoriesCleared();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public void OnNext(Services.Models.Directory directory)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Mapping to UI layer...");
+                var recentlyUsedDirectory = Mapper.Map<Models.Directory>(directory);
+
+                _logService.Trace($@"Adding {recentlyUsedDirectory} to list of recently used directories...");
+                OnRecentlyUsedDirectory(recentlyUsedDirectory);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private delegate void OnErrorDelegate(Exception ex);
+
+        private delegate void OnOpeningDelegate(string directory);
+
+        private delegate void OnPreviewLoadedDelegate(string filename, Image image);
+
+        private delegate void OnPropertyChangedDelegate(string propertyName);
+
+        private delegate void OnImageFoundDelegate(string filename);
+
+        private void CacheImage(int position)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Position to cache is {position}");
+                if (position > _images.Count - 2)
+                {
+                    _logService.Trace("There is no image to cache.  Exiting...");
+                    return;
+                }
+
+                // get the name of the file to be cached
+                var filename = _images[position].Filename;
+
+                _logService.Trace($"Caching \"{filename}\" on background thread...");
+                Task.Factory.StartNew(() => _imageService.Get(filename), _openCancellationTokenSource.Token,
+                        TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public bool Delete()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Is there a current image?");
+                if (_current == null)
+                {
+                    _logService.Trace("There is no current image.  Returning...");
+                    return false;
+                }
+
+                _logService.Trace($"Deleting metadata for \"{_current.Filename}\"...");
+                if (!_imageMetadataService.Delete(_current.Filename)) return false;
+
+                _logService.Trace("Resetting image...");
+                _current.IsExifLoaded = false;
+                _current.IsMetadataLoaded = false;
+                _current.Rotation = Rotations.Zero;
+                _current.IsSaved = false;
+
+                _logService.Trace("Checking that the output file can be deleted...");
+                if (_current.OutputFilename != null &&
+                    _current.OutputFilename != _current.Filename &&
+                    File.Exists(_current.OutputFilename))
+                {
+                    _logService.Trace($"Deleting \"{_current.OutputFilename}\"...");
+                    File.Delete(_current.OutputFilename);
+                }
+
+                _logService.Trace("Reloading image...");
+                LoadImage(_position);
+
+                _logService.Trace("Reloading preview...");
+                LoadPreview(_current.Filename, _openCancellationTokenSource.Token);
+
+                return true;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            // only dispose of managed resources once
+            if (_disposed) return;
+
+            if (disposing)
+            {
+                // cancel any active background jobs
+                _openCancellationTokenSource?.Cancel();
+                _recentlyUsedDirectoriesCancellationTokenSource?.Cancel();
+
+                // dispose of any managed resources
+                _openCancellationTokenSource?.Dispose();
+                _recentlyUsedDirectoriesCancellationTokenSource?.Dispose();
+            }
+
+            _disposed = true;
+        }
+
+        public event ErrorEventHandler Error;
+
+        private void ExifThread(Models.ImageModel imageModel, EventWaitHandle manualResetEvent)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Checking if Exif data is already loaded for \"{imageModel.Filename}\"...");
+                if (!imageModel.IsExifLoaded)
+                {
+                    _logService.Trace($"Loading Exif data for \"{imageModel.Filename}\"...");
+                    var exifData = _imageService.GetExifData(imageModel.Filename);
+                    if (exifData != null)
+                    {
+                        _logService.Trace($"Populating values from Exif data for \"{imageModel.Filename}\"...");
+                        _logService.Trace($"Date taken for \"{imageModel.Filename}\" is \"{exifData.DateTaken}\"");
+                        imageModel.Caption = exifData.Title;
+                        imageModel.DateTaken = exifData.DateTaken;
+                        imageModel.Latitude = exifData.Latitude;
+                        imageModel.Longitude = exifData.Longitude;
+                    }
+
+                    // flag that the Exif data is loaded
+                    imageModel.IsExifLoaded = true;
+                }
+                else
+                {
+                    _logService.Trace(
+                        $"Exif data is already loaded for \"{imageModel.Filename}\".  Caption is \"{imageModel.Caption}\"");
+                }
+
+                // flag that the Exif is loaded
+                manualResetEvent.Set();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ImageThread(Models.ImageModel imageModel, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
@@ -594,26 +945,10 @@ namespace PhotoLabel
                     TaskCreationOptions.LongRunning, TaskScheduler.Current);
                 task.ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
 
-                // do we need to load the metadata?
-                _logService.Trace($@"Checking if metadata is already loaded for ""{imageModel.Filename}""...");
-                if (!imageModel.MetadataLoaded)
-                {
-                    _logService.Trace($@"Creating signal for loading metadata for ""{imageModel.Filename}""...");
-                    var metadataResetEvent = new ManualResetEvent(false);
-
-                    // load the metadata on another thread
-                    Task.Factory.StartNew(() => MetadataThread(imageModel, metadataResetEvent),
-                            _imageCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
-
-                    // wait for the metadata to load
-                    if (cancellationToken.IsCancellationRequested) return;
-                    metadataResetEvent.WaitOne();
-                }
-
                 // if there was no metadata file, we need to load the Exif 
                 // data to get the default caption
-                if (!imageModel.MetadataExists && !imageModel.ExifLoaded)
+                if (cancellationToken.IsCancellationRequested) return;
+                if (!imageModel.IsMetadataLoaded && !imageModel.IsExifLoaded)
                 {
                     var exifResetEvent = new ManualResetEvent(false);
 
@@ -623,22 +958,6 @@ namespace PhotoLabel
 
                     // wait for the Exif data to load
                     exifResetEvent.WaitOne();
-                }
-
-                _logService.Trace("Creating signal for quick caption thread...");
-                var quickCaptionEvent = new ManualResetEvent(false);
-
-                _logService.Trace($@"Checking if quick captions need to be loaded for ""{imageModel.Filename}""...");
-                if (imageModel.Filename != _current?.Filename)
-                {
-                    Task.Factory.StartNew(() => QuickCaptionThread(imageModel, quickCaptionEvent), cancellationToken,
-                            TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
-                }
-                else
-                {
-                    _logService.Trace($@"Quick captions are already loaded for ""{imageModel.Filename}""");
-                    quickCaptionEvent.Set();
                 }
 
                 // get the image
@@ -660,17 +979,21 @@ namespace PhotoLabel
 
                 // is there a date taken?
                 _logService.Trace($@"Checking if ""{imageModel.Filename}"" has a date taken set...");
-                if (imageModel.DateTaken != null && (imageModel.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption)) {
+                if (imageModel.DateTaken != null &&
+                    (imageModel.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption))
+                {
                     if (captionBuilder.Length > 0) captionBuilder.Append(" - ");
 
                     captionBuilder.Append(imageModel.DateTaken);
                 }
+
                 var caption = captionBuilder.ToString();
 
                 // create the caption
                 if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{caption}"".  Creating image...");
-                var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize, fontType, fontBold, new SolidBrush(colour), backgroundColour, rotation);
+                var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize,
+                    fontType, fontBold, new SolidBrush(colour), backgroundColour, rotation);
                 try
                 {
                     // update the image in a thread safe manner
@@ -691,8 +1014,11 @@ namespace PhotoLabel
                     if (cancellationToken.IsCancellationRequested) captionedImage.Dispose();
                 }
 
-                _logService.Trace("Waiting for quick captions to load...");
-                quickCaptionEvent.WaitOne();
+                _logService.Trace("Mapping to service layer...");
+                var metadata = Mapper.Map<Services.Models.Metadata>(imageModel);
+
+                _logService.Trace($@"Loading new list of quick captions for ""{metadata.Filename}""...");
+                _quickCaptionService.Switch(metadata);
 
                 // flag that the image has loaded
                 _imageManualResetEvent.Set();
@@ -706,40 +1032,36 @@ namespace PhotoLabel
             }
         }
 
-        private void MetadataThread(
-            ImageModel imageMetadata,
-            EventWaitHandle manualResetEvent)
+        private void LoadImage(int position)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($@"Checking if metadata is loaded for ""{imageMetadata.Filename}""...");
-                if (!imageMetadata.MetadataLoaded)
+                lock (_imageLock)
                 {
-                    // only one thread can load the metadata
-                    lock (imageMetadata)
-                    {
-                        // once we have the lock, make sure another thread didn't load
-                        // the metadata in the interim
-                        if (!imageMetadata.MetadataLoaded)
-                        {
-                            _logService.Trace($@"Metadata is not loaded for ""{imageMetadata.Filename}"".  Loading...");
-                            var metadata = _imageMetadataService.Load(imageMetadata.Filename);
+                    // cancel any in progress load
+                    _imageCancellationTokenSource?.Cancel();
 
-                            if (metadata != null)
-                            {
-                                _logService.Trace($@"Populating values from metadata for ""{imageMetadata.Filename}""...");
-                                Mapper.Map(metadata, imageMetadata);
-                            }
+                    _logService.Trace("Creating new cancellation token...");
+                    _imageCancellationTokenSource = new CancellationTokenSource();
 
-                            // don't try and load the metadata again
-                            imageMetadata.MetadataLoaded = true;
-                        }
-                    }
+                    // flag that the image is loading
+                    _imageManualResetEvent.Reset();
+
+                    // clear the image
+                    Image = null;
+
+                    // get the image to load
+                    var imageToLoad = _images[position];
+
+                    // load the image on a background thread
+                    Task.Delay(300, _imageCancellationTokenSource.Token)
+                        .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null,
+                            _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning,
+                            TaskScheduler.Current)
+                        .ContinueWith(OnError, _imageCancellationTokenSource.Token,
+                            TaskContinuationOptions.OnlyOnFaulted);
                 }
-
-                // flag that we have loaded
-                manualResetEvent.Set();
             }
             finally
             {
@@ -747,7 +1069,7 @@ namespace PhotoLabel
             }
         }
 
-        public void LoadPreview(string filename)
+        public void LoadPreview(string filename, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
@@ -762,8 +1084,9 @@ namespace PhotoLabel
                 }
 
                 _logService.Trace($@"Loading preview for ""{filename}"" on a background thread...");
-                Task.Factory.StartNew(() => PreviewThread(imageModel, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token)
-                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                Task.Factory.StartNew(() => PreviewThread(imageModel, cancellationToken),
+                        _openCancellationTokenSource.Token)
+                    .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -771,22 +1094,24 @@ namespace PhotoLabel
             }
         }
 
-        private void PreviewThread(ImageModel imageMetadata, CancellationToken cancellationToken)
+        public void LoadRecentlyUsedDirectories()
         {
             _logService.TraceEnter();
             try
             {
-                if (cancellationToken.IsCancellationRequested) return;
-                var preview = _imageService.Get(imageMetadata.Filename, 128, 128);
+                _logService.Trace("Cancelling any in progress load...");
+                _recentlyUsedDirectoriesCancellationTokenSource?.Cancel();
 
-                if (cancellationToken.IsCancellationRequested) return;
-                if (imageMetadata.Saved)
-                    preview = _imageService.Overlay(preview, Properties.Resources.saved, preview.Width - Properties.Resources.saved.Width - 4, 4);
-                else if (imageMetadata.MetadataExists)
-                    preview = _imageService.Overlay(preview, Properties.Resources.metadata, preview.Width - Properties.Resources.saved.Width - 4, 4);
+                _logService.Trace("Creating new cancellation token...");
+                _recentlyUsedDirectoriesCancellationTokenSource = new CancellationTokenSource();
 
-                if (cancellationToken.IsCancellationRequested) return;
-                OnPreviewLoaded(imageMetadata.Filename, preview);
+                // load the recently used directories on a background thread
+                Task.Factory
+                    .StartNew(
+                        () => RecentlyUsedDirectoriesThread(_recentlyUsedDirectoriesCancellationTokenSource.Token),
+                        _recentlyUsedDirectoriesCancellationTokenSource.Token, TaskCreationOptions.LongRunning,
+                        TaskScheduler.Current)
+                    .ContinueWith(OnError, null, TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -794,24 +1119,83 @@ namespace PhotoLabel
             }
         }
 
-        public float? Longitude => _current?.Longitude;
+        private void OnError(Task task, object state)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                OnError(task.Exception);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
 
-        private void OnError(Exception ex)
+        private void OnImageFound(string filename)
         {
             _logService.TraceEnter();
             try
             {
                 _logService.Trace("Checking if running on UI thread...");
-                if (Invoker.InvokeRequired)
+                if (Invoker?.InvokeRequired ?? false)
                 {
                     _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Invoker.Invoke(new OnErrorDelegate(OnError), ex);
+                    Invoker.Invoke(new OnImageFoundDelegate(OnImageFound), filename);
 
                     return;
                 }
 
-                _logService.Trace("Notifying error...");
-                Error?.Invoke(this, new ErrorEventArgs(ex));
+                ImageFound?.Invoke(this, new ImageFoundEventArgs {Filename = filename});
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void OnOpened(string directory, int count)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnOpenedDelegate(OnOpened), directory, count);
+
+                    return;
+                }
+
+                Opened?.Invoke(this, new OpenedEventArgs
+                {
+                    Directory = directory,
+                    Count = count
+                });
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void OnOpening(string directory)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnOpeningDelegate(OnOpening), directory);
+
+                    return;
+                }
+
+                _logService.Trace($@"Notifying ""{directory} opening...");
+                Opening?.Invoke(this, new OpeningEventArgs {Directory = directory});
             }
             finally
             {
@@ -825,7 +1209,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Checking if running on UI thread...");
-                if (Invoker.InvokeRequired)
+                if (Invoker?.InvokeRequired ?? false)
                 {
                     _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
                     Invoker.Invoke(new OnPreviewLoadedDelegate(OnPreviewLoaded), filename, image);
@@ -834,7 +1218,7 @@ namespace PhotoLabel
                 }
 
                 _logService.Trace($@"Notifying preview loaded for ""{filename}""...");
-                PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs { Filename = filename, Image=image });
+                PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs {Filename = filename, Image = image});
             }
             finally
             {
@@ -865,26 +1249,110 @@ namespace PhotoLabel
             }
         }
 
+        private void OnQuickCaption(string caption)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnQuickCaptionDelegate(OnQuickCaption), caption);
+
+                    return;
+                }
+
+                QuickCaption?.Invoke(this, new QuickCaptionEventArgs{Caption=caption});
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void OnQuickCaptionCleared()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnDelegate(OnQuickCaptionCleared));
+
+                    return;
+                }
+
+                QuickCaptionCleared?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void OnRecentlyUsedDirectoriesCleared()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnDelegate(OnRecentlyUsedDirectoriesCleared));
+
+                    return;
+                }
+
+                RecentlyUsedDirectoriesCleared?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void OnRecentlyUsedDirectory(Models.Directory recentlyUsedDirectory)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnRecentlyUsedDirectoryDelegate(OnRecentlyUsedDirectory), recentlyUsedDirectory);
+
+                    return;
+                }
+
+                RecentlyUsedDirectory?.Invoke(this, new RecentlyUsedDirectoryEventArgs { RecentlyUsedDirectory=recentlyUsedDirectory });
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
         public void Open(string directory)
         {
+            if (directory == null) throw new ArgumentNullException(nameof(directory));
+
             _logService.TraceEnter();
             try
             {
-                lock (_openLock)
-                {
-                    _logService.Trace("Cancelling any in progress open...");
-                    _openCancellationTokenSource?.Cancel();
+                _logService.Trace("Cancelling any in progress open...");
+                _openCancellationTokenSource?.Cancel();
 
-                    _logService.Trace("Clearing current image...");
-                    lock (_imageLock) Image = null;
+                _logService.Trace($@"Opening ""{directory}"" on a background thread...");
+                _openCancellationTokenSource = new CancellationTokenSource();
 
-                    _logService.Trace($@"Opening ""{directory}"" on a background thread...");
-                    _openCancellationTokenSource = new CancellationTokenSource();
-                    Task.Factory.StartNew(() => OpenThread(directory), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
-
-                    OnPropertyChanged(nameof(Image));
-                }
+                Task.Factory.StartNew(() => OpenThread(directory, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token,
+                        TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                    .ContinueWith(OnError, _openCancellationTokenSource.Token,
+                        TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -892,85 +1360,40 @@ namespace PhotoLabel
             }
         }
 
-        private void OpenThread(string directory)
+        #region events
+
+        public event OpenedEventHandler Opened;
+
+        #endregion
+
+        public event OpeningEventHandler Opening;
+
+        private void OpenThread(string directory, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
             {
-                if (_openCancellationTokenSource.IsCancellationRequested) return;
+                if (cancellationToken.IsCancellationRequested) return;
                 lock (_imagesLock)
                 {
-                    if (_openCancellationTokenSource.IsCancellationRequested) return;
+                    if (cancellationToken.IsCancellationRequested) return;
                     _logService.Trace("Clearing current images...");
+                    _current = null;
                     _images.Clear();
                     _position = -1;
+                    lock (_imageLock) Image = null;
 
-                    _logService.Trace("Clearing quick captions...");
-                    _quickCaptionService.Clear();
-
-                    if (_openCancellationTokenSource.IsCancellationRequested) return;
+                    if (cancellationToken.IsCancellationRequested) return;
                     _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
-                    var filenames = _imageService.Find(directory);
-                    _logService.Trace($"{filenames.Count} image files found");
+                    _directoryOpenerService.Find(directory, cancellationToken);
 
-                    // only add this directory to the recently used directories list
-                    // if it contains images
-                    if (filenames.Count > 0)
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace($"Loading previews for {_images.Count} images...");
+                    foreach (var imageModel in _images)
                     {
-                        if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        _logService.Trace("Building images...");
-                        foreach (var filename in filenames)
-                        {
-                            if (_openCancellationTokenSource.IsCancellationRequested) break;
-                            _logService.Trace($@"Creating model for ""{filename}""...");
-                            var imageMetadata = new ImageModel
-                            {
-                                ExifLoaded = false,
-                                Filename = filename,
-                                MetadataExists = false,
-                                MetadataLoaded = false
-                            };
-
-                            _logService.Trace($@"Checking if metadata exists for ""{filename}""...");
-                            var imageMetadataServices = _imageMetadataService.Load(filename);
-                            if (imageMetadataServices != null)
-                            {
-                                Mapper.Map(imageMetadataServices, imageMetadata);
-
-                                imageMetadata.MetadataLoaded = true;
-                            }
-
-                        if (_openCancellationTokenSource.IsCancellationRequested) break;
-                            _images.Add(imageMetadata);
-
-                            if (_openCancellationTokenSource.IsCancellationRequested) return;
-                            _logService.Trace($@"Adding ""{filename}"" to quick caption...");
-                            _quickCaptionService.Add(imageMetadata.DateTaken, imageMetadata.Caption);
-                        }
-
-                        if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        _logService.Trace("Mapping to service layer...");
-                        var servicesRecentlyUsedDirectories = Mapper.Map<List<Services.Models.DirectoryModel>>(_recentlyUsedDirectories);
-
-                        if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        _logService.Trace($@"Adding ""{directory}"" to list of recently used directories...");
-                        servicesRecentlyUsedDirectories = _recentlyUsedDirectoriesService.Add(directory, servicesRecentlyUsedDirectories);
-
-                        if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        _logService.Trace("Mapping to UI layer...");
-                        _recentlyUsedDirectories = Mapper.Map<List<DirectoryModel>>(servicesRecentlyUsedDirectories);
-
-                        if (_openCancellationTokenSource.IsCancellationRequested) return;
-                        OnPropertyChanged(nameof(RecentlyUsedDirectories));
+                        if (cancellationToken.IsCancellationRequested) return;
+                        PreviewThread(imageModel, cancellationToken);
                     }
-                    else
-                    {
-                        // clear any current image
-                        _current = null;
-                    }
-
-                    if (_openCancellationTokenSource.IsCancellationRequested) return;
-                    OnPropertyChanged(nameof(Filenames));
                 }
             }
             finally
@@ -979,69 +1402,40 @@ namespace PhotoLabel
             }
         }
 
-        public string OutputFilename => _current == null
-            ? string.Empty
-            : Path.Combine(OutputPath,
-                $"{Path.GetFileName(_current.Filename)}.{(_current.ImageFormat == ImageFormat.Jpeg ? "jpg" : _current.ImageFormat == ImageFormat.Bmp ? "bmp" : "png")}");
+        public event PreviewLoadedEventHandler PreviewLoaded;
 
-        public string OutputPath
-        {
-            get => _configurationService.OutputPath;
-            set
-            {
-                _configurationService.OutputPath = value;
-
-                OnPropertyChanged();
-            }
-        }
-
-        public int Position
-        {
-            get => _position;
-            set
-            {
-                // only process changes
-                if (_position == value) return;
-
-                // save the change
-                _position = value;
-
-                // save the last selected filename for this folder
-                SaveLastSelectedFilename();
-
-                // clear the current image
-                _current = null;
-
-                // redraw the image on a background thread
-                LoadImage(value);
-
-                // cache the next image on a background thread
-                CacheImage(value + 1);
-
-                OnPropertyChanged();
-            }
-        }
-
-        public IList<string> QuickCaptions {get; } = new List<string>();
-
-        private void QuickCaptionThread(ImageModel imageModel, EventWaitHandle manualResetEvent)
+        private void PreviewThread(Models.ImageModel image, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Clearing existing quick captions...");
-                QuickCaptions.Clear();
+                lock (image)
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace($@"Checking if preview is already loaded for ""{image.Filename}""...");
+                    if (image.IsPreviewLoaded)
+                    {
+                        _logService.Trace($@"Preview is already loaded for ""{image.Filename}"".  Exiting...");
+                        return;
+                    }
 
-                _logService.Trace($@"Adding filename a first quick caption for ""{imageModel.Filename}""...");
-                QuickCaptions.Add(Path.GetFileNameWithoutExtension(imageModel.Filename));
+                    if (cancellationToken.IsCancellationRequested) return;
+                    var preview = _imageService.Get(image.Filename, 128, 128);
 
-                _logService.Trace($@"Retrieving quick captions for ""{imageModel.Filename}""...");
-                QuickCaptions.AddRange(_quickCaptionService.Get(imageModel.DateTaken));
+                    if (cancellationToken.IsCancellationRequested) return;
+                    if (image.IsSaved)
+                        preview = _imageService.Overlay(preview, Resources.saved,
+                            preview.Width - Resources.saved.Width - 4, 4);
+                    else if (image.IsMetadataLoaded)
+                        preview = _imageService.Overlay(preview, Resources.metadata,
+                            preview.Width - Resources.saved.Width - 4, 4);
 
-                OnPropertyChanged(nameof(QuickCaptions));
+                    _logService.Trace($@"Flagging that preview has been loaded for ""{image.Filename}""...");
+                    image.IsPreviewLoaded = true;
 
-                _logService.Trace("Flagging that quick captions have loaded...");
-                manualResetEvent.Set();
+                    if (cancellationToken.IsCancellationRequested) return;
+                    OnPreviewLoaded(image.Filename, preview);
+                }
             }
             finally
             {
@@ -1049,48 +1443,30 @@ namespace PhotoLabel
             }
         }
 
-        private void SaveLastSelectedFilename()
+        private void RecentlyUsedDirectoriesThread(CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Getting current folder...");
-                var folder = _recentlyUsedDirectories[0];
-                _logService.Trace($"Current folder is \"{folder.Path}\"");
+                _logService.Trace("Loading recently used directories...");
+                _recentlyUsedDirectoriesService.Load(cancellationToken);
 
-                // save this file as the last used file for this folder
-                _logService.Trace($"Last selected file in folder \"{folder.Path}\" is \"{Filenames[_position]}\"");
-                folder.Filename = Filenames[_position];
+                _logService.Trace("Getting most recently used directory...");
+                var mostRecentlyUsedDirectory = _recentlyUsedDirectoriesService.GetMostRecentlyUsedDirectory();
 
-                // map to the service layer
-                _logService.Trace("Saving recently used folder change...");
-                var folders = Mapper.Map<List<Services.Models.DirectoryModel>>(_recentlyUsedDirectories);
-                _recentlyUsedDirectoriesService.Save(folders);
+                _logService.Trace("Checking if there is a most recently used directory...");
+                if (string.IsNullOrWhiteSpace(mostRecentlyUsedDirectory))
+                {
+                    _logService.Trace("No most recently used directory found.  Exiting...");
+                    return;
+                }
+
+                _logService.Trace($@"Opening ""{mostRecentlyUsedDirectory}""...");
+                Open(mostRecentlyUsedDirectory);
             }
             finally
             {
                 _logService.TraceExit();
-            }
-        }
-
-        public Rotations Rotation
-        {
-            get => _current?.Rotation ?? Rotations.Zero;
-            set
-            {
-                // only process changes
-                if (Rotation == value) return;
-
-                // save the rotation to the image
-                if (_current == null) return;
-
-                // update the value
-                _current.Rotation = value;
-
-                // redraw the image
-                LoadImage(_position);
-
-                OnPropertyChanged();
             }
         }
 
@@ -1107,7 +1483,10 @@ namespace PhotoLabel
 
                 // save the image
                 _logService.Trace("Saving image to disk...");
-                lock (Image) _imageService.Save(Image, filename, ImageFormat);
+                lock (Image)
+                {
+                    _imageService.Save(Image, filename, ImageFormat);
+                }
 
                 // save the metadata
                 var metadata = new Services.Models.Metadata
@@ -1117,11 +1496,13 @@ namespace PhotoLabel
                     CaptionAlignment = CaptionAlignment,
                     Colour = Colour.ToArgb(),
                     DateTaken = DateTaken,
+                    Filename = Filename,
                     FontBold = FontBold,
                     FontFamily = FontName,
                     FontSize = FontSize,
                     FontType = FontType,
                     ImageFormat = ImageFormat,
+                    IsMetadataLoaded = false,
                     Latitude = Latitude,
                     Longitude = Longitude,
                     OutputFilename = filename,
@@ -1133,20 +1514,30 @@ namespace PhotoLabel
                 _current.OutputFilename = filename;
 
                 // do we need to flag it as saved?
-                if (_current.Saved) return;
+                if (_current.IsSaved) return;
 
                 // flag that the current image has metadata
-                _current.MetadataExists = true;
+                _current.IsMetadataLoaded = true;
 
                 // flag that the current image has been saved
-                _current.Saved = true;
+                _current.IsSaved = true;
+
+                // flag that the current preview needs to be reloaded
+                _current.IsPreviewLoaded = false;
 
                 // save the quick caption
-                _quickCaptionService.Add(_current.DateTaken, _current.Caption);
+                _quickCaptionService.Add(metadata);
 
                 // reload the preview
-                Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token),
+                        _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
                     .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+
+                _logService.Trace($"Checking if there is an image after position {Position}...");
+                if (Position >= Count - 1) return;
+
+                _logService.Trace($"There is an image after position {Position}.  Moving to next image...");
+                Position++;
             }
             finally
             {
@@ -1154,72 +1545,29 @@ namespace PhotoLabel
             }
         }
 
-        public Color? SecondColour
-        {
-            get => _configurationService.SecondColour;
-            set
-            {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($@"Checking if value of {nameof(SecondColour)} has changed...");
-                    if (SecondColour?.ToArgb() == value?.ToArgb())
-                    {
-                        _logService.Trace($@"Value of {nameof(SecondColour)} has not changed.  Exiting...");
-                        return;
-                    }
-
-                    // create the new background colour image
-                    if (value == null)
-                    {
-                        SecondColourImage = null;
-                    }
-                    else
-                    {
-                        SecondColourImage = _imageService.Circle(value.Value, 16, 16);
-                    }
-
-                    // save the new value
-                    _configurationService.SecondColour = value;
-                }
-                finally
-                {
-                    _logService.TraceExit();
-                }
-            }
-        }
-
-        public Image SecondColourImage { get; private set; }
-
         public void UseBackgroundSecondColour()
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Setting {nameof(BackgroundColour)} to value of {nameof(BackgroundSecondColour)}...");
+                _logService.Trace(
+                    $"Setting {nameof(BackgroundColour)} to value of {nameof(BackgroundSecondColour)}...");
                 BackgroundColour = BackgroundSecondColour ?? Color.Black;
             }
-            finally {
+            finally
+            {
                 _logService.TraceExit();
             }
         }
 
-        public FormWindowState WindowState
-        {
-            get => _configurationService.WindowState;
-            set
-            {
-                // ignore when the form is minimised
-                if (value == FormWindowState.Minimized) return;
+        #region delegates
 
-                // only process changes
-                if (_configurationService.WindowState == value) return;
+        private delegate void OnOpenedDelegate(string directory, int count);
 
-                // save the new value
-                _configurationService.WindowState = value;
+        public delegate void OpenedEventHandler(object sender, OpenedEventArgs e);
 
-                OnPropertyChanged();
-            }
-        }
+        public delegate void PreviewLoadedEventHandler(object sender, PreviewLoadedEventArgs e);
+
+        #endregion
     }
 }

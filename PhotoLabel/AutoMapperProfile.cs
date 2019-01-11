@@ -9,14 +9,18 @@ namespace PhotoLabel
         public AutoMapperProfile()
         {
             CreateMap<Services.Models.Metadata, Models.ImageModel>()
-                .ForMember(d => d.BackgroundColour, o => o.MapFrom(s => Color.FromArgb(s.BackgroundColour)))
-                .ForMember(d => d.Colour, o => o.MapFrom(s => Color.FromArgb(s.Colour)))
-                .ForMember(d => d.ExifLoaded, o => o.Ignore())
-                .ForMember(d => d.MetadataExists, o => o.UseValue(true))
-                .ForMember(d => d.MetadataLoaded, o => o.Ignore())
-                .ForMember(d => d.Saved, o => o.Ignore());
+                .ForMember(d => d.BackgroundColour, o => o.MapFrom(s => s.BackgroundColour < 0 ? (Color?)null : Color.FromArgb(s.BackgroundColour)))
+                .ForMember(d => d.Colour, o => o.MapFrom(s => s.Colour < 0 ? (Color?)null : Color.FromArgb(s.Colour)))
+                .ForMember(d => d.FontName, o => o.MapFrom(s => s.FontFamily))
+                .ForMember(d => d.FontSize, o=>o.ResolveUsing(s => s.FontSize <= 0 ? (float?)null : s.FontSize))
+                .ForMember(d => d.IsExifLoaded, o => o.Ignore())
+                .ForMember(d => d.IsSaved, o => o.Ignore())
+                .ReverseMap()
+                    .ForMember(d => d.BackgroundColour, o => o.MapFrom(s => s.BackgroundColour.HasValue ? s.BackgroundColour.Value.ToArgb() : -1))
+                    .ForMember(d => d.Colour, o => o.MapFrom(s => s.Colour.HasValue ? s.Colour.Value.ToArgb() : -1))
+                    .ForMember(d => d.FontFamily, o=>o.MapFrom(s => s.FontName));
 
-            CreateMap<Models.DirectoryModel, Services.Models.DirectoryModel>()
+            CreateMap<Models.Directory, Services.Models.Directory>()
                 .ReverseMap();
         }
     }

@@ -7,12 +7,6 @@ namespace PhotoLabel.Services
 {
     public class ConfigurationService : IConfigurationService
     {
-        #region variables
-        private readonly Models.Configuration _configurationModel;
-        private readonly ILogService _logService;
-        private readonly IXmlFileSerialiser _xmlFileSerialiser;
-        #endregion
-
         public ConfigurationService(
             ILogService logService,
             IXmlFileSerialiser xmlFileSerialiser)
@@ -61,14 +55,16 @@ namespace PhotoLabel.Services
 
         public Color? BackgroundSecondColour
         {
-            get => _configurationModel.BackgroundSecondColour == null ? (Color?)null : Color.FromArgb(_configurationModel.BackgroundSecondColour.Value);
+            get => _configurationModel.BackgroundSecondColour == null
+                ? (Color?) null
+                : Color.FromArgb(_configurationModel.BackgroundSecondColour.Value);
             set
             {
                 _logService.TraceEnter();
                 try
                 {
                     _logService.Trace($"Setting new value of {nameof(BackgroundSecondColour)}...");
-                    _configurationModel.BackgroundSecondColour = value == null ? (int?)null : value.Value.ToArgb();
+                    _configurationModel.BackgroundSecondColour = value?.ToArgb();
 
                     _logService.Trace($"Persisting new value of {nameof(BackgroundSecondColour)}...");
                     Save();
@@ -104,17 +100,6 @@ namespace PhotoLabel.Services
                 // persist the change
                 Save();
             }
-        }
-
-        private Models.Configuration CreateConfigurationModel()
-        {
-            return new Models.Configuration
-            {
-                Colour = Color.White.ToArgb(),
-                FontName = SystemFonts.DefaultFont.Name,
-                FontSize = 10f,
-                FontType = "%"
-            };
         }
 
         public bool FontBold
@@ -201,6 +186,92 @@ namespace PhotoLabel.Services
             }
         }
 
+        public string OutputPath
+        {
+            get => _configurationModel.OutputPath;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Saving new value for {nameof(OutputPath)}...");
+                    _configurationModel.OutputPath = value;
+
+                    _logService.Trace("Persisting new value...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        public Color? SecondColour
+        {
+            get
+            {
+                if (_configurationModel.SecondColour == null) return null;
+
+                return Color.FromArgb(_configurationModel.SecondColour.Value);
+            }
+            set
+            {
+                // update the value
+                _configurationModel.SecondColour = value?.ToArgb();
+
+                // persist it
+                Save();
+            }
+        }
+
+        public FormWindowState WindowState
+        {
+            get => _configurationModel.WindowState;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Setting new value of {nameof(WindowState)} to {value}...");
+                    _configurationModel.WindowState = value;
+
+                    _logService.Trace($"Persisting new value of {nameof(WindowState)}...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        private static Models.Configuration CreateConfigurationModel()
+        {
+            return new Models.Configuration
+            {
+                Colour = Color.White.ToArgb(),
+                FontName = SystemFonts.DefaultFont.Name,
+                FontSize = 10f,
+                FontType = "%"
+            };
+        }
+
+        private string GetFilename()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // build the filename for the recently used files
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Photo Label",
+                    "Configuration.xml");
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private Models.Configuration Load()
         {
             _logService.TraceEnter();
@@ -243,41 +314,6 @@ namespace PhotoLabel.Services
             }
         }
 
-        private string GetFilename()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // build the filename for the recently used files
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Photo Label", "Configuration.xml");
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public string OutputPath
-        {
-            get => _configurationModel.OutputPath;
-            set
-            {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Saving new value for {nameof(OutputPath)}...");
-                    _configurationModel.OutputPath = value;
-
-                    _logService.Trace("Persisting new value...");
-                    Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
-                }
-            }
-        }
-
         private void Save()
         {
             _logService.TraceEnter();
@@ -303,43 +339,12 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Color? SecondColour
-        {
-            get
-            {
-                if (_configurationModel.SecondColour == null) return null;
+        #region variables
 
-                return Color.FromArgb(_configurationModel.SecondColour.Value);
-            }
-            set
-            {
-                // update the value
-                _configurationModel.SecondColour = value?.ToArgb();
+        private readonly Models.Configuration _configurationModel;
+        private readonly ILogService _logService;
+        private readonly IXmlFileSerialiser _xmlFileSerialiser;
 
-                // persist it
-                Save();
-            }
-        }
-
-        public FormWindowState WindowState
-        {
-            get => _configurationModel.WindowState;
-            set
-            {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Setting new value of {nameof(WindowState)} to {value}...");
-                    _configurationModel.WindowState = value;
-
-                    _logService.Trace($"Persisting new value of {nameof(WindowState)}...");
-                    Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
-                }
-            }
-        }
+        #endregion
     }
 }

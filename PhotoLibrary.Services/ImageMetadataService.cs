@@ -1,20 +1,20 @@
-﻿using PhotoLabel.Services.Models;
-using System.IO;
-using System.Runtime.Serialization;
-using System.Xml.Serialization;
+﻿using System.IO;
 namespace PhotoLabel.Services
 {
     public class ImageMetadataService : IImageMetadataService
     {
         #region private properties
         private readonly ILogService _logService;
+        private readonly IXmlFileSerialiser _xmlFileSerialiser;
         #endregion
 
         public ImageMetadataService(
-            ILogService logService)
+            ILogService logService,
+            IXmlFileSerialiser xmlFileSerialiser)
         {
             // save dependency injections
             _logService = logService;
+            _xmlFileSerialiser = xmlFileSerialiser;
         }
 
         public bool Delete(string filename)
@@ -63,7 +63,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Metadata Load(string filename)
+        public Models.Metadata Load(string filename)
         {
             _logService.TraceEnter();
             try
@@ -71,34 +71,22 @@ namespace PhotoLabel.Services
                 // get the name of the metadata file
                 _logService.Trace($"Getting metadata filename for image \"{filename}\"...");
                 var metadataFilename = GetMetadataFilename(filename);
-                _logService.Trace($"Metadata filename is \"{metadataFilename}\"");
 
-                // does the metadata exist?
-                _logService.Trace($"Checking if file \"{metadataFilename}\" exists...");
-                if (File.Exists(metadataFilename))
+                _logService.Trace($"Loading from file \"{metadataFilename}\"...");
+                var metadata = _xmlFileSerialiser.Deserialise<Models.Metadata>(metadataFilename);
+
+                _logService.Trace("Checking if metadata exists...");
+                if (metadata != null)
                 {
-                    _logService.Trace($"File \"{metadataFilename}\" exists.  Deserialising...");
-                    var serializer = new XmlSerializer(typeof(Metadata));
-                    using (var fileStream = new FileStream(metadataFilename, FileMode.Open, FileAccess.Read))
-                    {
-                        try
-                        {
-                            return serializer.Deserialize(fileStream) as Metadata;
-                        }
-                        catch (SerializationException)
-                        {
-                            // ignore serialization errors
-                            _logService.Trace($"Unable to deserialise \"{metadataFilename}\".  Ignoring.");
-                        }
-                    }
-                }
-                else
-                {
-                    _logService.Trace($"Metadata file not found for \"{filename}\"");
+                    _logService.Trace($@"Metadata exists.  Setting filename to ""{filename}""...");
+                    metadata.Filename = filename;
+
+                    _logService.Trace($@"Flagging that metadata loaded for ""{filename}""...");
+                    metadata.IsMetadataLoaded = true;
                 }
 
                 // return the metadata
-                return null;
+                return metadata;
             }
             finally
             {
@@ -106,7 +94,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public void Save(Metadata metadata, string filename)
+        public void Save(Models.Metadata metadata, string filename)
         {
             _logService.TraceEnter();
             try {
@@ -115,12 +103,8 @@ namespace PhotoLabel.Services
                 // get the name of the metadata file
                 var metadataFilename = GetMetadataFilename(filename);
 
-                // now save it
-                var serializer = new XmlSerializer(metadata.GetType());
-                using (var writer = new FileStream(metadataFilename, FileMode.Create, FileAccess.Write))
-                {
-                    serializer.Serialize(writer, metadata);
-                }
+                _logService.Trace($@"Saving metadata to ""{metadataFilename}""...");
+                _xmlFileSerialiser.Serialise(metadata, metadataFilename);
             }
             finally
             {

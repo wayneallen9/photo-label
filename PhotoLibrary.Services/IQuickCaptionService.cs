@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
 
 namespace PhotoLabel.Services
 {
     public interface IQuickCaptionService
     {
-        void Add(string date, string caption);
+        void Add(Models.Metadata image);
         void Clear();
-        IEnumerable<string> Get(string date);
+        IDisposable Subscribe(IQuickCaptionObserver observer);
+        void Switch(Models.Metadata image);
     }
 }

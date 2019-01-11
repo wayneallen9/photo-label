@@ -58,7 +58,10 @@
   <ItemGroup>
     <Compile Include="CaptionAlignments.cs" />
     <Compile Include="ConfigurationService.cs" />
+    <Compile Include="DirectoryOpenerService.cs" />
     <Compile Include="IConfigurationService.cs" />
+    <Compile Include="IDirectoryOpenerObserver.cs" />
+    <Compile Include="IDirectoryOpenerService.cs" />
     <Compile Include="IImageLoaderService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageService.cs" />
@@ -69,13 +72,15 @@
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="IPercentageServices.cs" />
+    <Compile Include="IQuickCaptionObserver.cs" />
     <Compile Include="IQuickCaptionService.cs" />
-    <Compile Include="IRecentlyUsedFoldersService.cs" />
+    <Compile Include="IRecentlyUsedDirectoriesObserver.cs" />
+    <Compile Include="IRecentlyUsedDirectoriesService.cs" />
     <Compile Include="IXmlFileSerialiser.cs" />
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LogService.cs" />
     <Compile Include="Models\Configuration.cs" />
-    <Compile Include="Models\DirectoryModel.cs" />
+    <Compile Include="Models\Directory.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />
     <Compile Include="NinjectModule.cs" />
@@ -89,6 +94,7 @@
     <Compile Include="QuickCaptionService.cs" />
     <Compile Include="RecentlyUsedDirectoriesService.cs" />
     <Compile Include="Rotations.cs" />
+    <Compile Include="Unsubscriber.cs" />
     <Compile Include="XmlFileSerialiser.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +106,11 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\PhotoLabel.Extensions\PhotoLabel.Extensions.csproj">
+      <Project>{8d3cef97-5153-4297-9bbf-9cbd9ea64001}</Project>
+      <Name>PhotoLabel.Extensions</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
