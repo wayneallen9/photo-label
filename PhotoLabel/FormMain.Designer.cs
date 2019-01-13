@@ -74,6 +74,7 @@
             this.toolStripButtonLocation = new System.Windows.Forms.ToolStripButton();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripProgressBarOpen = new System.Windows.Forms.ToolStripProgressBar();
             this.toolStripStatusLabelOutputDirectory = new System.Windows.Forms.ToolStripStatusLabel();
             this.colorDialog = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
@@ -542,18 +543,27 @@
             // 
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripStatusLabelStatus,
-            this.toolStripStatusLabelOutputDirectory});
+            this.toolStripStatusLabelOutputDirectory,
+            this.toolStripProgressBarOpen});
             this.statusStrip.Location = new System.Drawing.Point(0, 428);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Size = new System.Drawing.Size(800, 22);
             this.statusStrip.TabIndex = 3;
             this.statusStrip.Text = "statusStrip1";
+            this.statusStrip.SizeChanged += new System.EventHandler(this.StatusStrip_SizeChanged);
             // 
             // toolStripStatusLabelStatus
             // 
             this.toolStripStatusLabelStatus.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Right;
             this.toolStripStatusLabelStatus.Name = "toolStripStatusLabelStatus";
             this.toolStripStatusLabelStatus.Size = new System.Drawing.Size(4, 17);
+            // 
+            // toolStripProgressBarOpen
+            // 
+            this.toolStripProgressBarOpen.AutoSize = false;
+            this.toolStripProgressBarOpen.Name = "toolStripProgressBarOpen";
+            this.toolStripProgressBarOpen.Size = new System.Drawing.Size(100, 16);
+            this.toolStripProgressBarOpen.Visible = false;
             // 
             // toolStripStatusLabelOutputDirectory
             // 
@@ -963,6 +973,7 @@
         private System.Windows.Forms.ToolStripButton toolStripButtonBackgroundSecondColour;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelQuickCaption;
+        private System.Windows.Forms.ToolStripProgressBar toolStripProgressBarOpen;
     }
 }
 

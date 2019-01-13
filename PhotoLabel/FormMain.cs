@@ -47,11 +47,34 @@ namespace PhotoLabel
             _mainFormViewModel.Opened += OpenedHandler;
             _mainFormViewModel.Opening += OpeningHandler;
             _mainFormViewModel.PreviewLoaded += PreviewLoadedHandler;
+            _mainFormViewModel.ProgressChanged += ProgressChangedHandler;
             _mainFormViewModel.PropertyChanged += PropertyChangedHandler;
             _mainFormViewModel.QuickCaption += QuickCaptionHandler;
             _mainFormViewModel.QuickCaptionCleared += QuickCaptionClearedHandler;
             _mainFormViewModel.RecentlyUsedDirectoriesCleared += RecentlyUsedDirectoriesClearedHandler;
             _mainFormViewModel.RecentlyUsedDirectory += RecentlyUsedDirectoryHandler;
+        }
+
+        private void ProgressChangedHandler(object sender, ProgressChangedEventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                toolStripProgressBarOpen.Maximum = e.Count;
+                toolStripProgressBarOpen.Value = e.Current;
+                toolStripProgressBarOpen.ToolTipText = e.Directory;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
         }
 
         private void RecentlyUsedDirectoryHandler(object sender, RecentlyUsedDirectoryEventArgs e)
@@ -73,6 +96,13 @@ namespace PhotoLabel
                 _logService.Trace(
                     $"Adding {e.RecentlyUsedDirectory.Path} to recently used directory menu options...");
                 toolStripMenuItemFile.DropDownItems.Insert(toolStripMenuItemFile.DropDownItems.Count - 2, menuItem);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -667,6 +697,9 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                _logService.Trace("Hiding opening progress...");
+                toolStripProgressBarOpen.Visible = false;
+
                 _logService.Trace("Checking if any images were found...");
                 if (e.Count == 0)
                     MessageBox.Show($@"No image files were found in ""{e.Directory}""", @"Open", MessageBoxButtons.OK,
@@ -729,6 +762,9 @@ namespace PhotoLabel
             {
                 _logService.Trace("Clearing preview list...");
                 listViewPreview.Clear();
+
+                _logService.Trace("Showing progress bar...");
+                toolStripProgressBarOpen.Visible = true;
             }
             finally
             {
@@ -1466,6 +1502,9 @@ namespace PhotoLabel
                     _logService.Trace($"Showing output directory \"{_mainFormViewModel.OutputPath}\"...");
                     toolStripStatusLabelOutputDirectory.Text = _mainFormViewModel.OutputPath;
                 }
+
+                _logService.Trace("Resizing progress bar...");
+                ResizeProgressBar();
             }
             finally
             {
@@ -1539,6 +1578,8 @@ namespace PhotoLabel
                 LoadVisiblePreviews();
 
                 ShowProgress(formMainViewModel);
+
+                ResizeProgressBar();
             }
             finally
             {
@@ -1568,80 +1609,6 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
         }
-
-        /*private void ShowQuickCaptions(FormMainViewModel formMainViewModel)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Clearing existing quick captions...");
-                flowLayoutPanelQuickCaption.Controls.Clear();
-
-                _logService.Trace("Adding quick captions for this image...");
-                foreach (var quickCaption in formMainViewModel.QuickCaptions)
-                {
-                    _logService.Trace($@"Creating quick caption button for ""{quickCaption}""...");
-                    var quickCaptionButton = new Button
-                    {
-                        AutoSize = true,
-                        Text = quickCaption
-                    };
-
-                    _logService.Trace("Adding event handler for quick caption button...");
-                    quickCaptionButton.Click += delegate { textBoxCaption.Text = quickCaption; };
-
-                    flowLayoutPanelQuickCaption.Controls.Add(quickCaptionButton);
-                }
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }*/
-
-        /*private void ShowRecentlyUsedDirectories(FormMainViewModel mainFormViewModel)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // are there any recently used directories?
-                    // set the recently used files
-                    _logService.Trace(
-                        $"Adding {mainFormViewModel.RecentlyUsedDirectories.Count} recently used directory menu options...");
-                    var menuPos = toolStripMenuItemFile.DropDownItems.IndexOf(toolStripMenuItemSeparator) + 1;
-                    foreach (var recentlyUsedDirectory in mainFormViewModel.RecentlyUsedDirectories)
-                    {
-                        // show the separator
-                        toolStripMenuItemSeparator.Visible = true;
-
-                        // is this a recently used directory menu option?
-                        if (toolStripMenuItemFile.DropDownItems[menuPos].ToolTipText != recentlyUsedDirectory.Path)
-                        {
-                            // create the item to insert
-                            var menuItem = new ToolStripMenuItem
-                            {
-                                Text = recentlyUsedDirectory.Caption,
-                                ToolTipText = recentlyUsedDirectory.Path
-                            };
-                            menuItem.Click += RecentlyUsedDirectoryClickHandler;
-
-                            // now insert it
-                            toolStripMenuItemFile.DropDownItems.Insert(menuPos, menuItem);
-                        }
-
-                        // go to the next menu position
-                        menuPos++;
-                    }
-
-                    // clear any leftovers
-                    while (toolStripMenuItemFile.DropDownItems[menuPos].ToolTipText != null)
-                        toolStripMenuItemFile.DropDownItems.RemoveAt(menuPos);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }*/
 
         private void ShowSecondColour(FormMainViewModel mainFormViewModel)
         {
@@ -1837,7 +1804,11 @@ namespace PhotoLabel
 
             try
             {
-                SelectImage();
+                _logService.Trace("Checking if the position can be incremented...");
+                if (_mainFormViewModel.Position < _mainFormViewModel.Count - 1) {
+                    _logService.Trace("Incrementing position...");
+                    _mainFormViewModel.Position++;
+                }
             }
             catch (Exception ex)
             {
@@ -2435,5 +2406,32 @@ namespace PhotoLabel
         private readonly FormMainViewModel _mainFormViewModel;
 
         #endregion
+
+        private void StatusStrip_SizeChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                ResizeProgressBar();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ResizeProgressBar()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Resizing progress bar...");
+                toolStripProgressBarOpen.Width = statusStrip.Width - toolStripStatusLabelOutputDirectory.Width - toolStripStatusLabelStatus.Width - 40;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
     }
 }

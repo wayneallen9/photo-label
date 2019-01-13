@@ -12,7 +12,7 @@ namespace PhotoLabel.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.9.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.8.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -20,64 +20,6 @@ namespace PhotoLabel.Properties {
         public static Settings Default {
             get {
                 return defaultInstance;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        public string[] RecentlyUsedFiles {
-            get {
-                return ((string[])(this["RecentlyUsedFiles"]));
-            }
-            set {
-                this["RecentlyUsedFiles"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("White")]
-        public global::System.Drawing.Color Color {
-            get {
-                return ((global::System.Drawing.Color)(this["Color"]));
-            }
-            set {
-                this["Color"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        public global::System.Drawing.Font Font {
-            get {
-                return ((global::System.Drawing.Font)(this["Font"]));
-            }
-            set {
-                this["Font"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Normal")]
-        public global::System.Windows.Forms.FormWindowState WindowState {
-            get {
-                return ((global::System.Windows.Forms.FormWindowState)(this["WindowState"]));
-            }
-            set {
-                this["WindowState"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("BottomRight")]
-        public global::PhotoLabel.Services.CaptionAlignments CaptionAlignment {
-            get {
-                return ((global::PhotoLabel.Services.CaptionAlignments)(this["CaptionAlignment"]));
-            }
-            set {
-                this["CaptionAlignment"] = value;
             }
         }
         

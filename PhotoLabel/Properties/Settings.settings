@@ -2,21 +2,6 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="PhotoLabel.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="RecentlyUsedFiles" Type="System.String[]" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="Color" Type="System.Drawing.Color" Scope="User">
-      <Value Profile="(Default)">White</Value>
-    </Setting>
-    <Setting Name="Font" Type="System.Drawing.Font" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="WindowState" Type="System.Windows.Forms.FormWindowState" Scope="User">
-      <Value Profile="(Default)">Normal</Value>
-    </Setting>
-    <Setting Name="CaptionAlignment" Type="PhotoLabel.Services.CaptionAlignments" Scope="User">
-      <Value Profile="(Default)">BottomRight</Value>
-    </Setting>
     <Setting Name="MapsURL" Type="System.String" Scope="User">
       <Value Profile="(Default)">https://www.google.com/maps/place/{0},{1}</Value>
     </Setting>

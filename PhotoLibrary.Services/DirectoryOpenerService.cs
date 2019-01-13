@@ -72,9 +72,15 @@ namespace PhotoLabel.Services
                 var filenames = _imageService.Find(directory);
 
                 _logService.Trace($"Creating metadata for {filenames.Count} files...");
-                foreach (var filename in filenames)
+                for (var i=0; i<filenames.Count; i++)
                 {
                     if (cancellationToken.IsCancellationRequested) return;
+
+                    _logService.Trace($"Notifying {_observers.Count} of progress {i + 1} of {filenames.Count}...");
+                    foreach (var observer in _observers) observer.OnProgress(directory, i + 1, filenames.Count);
+
+                    _logService.Trace($"Getting filename at position {i}...");
+                    var filename = filenames[i];
 
                     _logService.Trace($@"Creating model for ""{filename}""...");
                     var file = _imageMetadataService.Load(filename) ?? new Models.Metadata

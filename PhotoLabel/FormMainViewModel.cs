@@ -1,4 +1,7 @@
-﻿using System;
+﻿using AutoMapper;
+using PhotoLabel.Properties;
+using PhotoLabel.Services;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -9,9 +12,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using AutoMapper;
-using PhotoLabel.Properties;
-using PhotoLabel.Services;
 
 namespace PhotoLabel
 {
@@ -21,10 +21,12 @@ namespace PhotoLabel
         #region delegates
         public delegate void ImageFoundEventHandler(object sender, ImageFoundEventArgs e);
         public delegate void OpeningEventHandler(object sender, OpeningEventArgs e);
+        public delegate void ProgressChangedEventHandler(object sender, ProgressChangedEventArgs e);
         public delegate void QuickCaptionHandler(object sender, QuickCaptionEventArgs e);
         public delegate void RecentlyUsedDirectoryHandler(object sender, RecentlyUsedDirectoryEventArgs e);
 
         private delegate void OnDelegate();
+        private delegate void OnProgressDelegate(string directory, int current, int count);
         private delegate void OnQuickCaptionDelegate(string caption);
         private delegate void OnRecentlyUsedDirectoryDelegate(Models.Directory recentlyUsedDirectory);
         #endregion
@@ -37,6 +39,8 @@ namespace PhotoLabel
 
         #region events
         public event ImageFoundEventHandler ImageFound;
+        public event PreviewLoadedEventHandler PreviewLoaded;
+        public event ProgressChangedEventHandler ProgressChanged;
         public event QuickCaptionHandler QuickCaption;
         public event EventHandler QuickCaptionCleared;
         public event EventHandler RecentlyUsedDirectoriesCleared;
@@ -46,18 +50,17 @@ namespace PhotoLabel
         #region variables
         private readonly IConfigurationService _configurationService;
         private readonly IDirectoryOpenerService _directoryOpenerService;
-        private readonly object _imageLock = new object();
         private readonly ManualResetEvent _imageManualResetEvent;
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IList<Models.ImageModel> _images = new List<Models.ImageModel>();
         private readonly IImageService _imageService;
-        private readonly object _imagesLock = new object();
         private readonly ILogService _logService;
         private readonly IQuickCaptionService _quickCaptionService;
         private readonly IRecentlyUsedDirectoriesService _recentlyUsedDirectoriesService;
         private Models.ImageModel _current;
         private bool _disposed;
         private Image _image;
+        private readonly object _imageLock = new object();
         private CancellationTokenSource _imageCancellationTokenSource;
         private CancellationTokenSource _openCancellationTokenSource;
         private int _position = -1;
@@ -884,6 +887,9 @@ namespace PhotoLabel
                 _openCancellationTokenSource?.Cancel();
                 _recentlyUsedDirectoriesCancellationTokenSource?.Cancel();
 
+                // release the invoker
+                Invoker = null;
+
                 // dispose of any managed resources
                 _openCancellationTokenSource?.Dispose();
                 _recentlyUsedDirectoriesCancellationTokenSource?.Dispose();
@@ -998,16 +1004,13 @@ namespace PhotoLabel
                 {
                     // update the image in a thread safe manner
                     if (cancellationToken.IsCancellationRequested) return;
-                    lock (_imageLock)
-                    {
-                        if (cancellationToken.IsCancellationRequested) return;
 
-                        _logService.Trace($@"Setting ""{imageModel.Filename}"" as current image...");
-                        _current = imageModel;
+                    _logService.Trace($@"Setting ""{imageModel.Filename}"" as current image...");
+                    _current = imageModel;
 
-                        _logService.Trace($@"Setting image for ""{imageModel.Filename}""...");
-                        Image = captionedImage;
-                    }
+                    _logService.Trace($@"Setting image for ""{imageModel.Filename}""...");
+                    if (cancellationToken.IsCancellationRequested) return;
+                    Image = captionedImage;
                 }
                 finally
                 {
@@ -1026,6 +1029,10 @@ namespace PhotoLabel
                 if (cancellationToken.IsCancellationRequested) return;
                 OnPropertyChanged(nameof(Image));
             }
+            catch (Exception ex)
+            {
+                ex.ToString();
+            }
             finally
             {
                 _logService.TraceExit();
@@ -1037,31 +1044,28 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                lock (_imageLock)
-                {
-                    // cancel any in progress load
-                    _imageCancellationTokenSource?.Cancel();
+                // cancel any in progress load
+                _imageCancellationTokenSource?.Cancel();
 
-                    _logService.Trace("Creating new cancellation token...");
-                    _imageCancellationTokenSource = new CancellationTokenSource();
+                _logService.Trace("Creating new cancellation token...");
+                _imageCancellationTokenSource = new CancellationTokenSource();
 
-                    // flag that the image is loading
-                    _imageManualResetEvent.Reset();
+                // flag that the image is loading
+                _imageManualResetEvent.Reset();
 
-                    // clear the image
-                    Image = null;
+                // clear the image
+                Image = null;
 
-                    // get the image to load
-                    var imageToLoad = _images[position];
+                // get the image to load
+                var imageToLoad = _images[position];
 
-                    // load the image on a background thread
-                    Task.Delay(300, _imageCancellationTokenSource.Token)
-                        .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null,
-                            _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning,
-                            TaskScheduler.Current)
-                        .ContinueWith(OnError, _imageCancellationTokenSource.Token,
-                            TaskContinuationOptions.OnlyOnFaulted);
-                }
+                // load the image on a background thread
+                Task.Delay(300, _imageCancellationTokenSource.Token)
+                    .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null,
+                        _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning,
+                        TaskScheduler.Current)
+                    .ContinueWith(OnError, _imageCancellationTokenSource.Token,
+                        TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
             {
@@ -1218,7 +1222,51 @@ namespace PhotoLabel
                 }
 
                 _logService.Trace($@"Notifying preview loaded for ""{filename}""...");
-                PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs {Filename = filename, Image = image});
+                PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs { Filename = filename, Image = image });
+            }
+            catch (ObjectDisposedException) {
+                // ignore this exception
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        void IDirectoryOpenerObserver.OnProgress(string directory, int current, int count)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                // bubble it up to the UI
+                OnProgress(directory, current, count);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void OnProgress(string directory, int current, int count)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if running on UI thread...");
+                if (Invoker?.InvokeRequired ?? false)
+                {
+                    _logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Invoker.Invoke(new OnProgressDelegate(OnProgress), directory, current, count);
+
+                    return;
+                }
+
+                _logService.Trace($@"Notifying progress for ""{directory}""...");
+                ProgressChanged?.Invoke(this, new ProgressChangedEventArgs {
+                    Count=count,
+                    Current=current,
+                    Directory =directory
+                });
             }
             finally
             {
@@ -1374,26 +1422,29 @@ namespace PhotoLabel
             try
             {
                 if (cancellationToken.IsCancellationRequested) return;
-                lock (_imagesLock)
+                _logService.Trace("Clearing current images...");
+                _current = null;
+                _images.Clear();
+                _position = -1;
+
+                _logService.Trace("Locking image...");
+                lock (_imageLock)
+                {
+                    Image = null;
+                }
+                _logService.Trace("Unlocked image");
+
+
+                if (cancellationToken.IsCancellationRequested) return;
+                _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
+                _directoryOpenerService.Find(directory, cancellationToken);
+
+                if (cancellationToken.IsCancellationRequested) return;
+                _logService.Trace($"Loading previews for {_images.Count} images...");
+                foreach (var imageModel in _images)
                 {
                     if (cancellationToken.IsCancellationRequested) return;
-                    _logService.Trace("Clearing current images...");
-                    _current = null;
-                    _images.Clear();
-                    _position = -1;
-                    lock (_imageLock) Image = null;
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
-                    _directoryOpenerService.Find(directory, cancellationToken);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    _logService.Trace($"Loading previews for {_images.Count} images...");
-                    foreach (var imageModel in _images)
-                    {
-                        if (cancellationToken.IsCancellationRequested) return;
-                        PreviewThread(imageModel, cancellationToken);
-                    }
+                    PreviewThread(imageModel, cancellationToken);
                 }
             }
             finally
@@ -1402,40 +1453,35 @@ namespace PhotoLabel
             }
         }
 
-        public event PreviewLoadedEventHandler PreviewLoaded;
-
         private void PreviewThread(Models.ImageModel image, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
             {
-                lock (image)
+                if (cancellationToken.IsCancellationRequested) return;
+                _logService.Trace($@"Checking if preview is already loaded for ""{image.Filename}""...");
+                if (image.IsPreviewLoaded)
                 {
-                    if (cancellationToken.IsCancellationRequested) return;
-                    _logService.Trace($@"Checking if preview is already loaded for ""{image.Filename}""...");
-                    if (image.IsPreviewLoaded)
-                    {
-                        _logService.Trace($@"Preview is already loaded for ""{image.Filename}"".  Exiting...");
-                        return;
-                    }
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    var preview = _imageService.Get(image.Filename, 128, 128);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    if (image.IsSaved)
-                        preview = _imageService.Overlay(preview, Resources.saved,
-                            preview.Width - Resources.saved.Width - 4, 4);
-                    else if (image.IsMetadataLoaded)
-                        preview = _imageService.Overlay(preview, Resources.metadata,
-                            preview.Width - Resources.saved.Width - 4, 4);
-
-                    _logService.Trace($@"Flagging that preview has been loaded for ""{image.Filename}""...");
-                    image.IsPreviewLoaded = true;
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    OnPreviewLoaded(image.Filename, preview);
+                    _logService.Trace($@"Preview is already loaded for ""{image.Filename}"".  Exiting...");
+                    return;
                 }
+
+                if (cancellationToken.IsCancellationRequested) return;
+                var preview = _imageService.Get(image.Filename, 128, 128);
+
+                if (cancellationToken.IsCancellationRequested) return;
+                if (image.IsSaved)
+                    preview = _imageService.Overlay(preview, Resources.saved,
+                        preview.Width - Resources.saved.Width - 4, 4);
+                else if (image.IsMetadataLoaded)
+                    preview = _imageService.Overlay(preview, Resources.metadata,
+                        preview.Width - Resources.saved.Width - 4, 4);
+
+                _logService.Trace($@"Flagging that preview has been loaded for ""{image.Filename}""...");
+                image.IsPreviewLoaded = true;
+
+                if (cancellationToken.IsCancellationRequested) return;
+                OnPreviewLoaded(image.Filename, preview);
             }
             finally
             {
