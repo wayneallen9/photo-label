@@ -1280,6 +1280,7 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace($"The current position is {mainFormViewModel.Position}");
+                backgroundColourToolStripMenuItem.Enabled =
                 colourToolStripMenuItem.Enabled =
                     rotateLeftToolStripMenuItem.Enabled =
                         rotateRightToolStripMenuItem.Enabled =
@@ -1288,13 +1289,14 @@ namespace PhotoLabel
                                     toolStripButtonBackgroundColour.Enabled =
                                         toolStripComboBoxTransparency.Enabled =
                                             mainFormViewModel.Position > -1;
-                toolStripButtonColour.Enabled =
-                    toolStripButtonSecondColour.Enabled =
-                        toolStripButtonDontSave.Enabled =
-                            toolStripButtonRotateLeft.Enabled =
-                                toolStripButtonRotateRight.Enabled =
-                                    toolStripButtonSave.Enabled =
-                                        toolStripButtonSaveAs.Enabled = mainFormViewModel.Position > -1;
+                toolStripButtonBackgroundSecondColour.Enabled =
+                    toolStripButtonColour.Enabled =
+                        toolStripButtonSecondColour.Enabled =
+                            toolStripButtonDontSave.Enabled =
+                                toolStripButtonRotateLeft.Enabled =
+                                    toolStripButtonRotateRight.Enabled =
+                                        toolStripButtonSave.Enabled =
+                                            toolStripButtonSaveAs.Enabled = mainFormViewModel.Position > -1;
 
                 toolStripButtonDelete.Enabled = mainFormViewModel.CanDelete;
             }
@@ -1687,6 +1689,26 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
+                ChooseBackgroundColour();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ChooseBackgroundColour()
+        {
+            _logService.TraceEnter();
+            try
+            {
                 _logService.Trace("Setting default background color...");
                 colorDialog.Color = _mainFormViewModel.BackgroundColour;
 
@@ -1700,13 +1722,6 @@ namespace PhotoLabel
 
                 _logService.Trace("Setting background color...");
                 _mainFormViewModel.BackgroundColour = Color.FromArgb((byte) (transparency * 255), colorDialog.Color);
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -1805,7 +1820,8 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Checking if the position can be incremented...");
-                if (_mainFormViewModel.Position < _mainFormViewModel.Count - 1) {
+                if (_mainFormViewModel.Position < _mainFormViewModel.Count - 1)
+                {
                     _logService.Trace("Incrementing position...");
                     _mainFormViewModel.Position++;
                 }
@@ -2426,7 +2442,28 @@ namespace PhotoLabel
             try
             {
                 _logService.Trace("Resizing progress bar...");
-                toolStripProgressBarOpen.Width = statusStrip.Width - toolStripStatusLabelOutputDirectory.Width - toolStripStatusLabelStatus.Width - 40;
+                toolStripProgressBarOpen.Width = statusStrip.Width - toolStripStatusLabelOutputDirectory.Width -
+                                                 toolStripStatusLabelStatus.Width - 40;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void BackgroundColourToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                ChooseBackgroundColour();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {

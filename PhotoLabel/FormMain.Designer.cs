@@ -40,6 +40,7 @@
             this.toolStripMenuItemExit = new System.Windows.Forms.ToolStripMenuItem();
             this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.colourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.backgroundColourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.rotateLeftToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rotateRightToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -74,8 +75,8 @@
             this.toolStripButtonLocation = new System.Windows.Forms.ToolStripButton();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
-            this.toolStripProgressBarOpen = new System.Windows.Forms.ToolStripProgressBar();
             this.toolStripStatusLabelOutputDirectory = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripProgressBarOpen = new System.Windows.Forms.ToolStripProgressBar();
             this.colorDialog = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
@@ -189,6 +190,7 @@
             // 
             this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.colourToolStripMenuItem,
+            this.backgroundColourToolStripMenuItem,
             this.toolStripMenuItem2,
             this.rotateLeftToolStripMenuItem,
             this.rotateRightToolStripMenuItem,
@@ -203,21 +205,29 @@
             this.colourToolStripMenuItem.Enabled = false;
             this.colourToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.colour;
             this.colourToolStripMenuItem.Name = "colourToolStripMenuItem";
-            this.colourToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.colourToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.colourToolStripMenuItem.Text = "&Colour...";
             this.colourToolStripMenuItem.Click += new System.EventHandler(this.ColourToolStripMenuItem_Click);
+            // 
+            // backgroundColourToolStripMenuItem
+            // 
+            this.backgroundColourToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.fill;
+            this.backgroundColourToolStripMenuItem.Name = "backgroundColourToolStripMenuItem";
+            this.backgroundColourToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
+            this.backgroundColourToolStripMenuItem.Text = "&Background Colour...";
+            this.backgroundColourToolStripMenuItem.Click += new System.EventHandler(this.BackgroundColourToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(139, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(183, 6);
             // 
             // rotateLeftToolStripMenuItem
             // 
             this.rotateLeftToolStripMenuItem.Enabled = false;
             this.rotateLeftToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_left;
             this.rotateLeftToolStripMenuItem.Name = "rotateLeftToolStripMenuItem";
-            this.rotateLeftToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.rotateLeftToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.rotateLeftToolStripMenuItem.Text = "Rotate &Left";
             this.rotateLeftToolStripMenuItem.Click += new System.EventHandler(this.RotateLeftToolStripMenuItem_Click);
             // 
@@ -226,14 +236,14 @@
             this.rotateRightToolStripMenuItem.Enabled = false;
             this.rotateRightToolStripMenuItem.Image = global::PhotoLabel.Properties.Resources.rotate_right;
             this.rotateRightToolStripMenuItem.Name = "rotateRightToolStripMenuItem";
-            this.rotateRightToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.rotateRightToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.rotateRightToolStripMenuItem.Text = "Rotate &Right";
             this.rotateRightToolStripMenuItem.Click += new System.EventHandler(this.RotateRightToolStripMenuItem_Click);
             // 
             // toolStripMenuItem3
             // 
             this.toolStripMenuItem3.Name = "toolStripMenuItem3";
-            this.toolStripMenuItem3.Size = new System.Drawing.Size(139, 6);
+            this.toolStripMenuItem3.Size = new System.Drawing.Size(183, 6);
             // 
             // fileFormatToolStripMenuItem
             // 
@@ -241,7 +251,7 @@
             this.toolStripMenuItemJpg,
             this.toolStripMenuItemPng});
             this.fileFormatToolStripMenuItem.Name = "fileFormatToolStripMenuItem";
-            this.fileFormatToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.fileFormatToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.fileFormatToolStripMenuItem.Text = "&File Format...";
             // 
             // toolStripMenuItemJpg
@@ -558,17 +568,17 @@
             this.toolStripStatusLabelStatus.Name = "toolStripStatusLabelStatus";
             this.toolStripStatusLabelStatus.Size = new System.Drawing.Size(4, 17);
             // 
+            // toolStripStatusLabelOutputDirectory
+            // 
+            this.toolStripStatusLabelOutputDirectory.Name = "toolStripStatusLabelOutputDirectory";
+            this.toolStripStatusLabelOutputDirectory.Size = new System.Drawing.Size(0, 17);
+            // 
             // toolStripProgressBarOpen
             // 
             this.toolStripProgressBarOpen.AutoSize = false;
             this.toolStripProgressBarOpen.Name = "toolStripProgressBarOpen";
             this.toolStripProgressBarOpen.Size = new System.Drawing.Size(100, 16);
             this.toolStripProgressBarOpen.Visible = false;
-            // 
-            // toolStripStatusLabelOutputDirectory
-            // 
-            this.toolStripStatusLabelOutputDirectory.Name = "toolStripStatusLabelOutputDirectory";
-            this.toolStripStatusLabelOutputDirectory.Size = new System.Drawing.Size(0, 17);
             // 
             // colorDialog
             // 
@@ -974,6 +984,7 @@
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelQuickCaption;
         private System.Windows.Forms.ToolStripProgressBar toolStripProgressBarOpen;
+        private System.Windows.Forms.ToolStripMenuItem backgroundColourToolStripMenuItem;
     }
 }
 

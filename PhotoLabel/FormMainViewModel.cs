@@ -64,6 +64,7 @@ namespace PhotoLabel
         private CancellationTokenSource _imageCancellationTokenSource;
         private CancellationTokenSource _openCancellationTokenSource;
         private int _position = -1;
+        private readonly IDisposable _quickCaptionServiceSubscription;
         private CancellationTokenSource _recentlyUsedDirectoriesCancellationTokenSource;
         #endregion
 
@@ -100,7 +101,7 @@ namespace PhotoLabel
 
             // subscribe to events from the services
             _directoryOpenerService.Subscribe(this);
-            _quickCaptionService.Subscribe(this);
+            _quickCaptionServiceSubscription=_quickCaptionService.Subscribe(this);
             _recentlyUsedDirectoriesService.Subscribe(this);
         }
 
@@ -886,6 +887,9 @@ namespace PhotoLabel
                 // cancel any active background jobs
                 _openCancellationTokenSource?.Cancel();
                 _recentlyUsedDirectoriesCancellationTokenSource?.Cancel();
+
+                // cancel any subscriptions
+                _quickCaptionServiceSubscription.Dispose();
 
                 // release the invoker
                 Invoker = null;
