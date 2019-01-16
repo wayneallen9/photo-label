@@ -9,6 +9,7 @@ namespace PhotoLabel.Services
     {
         #region variables
 
+        private string _cachedFilename;
         private Models.Metadata _cachedImage;
         private readonly IDictionary<string, Models.Metadata> _images;
         private readonly ILogService _logService;
@@ -27,20 +28,23 @@ namespace PhotoLabel.Services
             _observers = new List<IQuickCaptionObserver>();
         }
 
-        public void Add(Models.Metadata image)
+        public void Add(string filename, Models.Metadata image)
         {
+            if (string.IsNullOrWhiteSpace(filename)) throw new ArgumentNullException(nameof(filename));
+
             _logService.TraceEnter();
             try
             {
                 _logService.Trace("Checking if a date and caption have been specified...");
                 if (string.IsNullOrWhiteSpace(image.DateTaken) || string.IsNullOrWhiteSpace(image.Caption))
                 {
-                    _logService.Trace("No date has been specified.  Exiting...");
+                    _logService.Trace(@"Either the date or caption has not been specified.  Exiting...");
+
                     return;
                 }
 
-                _logService.Trace($@"Adding ""{image.Filename}"" to dictionary of images with caches...");
-                _images[image.Filename] = image;
+                _logService.Trace($@"Adding ""{filename}"" to dictionary of images with caches...");
+                _images[filename] = image;
             }
             finally
             {
@@ -63,13 +67,13 @@ namespace PhotoLabel.Services
                     return list;
                 }
 
-                _logService.Trace($@"Adding ""{_cachedImage.Filename}"" as first caption...");
-                list.Add(Path.GetFileNameWithoutExtension(_cachedImage.Filename));
+                _logService.Trace($@"Adding ""{_cachedFilename}"" as first caption...");
+                list.Add(Path.GetFileNameWithoutExtension(_cachedFilename));
 
-                _logService.Trace($@"Checking if ""{_cachedImage.Filename}"" has a date taken...");
+                _logService.Trace($@"Checking if ""{_cachedFilename}"" has a date taken...");
                 if (string.IsNullOrWhiteSpace(_cachedImage.DateTaken))
                 {
-                    _logService.Trace($@"""{_cachedImage.Filename}"" does not have a date taken.  Exiting...");
+                    _logService.Trace($@"""{_cachedFilename}"" does not have a date taken.  Exiting...");
                     return list;
                 }
 
@@ -103,22 +107,51 @@ namespace PhotoLabel.Services
             }
         }
 
-        public void Switch(Models.Metadata image)
+        public void Remove(string filename)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($@"Checking if there is quick caption information for ""{filename}""...");
+                if (!_images.ContainsKey(filename))
+                {
+                    _logService.Trace($@"There is no quick caption information for ""{filename}"".  Exiting...");
+                    return;
+                }
+
+                _logService.Trace($@"Removing quick caption information for ""{filename}""...");
+                _images.Remove(filename);
+
+                _logService.Trace($@"Checking if ""{filename}"" is the cached file...");
+                if (_cachedFilename != filename) return;
+
+                _logService.Trace($@"""{filename}"" is the cached file.  Removing...");
+                _cachedFilename = null;
+                _cachedImage = null;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public void Switch(string filename, Models.Metadata image)
         {
             _logService.TraceEnter();
             try
             {
                 _logService.Trace("Checking if filename has changed...");
-                if (_cachedImage?.Filename == image.Filename)
+                if (_cachedFilename == filename)
                 {
                     _logService.Trace("Filename has not changed.  Exiting...");
                     return;
                 }
 
                 _logService.Trace("Caching filename...");
+                _cachedFilename = filename;
                 _cachedImage = image;
 
-                _logService.Trace($@"Building caption list for ""{image.Filename}""...");
+                _logService.Trace($@"Building caption list for ""{filename}""...");
                 var captions = GetQuickCaptions();
 
                 _logService.Trace($"Notifying {_observers.Count} observers of {captions.Count} captions...");

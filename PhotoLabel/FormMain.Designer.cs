@@ -1,4 +1,6 @@
-﻿namespace PhotoLabel
+﻿using System.Windows.Forms;
+
+namespace PhotoLabel
 {
     partial class FormMain
     {
@@ -81,6 +83,9 @@
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.pictureBoxImage = new System.Windows.Forms.PictureBox();
             this.labelFilename = new System.Windows.Forms.Label();
+            this.panelBrightness = new System.Windows.Forms.Panel();
+            this.trackBarBrightness = new System.Windows.Forms.TrackBar();
+            this.buttonBrightness = new System.Windows.Forms.Button();
             this.checkBoxAppendDateTakenToCaption = new System.Windows.Forms.CheckBox();
             this.panel1 = new System.Windows.Forms.Panel();
             this.checkBoxBottomRight = new System.Windows.Forms.CheckBox();
@@ -106,6 +111,8 @@
             this.statusStrip.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).BeginInit();
+            this.panelBrightness.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarBrightness)).BeginInit();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -589,16 +596,17 @@
             // 
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.pictureBoxImage, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.labelFilename, 0, 1);
+            this.tableLayoutPanel1.Controls.Add(this.labelFilename, 0, 2);
+            this.tableLayoutPanel1.Controls.Add(this.panelBrightness, 0, 1);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 2;
+            this.tableLayoutPanel1.RowCount = 3;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(500, 252);
             this.tableLayoutPanel1.TabIndex = 4;
             // 
@@ -609,7 +617,7 @@
             this.pictureBoxImage.Location = new System.Drawing.Point(10, 10);
             this.pictureBoxImage.Margin = new System.Windows.Forms.Padding(10, 10, 10, 0);
             this.pictureBoxImage.Name = "pictureBoxImage";
-            this.pictureBoxImage.Size = new System.Drawing.Size(480, 210);
+            this.pictureBoxImage.Size = new System.Drawing.Size(480, 182);
             this.pictureBoxImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBoxImage.TabIndex = 0;
             this.pictureBoxImage.TabStop = false;
@@ -618,12 +626,54 @@
             // 
             this.labelFilename.AutoSize = true;
             this.labelFilename.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelFilename.Location = new System.Drawing.Point(10, 220);
+            this.labelFilename.Location = new System.Drawing.Point(10, 222);
             this.labelFilename.Margin = new System.Windows.Forms.Padding(10, 0, 10, 10);
             this.labelFilename.Name = "labelFilename";
-            this.labelFilename.Size = new System.Drawing.Size(480, 22);
+            this.labelFilename.Size = new System.Drawing.Size(480, 20);
             this.labelFilename.TabIndex = 5;
             this.labelFilename.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // panelBrightness
+            // 
+            this.panelBrightness.Controls.Add(this.trackBarBrightness);
+            this.panelBrightness.Controls.Add(this.buttonBrightness);
+            this.panelBrightness.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelBrightness.Location = new System.Drawing.Point(10, 192);
+            this.panelBrightness.Margin = new System.Windows.Forms.Padding(10, 0, 10, 0);
+            this.panelBrightness.Name = "panelBrightness";
+            this.panelBrightness.Size = new System.Drawing.Size(480, 30);
+            this.panelBrightness.TabIndex = 6;
+            // 
+            // trackBarBrightness
+            // 
+            this.trackBarBrightness.AutoSize = false;
+            this.trackBarBrightness.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.trackBarBrightness.Enabled = false;
+            this.trackBarBrightness.Location = new System.Drawing.Point(0, 0);
+            this.trackBarBrightness.Margin = new System.Windows.Forms.Padding(10, 0, 10, 0);
+            this.trackBarBrightness.Maximum = 100;
+            this.trackBarBrightness.Minimum = -100;
+            this.trackBarBrightness.Name = "trackBarBrightness";
+            this.trackBarBrightness.Size = new System.Drawing.Size(450, 30);
+            this.trackBarBrightness.TabIndex = 6;
+            this.trackBarBrightness.TickFrequency = 10;
+            this.toolTipForm.SetToolTip(this.trackBarBrightness, "Adjust Brightness");
+            this.trackBarBrightness.ValueChanged += new System.EventHandler(this.TrackBarBrightness_ValueChanged);
+            // 
+            // buttonBrightness
+            // 
+            this.buttonBrightness.Dock = System.Windows.Forms.DockStyle.Right;
+            this.buttonBrightness.FlatAppearance.BorderSize = 0;
+            this.buttonBrightness.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonBrightness.Image = global::PhotoLabel.Properties.Resources.brightness;
+            this.buttonBrightness.Location = new System.Drawing.Point(450, 0);
+            this.buttonBrightness.Margin = new System.Windows.Forms.Padding(0);
+            this.buttonBrightness.Name = "buttonBrightness";
+            this.buttonBrightness.Size = new System.Drawing.Size(30, 30);
+            this.buttonBrightness.TabIndex = 7;
+            this.toolTipForm.SetToolTip(this.buttonBrightness, "Reset Brightness");
+            this.buttonBrightness.UseVisualStyleBackColor = true;
+            this.buttonBrightness.Click += new System.EventHandler(this.ButtonBrightness_Click);
             // 
             // checkBoxAppendDateTakenToCaption
             // 
@@ -898,6 +948,8 @@
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).EndInit();
+            this.panelBrightness.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarBrightness)).EndInit();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             this.splitContainer1.Panel1.ResumeLayout(false);
@@ -985,6 +1037,9 @@
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelQuickCaption;
         private System.Windows.Forms.ToolStripProgressBar toolStripProgressBarOpen;
         private System.Windows.Forms.ToolStripMenuItem backgroundColourToolStripMenuItem;
+        private System.Windows.Forms.TrackBar trackBarBrightness;
+        private System.Windows.Forms.Panel panelBrightness;
+        private Button buttonBrightness;
     }
 }
 

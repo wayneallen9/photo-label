@@ -7,7 +7,7 @@ namespace PhotoLabel.Services
         void OnOpening(string directory);
         void OnOpened(string directory, int count);
         void OnError(Exception ex);
-        void OnImageFound(string directory, Models.Metadata file);
+        void OnImageFound(string directory, string filename, Models.Metadata file);
         void OnProgress(string directory, int current, int count);
     }
 }

@@ -9,7 +9,7 @@ namespace PhotoLabel.Services
         #region variables
 
         private string _directoryCache;
-        private readonly IList<Models.Metadata> _filesCache;
+        private readonly IDictionary<string, Models.Metadata> _filesCache;
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
@@ -28,7 +28,7 @@ namespace PhotoLabel.Services
             _logService = logService;
 
             // initialise variables
-            _filesCache = new List<Models.Metadata>();
+            _filesCache = new Dictionary<string, Models.Metadata>();
             _observers = new List<IDirectoryOpenerObserver>();
         }
 
@@ -82,26 +82,20 @@ namespace PhotoLabel.Services
                     _logService.Trace($"Getting filename at position {i}...");
                     var filename = filenames[i];
 
-                    _logService.Trace($@"Creating model for ""{filename}""...");
-                    var file = _imageMetadataService.Load(filename) ?? new Models.Metadata
-                    {
-                        BackgroundColour = -1,
-                        Colour=-1,
-                        Filename = filename,
-                        IsMetadataLoaded = false
-                    };
+                    _logService.Trace($@"Loading metadata for ""{filename}""...");
+                    var file = _imageMetadataService.Load(filename);
 
                     if (cancellationToken.IsCancellationRequested) return;
                     _logService.Trace($@"Notifying {_observers.Count} observers about ""{filename}""...");
                     foreach (var observer in _observers)
                     {
                         if (cancellationToken.IsCancellationRequested) return;
-                        observer.OnImageFound(directory, file);
+                        observer.OnImageFound(directory, filename, file);
                     }
 
                     if (cancellationToken.IsCancellationRequested) return;
                     _logService.Trace($@"Saving ""{filename}"" in list of found metadata...");
-                    _filesCache.Add(file);
+                    _filesCache.Add(filename, file);
                 }
 
                 if (cancellationToken.IsCancellationRequested) return;
@@ -147,7 +141,7 @@ namespace PhotoLabel.Services
                 _observers.Add(observer);
 
                 _logService.Trace("Providing observer with existing directory models...");
-                foreach (var directoryModel in _filesCache) observer.OnImageFound(_directoryCache, directoryModel);
+                foreach (var dictionaryEntry in _filesCache) observer.OnImageFound(_directoryCache, dictionaryEntry.Key, dictionaryEntry.Value);
 
                 return new Unsubscriber<IDirectoryOpenerObserver>(_observers, observer);
             }
