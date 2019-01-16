@@ -863,12 +863,12 @@ namespace PhotoLabel
 
                 switch (e.PropertyName)
                 {
-                    case "OutputPath":
-                        ShowOutputPath(formMainViewModel);
+                    case "Brightness":
+                        ShowBrightness(formMainViewModel);
 
                         break;
-                    case "Position":
-                        ShowPosition(formMainViewModel);
+                    case "OutputPath":
+                        ShowOutputPath(formMainViewModel);
 
                         break;
                     case "WindowState":
@@ -877,7 +877,7 @@ namespace PhotoLabel
                         break;
                     default:
                         SetAppendDateTakenToCaption(formMainViewModel);
-                        SetToolbarStatus(formMainViewModel);
+                        SetFormEnabled(formMainViewModel);
                         ShowBackgroundSecondColour(formMainViewModel);
                         ShowBold(formMainViewModel);
                         ShowCaption(formMainViewModel);
@@ -887,10 +887,11 @@ namespace PhotoLabel
                         ShowCaptionAlignment(formMainViewModel);
                         ShowLocation(formMainViewModel);
                         ShowPicture(formMainViewModel);
+                        ShowPosition(formMainViewModel);
                         ShowProgress(formMainViewModel);
                         ShowSecondColour(formMainViewModel);
                         ShowTransparency(formMainViewModel);
-                        SetToolbarStatus(formMainViewModel);
+                        SetFormEnabled(formMainViewModel);
 
                         break;
                 }
@@ -901,6 +902,21 @@ namespace PhotoLabel
 
                 MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ShowBrightness(FormMainViewModel formMainViewModel)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Synchronising value of track bar...");
+                if (trackBarBrightness.Value != formMainViewModel.Brightness)
+                    trackBarBrightness.Value = formMainViewModel.Brightness;
             }
             finally
             {
@@ -1274,7 +1290,7 @@ namespace PhotoLabel
         ///     view model.
         /// </summary>
         /// <param name="mainFormViewModel">The view model for the form.</param>
-        private void SetToolbarStatus(FormMainViewModel mainFormViewModel)
+        private void SetFormEnabled(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -1288,6 +1304,8 @@ namespace PhotoLabel
                                 saveAsToolStripMenuItem.Enabled =
                                     toolStripButtonBackgroundColour.Enabled =
                                         toolStripComboBoxTransparency.Enabled =
+                                            trackBarBrightness.Enabled =
+                                                buttonBrightness.Enabled=
                                             mainFormViewModel.Position > -1;
                 toolStripButtonBackgroundSecondColour.Enabled =
                     toolStripButtonColour.Enabled =
@@ -1558,6 +1576,8 @@ namespace PhotoLabel
                     _logService.Trace("No preview is selected.  Clearing selected previews and returning...");
                     foreach (ListViewItem selectedListItem in listViewPreview.SelectedItems)
                         selectedListItem.Selected = false;
+
+                    return;
                 }
 
                 _logService.Trace($"Getting preview at position {formMainViewModel.Position}...");
@@ -2417,7 +2437,6 @@ namespace PhotoLabel
         #region variables
 
         private readonly Image _ajaxImage = Resources.ajax;
-        private readonly Image _loadingImage = Resources.loading;
         private readonly ILogService _logService;
         private readonly FormMainViewModel _mainFormViewModel;
 
@@ -2457,6 +2476,48 @@ namespace PhotoLabel
             try
             {
                 ChooseBackgroundColour();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void TrackBarBrightness_ValueChanged(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Updating value of brightness to {trackBarBrightness.Value}...");
+                _mainFormViewModel.Brightness = trackBarBrightness.Value;
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ERROR_TEXT, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+
+        }
+
+        private void ButtonBrightness_Click(object sender, EventArgs e)
+        {
+            _logService.TraceEnter();
+            try {
+                _logService.Trace("Resetting brightness to 0...");
+                _mainFormViewModel.Brightness = 0;
             }
             catch (Exception ex)
             {

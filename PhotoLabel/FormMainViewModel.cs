@@ -130,7 +130,7 @@ namespace PhotoLabel
                         _current.AppendDateTakenToCaption = value;
 
                         // redraw the image on a background thread
-                        LoadImage(_position);
+                        LoadImage();
                     }
 
                     OnPropertyChanged();
@@ -166,7 +166,7 @@ namespace PhotoLabel
                         _current.BackgroundColour = value;
 
                         // redraw the image
-                        LoadImage(_position);
+                        LoadImage();
                     }
 
                     // save the current background colour as the secondary background colour
@@ -217,6 +217,39 @@ namespace PhotoLabel
 
         public Image BackgroundSecondColourImage { get; private set; }
 
+        public int Brightness
+        {
+            get => _current?.Brightness ?? 0;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    if (value < -100 || value > 100) throw new ArgumentOutOfRangeException(nameof(Brightness));
+                    if (_current == null) throw new InvalidOperationException("There is no current image");
+
+                    _logService.Trace($"Checking if the value of {nameof(Brightness)} has changed...");
+                    if (_current.Brightness == value)
+                    {
+                        _logService.Trace($"Value of {nameof(Brightness)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting new value of {nameof(Brightness)}...");
+                    _current.Brightness = value;
+
+                    _logService.Trace("Reloading image with new brightness...");
+                    LoadImage();
+
+                    OnPropertyChanged();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         public bool CanDelete => _current?.IsMetadataLoaded ?? false;
 
         public string Caption
@@ -234,7 +267,7 @@ namespace PhotoLabel
                 _current.Caption = value;
 
                 // redraw the image
-                LoadImage(_position);
+                LoadImage();
 
                 OnPropertyChanged();
             }
@@ -255,7 +288,7 @@ namespace PhotoLabel
                     _current.CaptionAlignment = value;
 
                     // redraw the image
-                    LoadImage(_position);
+                    LoadImage();
                 }
 
                 // save this as the default caption alignment
@@ -284,7 +317,7 @@ namespace PhotoLabel
                     _current.Colour = value;
 
                     // redraw the image on a background thread
-                    LoadImage(_position);
+                    LoadImage();
                 }
 
                 // save the new default colour
@@ -318,7 +351,7 @@ namespace PhotoLabel
                 _current.FontBold = value;
 
                 // reload the im
-                LoadImage(_position);
+                LoadImage();
 
                 OnPropertyChanged();
             }
@@ -342,7 +375,7 @@ namespace PhotoLabel
                 _current.FontName = value;
 
                 // update the image
-                LoadImage(_position);
+                LoadImage();
 
                 OnPropertyChanged();
             }
@@ -369,7 +402,7 @@ namespace PhotoLabel
                 _current.FontSize = value;
 
                 // reload the image
-                LoadImage(_position);
+                LoadImage();
 
                 OnPropertyChanged();
             }
@@ -396,7 +429,7 @@ namespace PhotoLabel
                 _current.FontType = value;
 
                 // reload the image
-                LoadImage(_position);
+                LoadImage();
 
                 OnPropertyChanged();
             }
@@ -431,30 +464,44 @@ namespace PhotoLabel
 
         public ImageFormat ImageFormat
         {
-            get => _current?.ImageFormat ?? _configurationService.ImageFormat;
+            get => _current?.ImageFormat ?? Mapper.Map<ImageFormat>(_configurationService.ImageFormat);
             set
             {
                 _logService.TraceEnter();
                 try
                 {
-                    _logService.Trace($"Checking if value of {nameof(ImageFormat)} has changed...");
-                    if (Equals(_configurationService.ImageFormat, value))
-                    {
-                        _logService.Trace($"Value of {nameof(ImageFormat)} has not changed.  Exiting...");
-                        return;
-                    }
-
-                    _logService.Trace($@"Setting value of {nameof(ImageFormat)} to {value}...");
-                    _configurationService.ImageFormat = value;
+                    var valueServices = Mapper.Map<Services.ImageFormat>(value);
 
                     _logService.Trace("Checking if there is a current image...");
-                    if (_current != null)
+                    if (_current == null)
                     {
-                        _logService.Trace("There is a current image.  Updating image format...");
-                        _current.ImageFormat = value;
-                    }
+                        _logService.Trace($"Checking if value of {nameof(ImageFormat)} has changed...");
+                        if (Equals(_configurationService.ImageFormat, valueServices))
+                        {
+                            _logService.Trace($"Value of {nameof(ImageFormat)} has not changed.  Exiting...");
+                            return;
+                        }
 
-                    OnPropertyChanged();
+                        _logService.Trace($@"Setting value of {nameof(ImageFormat)} to {value}...");
+                        _configurationService.ImageFormat = valueServices;
+
+                        OnPropertyChanged();
+                    }
+                    else
+                    {
+                        _logService.Trace($"Checking if value of {nameof(ImageFormat)} has changed...");
+                        if (Equals(_current.ImageFormat, value))
+                        {
+                            _logService.Trace($"Value of {nameof(ImageFormat)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        _logService.Trace("There is a current image.  Updating image format...");
+                        _configurationService.ImageFormat = valueServices;
+                        _current.ImageFormat = value;
+
+                        OnPropertyChanged();
+                    }
                 }
                 finally
                 {
@@ -503,7 +550,7 @@ namespace PhotoLabel
                 _recentlyUsedDirectoriesService.SetLastSelectedFile(_current.Filename);
 
                 // redraw the image on a background thread
-                LoadImage(value);
+                LoadImage();
 
                 // cache the next image on a background thread
                 CacheImage(value + 1);
@@ -527,7 +574,7 @@ namespace PhotoLabel
                 _current.Rotation = value;
 
                 // redraw the image
-                LoadImage(_position);
+                LoadImage();
 
                 OnPropertyChanged();
             }
@@ -549,10 +596,7 @@ namespace PhotoLabel
                     }
 
                     // create the new background colour image
-                    if (value == null)
-                        SecondColourImage = null;
-                    else
-                        SecondColourImage = _imageService.Circle(value.Value, 16, 16);
+                    SecondColourImage = value == null ? null : _imageService.Circle(value.Value, 16, 16);
 
                     // save the new value
                     _configurationService.SecondColour = value;
@@ -694,7 +738,7 @@ namespace PhotoLabel
             }
         }
 
-        public void OnImageFound(string directory, Services.Models.Metadata file)
+        public void OnImageFound(string directory, string filename, Services.Models.Metadata file)
         {
             _logService.TraceEnter();
             try
@@ -702,19 +746,23 @@ namespace PhotoLabel
                 _logService.Trace($@"Adding ""{directory}"" to recently used directories list...");
                 _recentlyUsedDirectoriesService.Add(directory);
 
-                _logService.Trace("Creating image model...");
-                var imageModel = Mapper.Map<Models.ImageModel>(file);
+                _logService.Trace($@"Checking if the metadata was loaded for ""{filename}""...");
+                var metadata = file ?? new Services.Models.Metadata();
 
-                _logService.Trace($@"Adding ""{file.Filename}"" to image list...");
+                _logService.Trace($@"Creating image model for ""{filename}""...");
+                var imageModel = Mapper.Map<Models.ImageModel>(metadata);
+
+                _logService.Trace($@"Populating transient values for ""{filename}""...");
+                imageModel.Filename = filename;
+                imageModel.IsMetadataLoaded = file != null;
+
+                _logService.Trace($@"Adding ""{filename}"" to image list...");
                 _images.Add(imageModel);
 
-                _logService.Trace("Mapping to service layer...");
-                var metadata = Mapper.Map<Services.Models.Metadata>(imageModel);
+                _logService.Trace($@"Adding ""{file?.Caption}"" to quick captions...");
+                _quickCaptionService.Add(filename, metadata);
 
-                _logService.Trace($@"Adding ""{metadata.Caption}"" to quick captions...");
-                _quickCaptionService.Add(metadata);
-
-                OnImageFound(file.Filename);
+                OnImageFound(filename);
             }
             finally
             {
@@ -848,26 +896,38 @@ namespace PhotoLabel
                 _logService.Trace($"Deleting metadata for \"{_current.Filename}\"...");
                 if (!_imageMetadataService.Delete(_current.Filename)) return false;
 
-                _logService.Trace("Resetting image...");
-                _current.IsExifLoaded = false;
-                _current.IsMetadataLoaded = false;
-                _current.Rotation = Rotations.Zero;
-                _current.IsSaved = false;
-
-                _logService.Trace("Checking that the output file can be deleted...");
-                if (_current.OutputFilename != null &&
-                    _current.OutputFilename != _current.Filename &&
-                    File.Exists(_current.OutputFilename))
+                _logService.Trace($@"Checking if ""{OutputFilename}"" exists...");
+                if (File.Exists(OutputFilename))
                 {
-                    _logService.Trace($"Deleting \"{_current.OutputFilename}\"...");
-                    File.Delete(_current.OutputFilename);
+                    _logService.Trace($@"""{OutputFilename}"" exists.  Deleting...");
+                    File.Delete(OutputFilename);
                 }
 
+                _logService.Trace($@"Resetting metadata for ""{_current.Filename}""...");
+                var metadata = new Services.Models.Metadata
+                {
+                    DateTaken = _current.DateTaken,
+                    Rotation = Rotations.Zero
+                };
+
+                _logService.Trace("Resetting image...");
+                Mapper.Map(metadata, _current);
+                _current.IsExifLoaded = false;
+                _current.IsMetadataLoaded = false;
+                _current.IsPreviewLoaded = false;
+                _current.IsSaved = false;
+
                 _logService.Trace("Reloading image...");
-                LoadImage(_position);
+                LoadImage();
 
                 _logService.Trace("Reloading preview...");
                 LoadPreview(_current.Filename, _openCancellationTokenSource.Token);
+
+                _logService.Trace("Updating quick captions...");
+                _quickCaptionService.Remove(_current.Filename);
+
+                _logService.Trace("Recreating quick captions...");
+                _quickCaptionService.Switch(_current.Filename, metadata);
 
                 return true;
             }
@@ -975,6 +1035,7 @@ namespace PhotoLabel
                 var image = task.Result;
 
                 // work out the values to use
+                if (cancellationToken.IsCancellationRequested) return;
                 var backgroundColour = imageModel.BackgroundColour ?? _configurationService.BackgroundColour;
                 var captionAlignment = imageModel.CaptionAlignment ?? _configurationService.CaptionAlignment;
                 var colour = imageModel.Colour ?? _configurationService.Colour;
@@ -985,9 +1046,11 @@ namespace PhotoLabel
                 var rotation = imageModel.Rotation ?? Rotations.Zero;
 
                 // what is the caption?
+                if (cancellationToken.IsCancellationRequested) return;
                 var captionBuilder = new StringBuilder(imageModel.Caption);
 
                 // is there a date taken?
+                if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace($@"Checking if ""{imageModel.Filename}"" has a date taken set...");
                 if (imageModel.DateTaken != null &&
                     (imageModel.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption))
@@ -1003,7 +1066,7 @@ namespace PhotoLabel
                 if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{caption}"".  Creating image...");
                 var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize,
-                    fontType, fontBold, new SolidBrush(colour), backgroundColour, rotation);
+                    fontType, fontBold, new SolidBrush(colour), backgroundColour, rotation, imageModel.Brightness, cancellationToken);
                 try
                 {
                     // update the image in a thread safe manner
@@ -1024,8 +1087,8 @@ namespace PhotoLabel
                 _logService.Trace("Mapping to service layer...");
                 var metadata = Mapper.Map<Services.Models.Metadata>(imageModel);
 
-                _logService.Trace($@"Loading new list of quick captions for ""{metadata.Filename}""...");
-                _quickCaptionService.Switch(metadata);
+                _logService.Trace($@"Loading new list of quick captions for ""{imageModel.Filename}""...");
+                _quickCaptionService.Switch(imageModel.Filename, metadata);
 
                 // flag that the image has loaded
                 _imageManualResetEvent.Set();
@@ -1033,17 +1096,13 @@ namespace PhotoLabel
                 if (cancellationToken.IsCancellationRequested) return;
                 OnPropertyChanged(nameof(Image));
             }
-            catch (Exception ex)
-            {
-                ex.ToString();
-            }
             finally
             {
                 _logService.TraceExit();
             }
         }
 
-        private void LoadImage(int position)
+        private void LoadImage()
         {
             _logService.TraceEnter();
             try
@@ -1052,23 +1111,27 @@ namespace PhotoLabel
                 _imageCancellationTokenSource?.Cancel();
 
                 _logService.Trace("Creating new cancellation token...");
-                _imageCancellationTokenSource = new CancellationTokenSource();
+                var cancellationTokenSource = new CancellationTokenSource();
+                _imageCancellationTokenSource = cancellationTokenSource;
 
                 // flag that the image is loading
                 _imageManualResetEvent.Reset();
 
-                // clear the image
-                Image = null;
+                lock (_imageLock)
+                {
+                    // clear the image
+                    Image = null;
+                }
 
                 // get the image to load
-                var imageToLoad = _images[position];
+                var imageToLoad = _images[_position];
 
                 // load the image on a background thread
-                Task.Delay(300, _imageCancellationTokenSource.Token)
-                    .ContinueWith((t, o) => ImageThread(imageToLoad, _imageCancellationTokenSource.Token), null,
-                        _imageCancellationTokenSource.Token, TaskContinuationOptions.LongRunning,
+                Task.Delay(300, cancellationTokenSource.Token)
+                    .ContinueWith((t, o) => ImageThread(imageToLoad, cancellationTokenSource.Token), null,
+                        cancellationTokenSource.Token, TaskContinuationOptions.LongRunning,
                         TaskScheduler.Current)
-                    .ContinueWith(OnError, _imageCancellationTokenSource.Token,
+                    .ContinueWith(OnError, cancellationTokenSource.Token,
                         TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
@@ -1531,57 +1594,56 @@ namespace PhotoLabel
                 // wait for the image to load
                 _imageManualResetEvent.WaitOne();
 
+                // get the active image format
+                var imageFormatServices = Mapper.Map<Services.ImageFormat>(ImageFormat);
+
                 // save the image
                 _logService.Trace("Saving image to disk...");
-                lock (Image)
+                lock (_imageLock)
                 {
-                    _imageService.Save(Image, filename, ImageFormat);
+                    _imageService.Save(Image, filename, imageFormatServices);
                 }
 
+                _logService.Trace("Populating current image with default values...");
+                _current.AppendDateTakenToCaption = AppendDateTakenToCaption;
+                _current.BackgroundColour = BackgroundColour;
+                _current.CaptionAlignment = CaptionAlignment;
+                _current.Colour = Colour;
+                _current.FontBold = FontBold;
+                _current.FontName = FontName;
+                _current.FontSize = FontSize;
+                _current.FontType = FontType;
+                _current.ImageFormat = ImageFormat;
+                _current.Rotation = Rotation;
+
                 // save the metadata
-                var metadata = new Services.Models.Metadata
-                {
-                    BackgroundColour = BackgroundColour.ToArgb(),
-                    Caption = Caption,
-                    CaptionAlignment = CaptionAlignment,
-                    Colour = Colour.ToArgb(),
-                    DateTaken = DateTaken,
-                    Filename = Filename,
-                    FontBold = FontBold,
-                    FontFamily = FontName,
-                    FontSize = FontSize,
-                    FontType = FontType,
-                    ImageFormat = ImageFormat,
-                    IsMetadataLoaded = false,
-                    Latitude = Latitude,
-                    Longitude = Longitude,
-                    OutputFilename = filename,
-                    Rotation = Rotation
-                };
+                var metadata = Mapper.Map<Services.Models.Metadata>(_current);
                 _imageMetadataService.Save(metadata, Filename);
 
                 // save the output file for the image
                 _current.OutputFilename = filename;
 
-                // do we need to flag it as saved?
-                if (_current.IsSaved) return;
+                // save the quick caption
+                _quickCaptionService.Add(filename, metadata);
 
                 // flag that the current image has metadata
                 _current.IsMetadataLoaded = true;
 
-                // flag that the current image has been saved
-                _current.IsSaved = true;
+                // do we need to flag it as saved?
+                if (!_current.IsSaved)
+                {
+                    // flag that the current image has been saved
+                    _current.IsSaved = true;
 
-                // flag that the current preview needs to be reloaded
-                _current.IsPreviewLoaded = false;
+                    // flag that the current preview needs to be reloaded
+                    _current.IsPreviewLoaded = false;
 
-                // save the quick caption
-                _quickCaptionService.Add(metadata);
-
-                // reload the preview
-                Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token),
-                        _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ContinueWith(OnError, _openCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
+                    // reload the preview
+                    Task.Factory.StartNew(() => PreviewThread(_current, _openCancellationTokenSource.Token),
+                            _openCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        .ContinueWith(OnError, _openCancellationTokenSource.Token,
+                            TaskContinuationOptions.OnlyOnFaulted);
+                }
 
                 _logService.Trace($"Checking if there is an image after position {Position}...");
                 if (Position >= Count - 1) return;

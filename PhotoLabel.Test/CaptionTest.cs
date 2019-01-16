@@ -2,6 +2,7 @@
 using Moq;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Threading;
 
 namespace PhotoLabel.Test
 {
@@ -26,7 +27,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.MiddleLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.MiddleLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -56,7 +57,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.MiddleLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.MiddleLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -86,7 +87,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -116,7 +117,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopLeft, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -146,7 +147,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopCentre, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopCentre, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -176,7 +177,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopCentre, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopCentre, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -206,7 +207,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopRight, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopRight, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.FromArgb(127, 255, 255, 255), Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result
@@ -236,7 +237,7 @@ namespace PhotoLabel.Test
             using (var testImage = new Bitmap(480, 640, PixelFormat.Format24bppRgb))
             {
                 // add the caption
-                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopRight, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero) as Bitmap;
+                captionedImage = imageService.Caption(testImage, "This is a test caption", Services.CaptionAlignments.TopRight, "Arial", 10f, "%", true, new SolidBrush(Color.White), Color.Transparent, Services.Rotations.Zero, 0, new CancellationToken()) as Bitmap;
             }
 
             // load the expected result

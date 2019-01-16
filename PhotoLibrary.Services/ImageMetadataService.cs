@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+
 namespace PhotoLabel.Services
 {
     public class ImageMetadataService : IImageMetadataService
@@ -75,16 +77,6 @@ namespace PhotoLabel.Services
                 _logService.Trace($"Loading from file \"{metadataFilename}\"...");
                 var metadata = _xmlFileSerialiser.Deserialise<Models.Metadata>(metadataFilename);
 
-                _logService.Trace("Checking if metadata exists...");
-                if (metadata != null)
-                {
-                    _logService.Trace($@"Metadata exists.  Setting filename to ""{filename}""...");
-                    metadata.Filename = filename;
-
-                    _logService.Trace($@"Flagging that metadata loaded for ""{filename}""...");
-                    metadata.IsMetadataLoaded = true;
-                }
-
                 // return the metadata
                 return metadata;
             }
@@ -98,6 +90,18 @@ namespace PhotoLabel.Services
         {
             _logService.TraceEnter();
             try {
+                // validate that all of the properties have a value
+                if (metadata.AppendDateTakenToCaption == null) throw new InvalidOperationException(@"""AppendDateTakenToCaption"" property value not specified");
+                if (metadata.BackgroundColour == null) throw new InvalidOperationException(@"""BackgroundColour"" property value not specified");
+                if (metadata.CaptionAlignment == null) throw new InvalidOperationException(@"""CaptionAlignment"" property value not specified");
+                if (metadata.Colour == null) throw new InvalidOperationException(@"""Colour"" property value not specified");
+                if (metadata.FontBold == null) throw new InvalidOperationException(@"""FontBold"" property value not specified");
+                if (metadata.FontSize == null)
+                    throw new InvalidOperationException(@"""FontSize"" property value not specified");
+                if (metadata.ImageFormat == null)
+                    throw new InvalidOperationException(@"""ImageFormat"" property value not specified");
+                if (metadata.Rotation == null) throw new InvalidOperationException(@"""Rotation"" property value not specified");
+
                 _logService.Trace($"Saving metadata for \"{filename}\"...");
 
                 // get the name of the metadata file

@@ -17,7 +17,7 @@ namespace PhotoLabel.Services
             _logService = logService;
 
             // create the format to use for percentages
-            _numberFormatInfo = CultureInfo.CurrentCulture.NumberFormat.Clone() as  NumberFormatInfo;
+            _numberFormatInfo = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
             _numberFormatInfo.PercentDecimalDigits = 0;
         }
 
