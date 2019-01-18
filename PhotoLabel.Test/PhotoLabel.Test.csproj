@@ -67,6 +67,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConfigurationServiceTest.cs" />
+    <Compile Include="ImageUtilities.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CaptionTest.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -75,6 +76,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="QuickCaptionTest.cs" />
+    <Compile Include="BrightnessTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

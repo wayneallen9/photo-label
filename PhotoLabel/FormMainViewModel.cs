@@ -55,6 +55,7 @@ namespace PhotoLabel
         private readonly IList<Models.ImageModel> _images = new List<Models.ImageModel>();
         private readonly IImageService _imageService;
         private readonly ILogService _logService;
+        private readonly object _openLock = new object();
         private readonly IQuickCaptionService _quickCaptionService;
         private readonly IRecentlyUsedDirectoriesService _recentlyUsedDirectoriesService;
         private Models.ImageModel _current;
@@ -1081,7 +1082,7 @@ namespace PhotoLabel
                 }
                 finally
                 {
-                    if (cancellationToken.IsCancellationRequested) captionedImage.Dispose();
+                    if (cancellationToken.IsCancellationRequested) captionedImage?.Dispose();
                 }
 
                 _logService.Trace("Mapping to service layer...");
@@ -1400,6 +1401,7 @@ namespace PhotoLabel
                     return;
                 }
 
+                _logService.Trace($"Invoking {nameof(QuickCaptionCleared)}...");
                 QuickCaptionCleared?.Invoke(this, EventArgs.Empty);
             }
             finally
@@ -1461,12 +1463,14 @@ namespace PhotoLabel
                 _logService.Trace("Cancelling any in progress open...");
                 _openCancellationTokenSource?.Cancel();
 
-                _logService.Trace($@"Opening ""{directory}"" on a background thread...");
-                _openCancellationTokenSource = new CancellationTokenSource();
+                _logService.Trace("Creating new cancellation token...");
+                var cancellationTokenSource = new CancellationTokenSource();
+                _openCancellationTokenSource = cancellationTokenSource;
 
-                Task.Factory.StartNew(() => OpenThread(directory, _openCancellationTokenSource.Token), _openCancellationTokenSource.Token,
+                _logService.Trace($@"Opening ""{directory}"" on a background thread...");
+                Task.Factory.StartNew(() => OpenThread(directory, cancellationTokenSource.Token), cancellationTokenSource.Token,
                         TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                    .ContinueWith(OnError, _openCancellationTokenSource.Token,
+                    .ContinueWith(OnError, cancellationTokenSource.Token,
                         TaskContinuationOptions.OnlyOnFaulted);
             }
             finally
@@ -1488,30 +1492,34 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace("Clearing current images...");
-                _current = null;
-                _images.Clear();
-                _position = -1;
-
-                _logService.Trace("Locking image...");
-                lock (_imageLock)
-                {
-                    Image = null;
-                }
-                _logService.Trace("Unlocked image");
-
-
-                if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
-                _directoryOpenerService.Find(directory, cancellationToken);
-
-                if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace($"Loading previews for {_images.Count} images...");
-                foreach (var imageModel in _images)
+                lock (_openLock)
                 {
                     if (cancellationToken.IsCancellationRequested) return;
-                    PreviewThread(imageModel, cancellationToken);
+                    _logService.Trace("Clearing current images...");
+                    _current = null;
+                    _images.Clear();
+                    _position = -1;
+
+                    _logService.Trace("Locking image...");
+                    lock (_imageLock)
+                    {
+                        Image = null;
+                    }
+
+                    _logService.Trace("Unlocked image");
+
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace($@"Retrieving image filenames from ""{directory}"" and it's sub-folders...");
+                    _directoryOpenerService.Find(directory, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace($"Loading previews for {_images.Count} images...");
+                    foreach (var imageModel in _images)
+                    {
+                        if (cancellationToken.IsCancellationRequested) return;
+                        PreviewThread(imageModel, cancellationToken);
+                    }
                 }
             }
             finally

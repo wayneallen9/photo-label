@@ -2518,6 +2518,9 @@ namespace PhotoLabel
             try {
                 _logService.Trace("Resetting brightness to 0...");
                 _mainFormViewModel.Brightness = 0;
+
+                _logService.Trace($"Setting focus to {nameof(trackBarBrightness)}...");
+                trackBarBrightness.Focus();
             }
             catch (Exception ex)
             {
