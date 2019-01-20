@@ -48,6 +48,7 @@ namespace PhotoLabel
         #endregion
 
         #region variables
+        private CancellationTokenSource _captionCancellationTokenSource;
         private readonly IConfigurationService _configurationService;
         private readonly IDirectoryOpenerService _directoryOpenerService;
         private readonly ManualResetEvent _imageManualResetEvent;
@@ -267,10 +268,22 @@ namespace PhotoLabel
                 // save the new value
                 _current.Caption = value;
 
-                // redraw the image
-                LoadImage();
+                // clear the existing image
+                lock (_imageLock) Image = null;
 
-                OnPropertyChanged();
+                // keep the UI responsive
+                _captionCancellationTokenSource?.Cancel();
+                _captionCancellationTokenSource = new CancellationTokenSource();
+
+                Task.Delay(900, _captionCancellationTokenSource.Token)
+                    .ContinueWith(t =>
+                    {
+                        // redraw the image
+                        LoadImage();
+
+                        OnPropertyChanged();
+                    }, _captionCancellationTokenSource.Token)
+                .ContinueWith(OnError, _captionCancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
@@ -1128,10 +1141,8 @@ namespace PhotoLabel
                 var imageToLoad = _images[_position];
 
                 // load the image on a background thread
-                Task.Delay(300, cancellationTokenSource.Token)
-                    .ContinueWith((t, o) => ImageThread(imageToLoad, cancellationTokenSource.Token), null,
-                        cancellationTokenSource.Token, TaskContinuationOptions.LongRunning,
-                        TaskScheduler.Current)
+                Task.Factory.StartNew(t => ImageThread(imageToLoad, cancellationTokenSource.Token), null,
+                        cancellationTokenSource.Token)
                     .ContinueWith(OnError, cancellationTokenSource.Token,
                         TaskContinuationOptions.OnlyOnFaulted);
             }

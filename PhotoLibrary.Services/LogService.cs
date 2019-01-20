@@ -21,7 +21,7 @@ namespace PhotoLabel.Services
         public void TraceExit()
         {
             // decrease the indentation
-            _indent--;
+            if (_indent > 0) _indent--;
 
             // log the exit
             Logger.Trace($"{new string('\t', _indent)}Exit");

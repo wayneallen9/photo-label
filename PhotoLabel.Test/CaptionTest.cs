@@ -34,7 +34,7 @@ namespace PhotoLabel.Test
             var expectedImage = Properties.Resources.MiddleLeftWithCaption;
 
             // is it the expected result?
-            var equal = AreEqual(captionedImage, expectedImage);
+            var equal = ImageUtilities.AreEqual(captionedImage, expectedImage);
 
             Assert.AreEqual(true, equal);
         }
