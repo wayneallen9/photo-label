@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
+using PhotoLabel.Extensions;
 using PhotoLabel.Properties;
 using PhotoLabel.Services;
 
@@ -764,6 +765,7 @@ namespace PhotoLabel
                 listViewPreview.Clear();
 
                 _logService.Trace("Showing progress bar...");
+                toolStripProgressBarOpen.Value = 0;
                 toolStripProgressBarOpen.Visible = true;
             }
             finally
@@ -843,7 +845,8 @@ namespace PhotoLabel
                 imageListLarge.Images.Add(e.Filename, e.Image);
 
                 _logService.Trace("Assigning preview to image...");
-                listViewPreview.Items[e.Filename].ImageKey = e.Filename;
+                var listViewItem = listViewPreview.Items[e.Filename];
+                if (listViewItem != null) listViewItem.ImageKey = e.Filename;
 
                 _logService.Trace("Redrawing image list...");
                 listViewPreview.Invalidate();
@@ -863,12 +866,75 @@ namespace PhotoLabel
 
                 switch (e.PropertyName)
                 {
+                    case "AppendDateTakenToCaption":
+                        SetAppendDateTakenToCaption(formMainViewModel);
+
+                        break;
                     case "Brightness":
                         ShowBrightness(formMainViewModel);
 
                         break;
+                    case "CanDelete":
+                        SetFormEnabled(formMainViewModel);
+
+                        break;
+                    case "Caption":
+                        ShowCaption(formMainViewModel);
+
+                        break;
+                    case "CaptionAlignment":
+                        ShowCaptionAlignment(formMainViewModel);
+
+                        break;
+                    case "Count":
+                        ShowProgress(formMainViewModel);
+
+                        break;
+                    case "DateTaken":
+                        SetAppendDateTakenToCaption(formMainViewModel);
+
+                        break;
+                    case "Filename":
+                        ShowFilename(formMainViewModel);
+
+                        break;
+                    case "FontBold":
+                        ShowBold(formMainViewModel);
+
+                        break;
+                    case "FontName":
+                        ShowFont(formMainViewModel);
+
+                        break;
+                    case "FontSize":
+                        ShowFont(formMainViewModel);
+
+                        break;
+                    case "FontType":
+                        ShowFont(formMainViewModel);
+
+                        break;
+                    case "Image":
+                        ShowImage(formMainViewModel);
+
+                        break;
+                    case "ImageFormat":
+                        ShowImageFormat(formMainViewModel);
+
+                        break;
+                    case "Latitude":
+                    case "Longitude":
+                        ShowLocation(formMainViewModel);
+
+                        break;
                     case "OutputPath":
                         ShowOutputPath(formMainViewModel);
+
+                        break;
+                    case "Position":
+                        SetFormEnabled(formMainViewModel);
+                        ShowPosition(formMainViewModel);
+                        ShowProgress(formMainViewModel);
 
                         break;
                     case "WindowState":
@@ -876,19 +942,7 @@ namespace PhotoLabel
 
                         break;
                     default:
-                        SetAppendDateTakenToCaption(formMainViewModel);
-                        SetFormEnabled(formMainViewModel);
                         ShowBackgroundSecondColour(formMainViewModel);
-                        ShowBold(formMainViewModel);
-                        ShowCaption(formMainViewModel);
-                        ShowFilename(formMainViewModel);
-                        ShowFont(formMainViewModel);
-                        ShowImageFormat(formMainViewModel);
-                        ShowCaptionAlignment(formMainViewModel);
-                        ShowLocation(formMainViewModel);
-                        ShowPicture(formMainViewModel);
-                        ShowPosition(formMainViewModel);
-                        ShowProgress(formMainViewModel);
                         ShowSecondColour(formMainViewModel);
                         ShowTransparency(formMainViewModel);
                         SetFormEnabled(formMainViewModel);
@@ -1218,6 +1272,8 @@ namespace PhotoLabel
 
         private void SetAppendDateTakenToCaption(FormMainViewModel formMainViewModel)
         {
+            var stopWatch = new Stopwatch().StartStopwatch();
+
             _logService.TraceEnter();
             try
             {
@@ -1241,7 +1297,7 @@ namespace PhotoLabel
             }
             finally
             {
-                _logService.TraceExit();
+                _logService.TraceExit(stopWatch);
             }
         }
 
@@ -1452,15 +1508,15 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowFont(FormMainViewModel mainFormViewModel)
+        private void ShowFont(FormMainViewModel formMainViewModel)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Updating font selection to \"{mainFormViewModel.FontName}\"...");
-                toolStripComboBoxFonts.Text = mainFormViewModel.FontName;
-                toolStripComboBoxSizes.Text = mainFormViewModel.FontSize.ToString(CultureInfo.CurrentCulture);
-                toolStripComboBoxType.Text = mainFormViewModel.FontType;
+                _logService.Trace($"Updating font selection to \"{formMainViewModel.FontName}\"...");
+                toolStripComboBoxFonts.Text = formMainViewModel.FontName;
+                toolStripComboBoxSizes.Text = formMainViewModel.FontSize.ToString(CultureInfo.CurrentCulture);
+                toolStripComboBoxType.Text = formMainViewModel.FontType;
             }
             finally
             {
@@ -1493,13 +1549,13 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowLocation(FormMainViewModel mainFormViewModel)
+        private void ShowLocation(FormMainViewModel formMainViewModel)
         {
             _logService.TraceEnter();
             try
             {
                 toolStripButtonLocation.Enabled =
-                    mainFormViewModel.Latitude != null && mainFormViewModel.Longitude != null;
+                    formMainViewModel.Latitude != null && formMainViewModel.Longitude != null;
             }
             finally
             {
@@ -1532,7 +1588,7 @@ namespace PhotoLabel
             }
         }
 
-        private void ShowPicture(FormMainViewModel mainFormViewModel)
+        private void ShowImage(FormMainViewModel mainFormViewModel)
         {
             _logService.TraceEnter();
             try
@@ -1540,24 +1596,26 @@ namespace PhotoLabel
                 if (mainFormViewModel.Image != null)
                 {
                     // has the image changed?
-                    if (pictureBoxImage.Image != mainFormViewModel.Image)
-                    {
-                        // release the existing image (if it has changed)
-                        if (pictureBoxImage.Image != _ajaxImage)
-                            // release the image memory
-                            pictureBoxImage.Image?.Dispose();
+                    if (pictureBoxImage.Image == mainFormViewModel.Image) return;
 
-                        // show the image
-                        pictureBoxImage.Image = mainFormViewModel.Image;
+                    // release the existing image (if it has changed)
+                    if (pictureBoxImage.Image != _ajaxImage)
+                        // release the image memory
+                        pictureBoxImage.Image?.Dispose();
 
-                        // set the size mode for the image
-                        SetSizeMode();
-                    }
+                    // show the image
+                    pictureBoxImage.Image = mainFormViewModel.Image;
+
+                    // set the size mode for the image
+                    SetSizeMode();
                 }
                 else
                 {
                     ShowAjaxImage();
                 }
+
+                // let the image update
+                Application.DoEvents();
             }
             finally
             {
@@ -1835,16 +1893,21 @@ namespace PhotoLabel
 
         private void ToolStripButtonDontSave_Click(object sender, EventArgs e)
         {
-            _logService.TraceEnter();
+            var stopWatch = new Stopwatch().StartStopwatch();
 
+            _logService.TraceEnter();
             try
             {
                 _logService.Trace("Checking if the position can be incremented...");
-                if (_mainFormViewModel.Position < _mainFormViewModel.Count - 1)
+                if (_mainFormViewModel.Position >= _mainFormViewModel.Count - 1)
                 {
-                    _logService.Trace("Incrementing position...");
-                    _mainFormViewModel.Position++;
+                    _logService.Trace("Already at last position.  Exiting...");
+
+                    return;
                 }
+
+                _logService.Trace("Incrementing position...");
+                _mainFormViewModel.Position++;
             }
             catch (Exception ex)
             {
@@ -1855,7 +1918,7 @@ namespace PhotoLabel
             }
             finally
             {
-                _logService.TraceExit();
+                _logService.TraceExit(stopWatch);
             }
         }
 
@@ -1954,6 +2017,11 @@ namespace PhotoLabel
             {
                 _logService.Trace("Saving file...");
                 Save();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                MessageBox.Show(ex.Message, Resources.ERROR_CAPTION, MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {

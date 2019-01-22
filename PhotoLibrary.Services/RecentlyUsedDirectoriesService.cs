@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using PhotoLabel.Extensions;
 
 namespace PhotoLabel.Services
 {
@@ -218,6 +220,8 @@ namespace PhotoLabel.Services
 
         public void SetLastSelectedFile(string filename)
         {
+            var stopWatch = new Stopwatch().StartStopwatch();
+
             _logService.TraceEnter();
             try
             {
@@ -232,7 +236,7 @@ namespace PhotoLabel.Services
             }
             finally
             {
-                _logService.TraceExit();
+                _logService.TraceExit(stopWatch);
             }
         }
 

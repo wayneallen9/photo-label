@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+
 namespace PhotoLabel.Services
 {
     public interface ILogService
@@ -7,5 +9,6 @@ namespace PhotoLabel.Services
         void TraceEnter();
         void Error(Exception ex);
         void TraceExit();
+        void TraceExit(Stopwatch stopWatch);
     }
 }
