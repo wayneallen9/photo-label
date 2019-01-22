@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
+using PhotoLabel.Extensions;
 using PhotoLabel.Properties;
 using PhotoLabel.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -48,6 +50,10 @@ namespace PhotoLabel
         #endregion
 
         #region variables
+
+        private Image _backgroundImage;
+        private CancellationTokenSource _backgroundImageCancellationTokenSource;
+        private readonly ManualResetEvent _backgroundImageManualResetEvent;
         private CancellationTokenSource _captionCancellationTokenSource;
         private readonly IConfigurationService _configurationService;
         private readonly IDirectoryOpenerService _directoryOpenerService;
@@ -63,9 +69,10 @@ namespace PhotoLabel
         private bool _disposed;
         private Image _image;
         private readonly object _imageLock = new object();
-        private CancellationTokenSource _imageCancellationTokenSource;
+        private CancellationTokenSource _captionImageCancellationTokenSource;
         private CancellationTokenSource _openCancellationTokenSource;
         private int _position = -1;
+        private CancellationTokenSource _positionCancellationTokenSource;
         private readonly IDisposable _quickCaptionServiceSubscription;
         private CancellationTokenSource _recentlyUsedDirectoriesCancellationTokenSource;
         #endregion
@@ -89,6 +96,7 @@ namespace PhotoLabel
             _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
 
             // initialise variables
+            _backgroundImageManualResetEvent = new ManualResetEvent(true);
             _disposed = false;
             _image = new Bitmap(1, 1);
             _imageManualResetEvent = new ManualResetEvent(true);
@@ -132,7 +140,7 @@ namespace PhotoLabel
                         _current.AppendDateTakenToCaption = value;
 
                         // redraw the image on a background thread
-                        LoadImage();
+                        CaptionImage();
                     }
 
                     OnPropertyChanged();
@@ -141,6 +149,50 @@ namespace PhotoLabel
                 {
                     _logService.TraceExit();
                 }
+            }
+        }
+
+        private Image AddCaptionToImage(Image image, Models.ImageModel imageModel, CancellationToken cancellationToken)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                if (cancellationToken.IsCancellationRequested) return null;
+                _logService.Trace("Populating values to use for caption...");
+                var backgroundColour = imageModel.BackgroundColour ?? _configurationService.BackgroundColour;
+                var captionAlignment = imageModel.CaptionAlignment ?? _configurationService.CaptionAlignment;
+                var colour = imageModel.Colour ?? _configurationService.Colour;
+                var fontBold = imageModel.FontBold ?? _configurationService.FontBold;
+                var fontName = imageModel.FontName ?? _configurationService.FontName;
+                var fontSize = imageModel.FontSize ?? _configurationService.FontSize;
+                var fontType = imageModel.FontType ?? _configurationService.FontType;
+
+                // what is the caption?
+                if (cancellationToken.IsCancellationRequested) return null;
+                var captionBuilder = new StringBuilder(imageModel.Caption);
+
+                // is there a date taken?
+                if (cancellationToken.IsCancellationRequested) return null;
+                _logService.Trace($@"Checking if ""{imageModel.Filename}"" has a date taken set...");
+                if (imageModel.DateTaken != null &&
+                    (imageModel.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption))
+                {
+                    if (captionBuilder.Length > 0) captionBuilder.Append(" - ");
+
+                    captionBuilder.Append(imageModel.DateTaken);
+                }
+
+                var caption = captionBuilder.ToString();
+
+                // create the caption
+                if (cancellationToken.IsCancellationRequested) return null;
+                _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{caption}"".  Creating image...");
+                return _imageService.Caption(image, caption, captionAlignment, fontName, fontSize,
+                    fontType, fontBold, new SolidBrush(colour), backgroundColour, cancellationToken);
+            }
+            finally
+            {
+                _logService.TraceExit();
             }
         }
 
@@ -168,7 +220,7 @@ namespace PhotoLabel
                         _current.BackgroundColour = value;
 
                         // redraw the image
-                        LoadImage();
+                        CaptionImage();
                     }
 
                     // save the current background colour as the secondary background colour
@@ -181,6 +233,107 @@ namespace PhotoLabel
                 {
                     _logService.TraceExit();
                 }
+            }
+        }
+
+        private void BackgroundImageThread(object parameters)
+        {
+            var disposeOfOriginal = false;
+
+            _logService.TraceEnter();
+            try
+            {
+                // extract the parameters
+                var parametersArray = (object[]) parameters;
+                var imageModel = (Models.ImageModel) parametersArray[0];
+                var cancellationToken = (CancellationToken) parametersArray[1];
+
+                // release the current background image
+                if (cancellationToken.IsCancellationRequested) return;
+                _logService.Trace(@"Releasing current background image...");
+                _backgroundImage?.Dispose();
+
+                // load the image on another thread
+                if (cancellationToken.IsCancellationRequested) return;
+                var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageModel.Filename), cancellationToken,
+                    TaskCreationOptions.LongRunning, TaskScheduler.Current);
+                task.ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+
+                // if there was no metadata file, we need to load the Exif 
+                // data to get the default caption
+                if (cancellationToken.IsCancellationRequested) return;
+                if (!imageModel.IsMetadataLoaded && !imageModel.IsExifLoaded)
+                {
+                    var exifResetEvent = new ManualResetEvent(false);
+
+                    Task.Factory.StartNew(() => ExifThread(imageModel, exifResetEvent), cancellationToken,
+                            TaskCreationOptions.LongRunning, TaskScheduler.Current)
+                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+
+                    // wait for the Exif data to load
+                    exifResetEvent.WaitOne();
+                }
+
+                // wait for the image to load
+                var originalImage = task.Result;
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace($@"Rotating ""{imageModel.Filename}""...");
+                    _imageService.Rotate(originalImage, imageModel.Rotation ?? Rotations.Zero);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace(@"Checking if the brightness needs to be adjusted...");
+                    if (imageModel.Brightness != 0)
+                    {
+                        _logService.Trace($@"Adjusting brightness of ""{imageModel.Filename}"" to {imageModel.Brightness}...");
+                        _backgroundImage = _imageService.Brightness(originalImage, imageModel.Brightness);
+
+                        // need to dispose of the intermediary image
+                        disposeOfOriginal = true;
+                    }
+                    else
+                    {
+                        _backgroundImage = originalImage;
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace($@"Adding caption to ""{imageModel.Filename}""...");
+                    var captionedImage = AddCaptionToImage(_backgroundImage, imageModel, cancellationToken);
+
+                    lock (_imageLock)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            _logService.Trace("Method has been cancelled.  Releasing captioned image...");
+                            captionedImage?.Dispose();
+
+                            return;
+                        }
+
+                        Image = captionedImage;
+                    }
+
+                    _logService.Trace("Mapping to service layer...");
+                    var metadata = Mapper.Map<Services.Models.Metadata>(imageModel);
+
+                    _logService.Trace($@"Loading new list of quick captions for ""{imageModel.Filename}""...");
+                    _quickCaptionService.Switch(imageModel.Filename, metadata);
+
+                    _backgroundImageManualResetEvent.Set();
+                }
+                finally
+                {
+                    if (disposeOfOriginal) originalImage.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
             }
         }
 
@@ -241,7 +394,7 @@ namespace PhotoLabel
                     _current.Brightness = value;
 
                     _logService.Trace("Reloading image with new brightness...");
-                    LoadImage();
+                    LoadBackgroundImage();
 
                     OnPropertyChanged();
                 }
@@ -268,18 +421,15 @@ namespace PhotoLabel
                 // save the new value
                 _current.Caption = value;
 
-                // clear the existing image
-                lock (_imageLock) Image = null;
-
                 // keep the UI responsive
                 _captionCancellationTokenSource?.Cancel();
                 _captionCancellationTokenSource = new CancellationTokenSource();
 
-                Task.Delay(900, _captionCancellationTokenSource.Token)
+                Task.Delay(300, _captionCancellationTokenSource.Token)
                     .ContinueWith(t =>
                     {
                         // redraw the image
-                        LoadImage();
+                        CaptionImage();
 
                         OnPropertyChanged();
                     }, _captionCancellationTokenSource.Token)
@@ -302,7 +452,7 @@ namespace PhotoLabel
                     _current.CaptionAlignment = value;
 
                     // redraw the image
-                    LoadImage();
+                    CaptionImage();
                 }
 
                 // save this as the default caption alignment
@@ -331,7 +481,7 @@ namespace PhotoLabel
                     _current.Colour = value;
 
                     // redraw the image on a background thread
-                    LoadImage();
+                    CaptionImage();
                 }
 
                 // save the new default colour
@@ -365,7 +515,7 @@ namespace PhotoLabel
                 _current.FontBold = value;
 
                 // reload the im
-                LoadImage();
+                CaptionImage();
 
                 OnPropertyChanged();
             }
@@ -389,7 +539,7 @@ namespace PhotoLabel
                 _current.FontName = value;
 
                 // update the image
-                LoadImage();
+                CaptionImage();
 
                 OnPropertyChanged();
             }
@@ -416,7 +566,7 @@ namespace PhotoLabel
                 _current.FontSize = value;
 
                 // reload the image
-                LoadImage();
+                CaptionImage();
 
                 OnPropertyChanged();
             }
@@ -443,7 +593,7 @@ namespace PhotoLabel
                 _current.FontType = value;
 
                 // reload the image
-                LoadImage();
+                CaptionImage();
 
                 OnPropertyChanged();
             }
@@ -551,25 +701,61 @@ namespace PhotoLabel
             get => _position;
             set
             {
-                // only process changes
-                if (_position == value) return;
+                // create the stop watch for timing this method
+                var stopwatch = new Stopwatch().StartStopwatch();
 
-                // save the change
-                _position = value;
+                _logService.TraceEnter();
+                try
+                {
+                    // only process changes
+                    _logService.Trace($"Checking if value of {nameof(Position)} has changed...");
+                    if (_position == value)
+                    {
+                        _logService.Trace($"Value of {nameof(Position)} has not changed.  Exiting...");
 
-                // set the current image
-                _current = _images[value];
+                        return;
+                    }
 
-                // save the last selected filename for this folder
-                _recentlyUsedDirectoriesService.SetLastSelectedFile(_current.Filename);
+                    _logService.Trace($"Value of {nameof(Position)} has changed to {value}.  Setting the new value...");
+                    _position = value;
 
-                // redraw the image on a background thread
-                LoadImage();
+                    _logService.Trace($"Saving image at position {value} as the current image...");
+                    _current = _images[value];
 
-                // cache the next image on a background thread
-                CacheImage(value + 1);
+                    _logService.Trace(@"Loading new background image...");
+                    LoadBackgroundImage();
 
-                OnPropertyChanged();
+                    _logService.Trace($@"Caching image at {value + 1}...");
+                    CacheImage(value + 1);
+
+                    _logService.Trace($@"Setting ""{_current.Filename}"" as the last selected file...");
+                    _recentlyUsedDirectoriesService.SetLastSelectedFile(_current.Filename);
+
+                    _logService.Trace("Notifying property updates...");
+                    OnPropertyChanged(nameof(AppendDateTakenToCaption));
+                    OnPropertyChanged(nameof(BackgroundColour));
+                    OnPropertyChanged(nameof(Brightness));
+                    OnPropertyChanged(nameof(CanDelete));
+                    OnPropertyChanged(nameof(Caption));
+                    OnPropertyChanged(nameof(CaptionAlignment));
+                    OnPropertyChanged(nameof(Colour));
+                    OnPropertyChanged(nameof(DateTaken));
+                    OnPropertyChanged(nameof(Filename));
+                    OnPropertyChanged(nameof(FontBold));
+                    OnPropertyChanged(nameof(FontName));
+                    OnPropertyChanged(nameof(FontSize));
+                    OnPropertyChanged(nameof(FontType));
+                    OnPropertyChanged(nameof(ImageFormat));
+                    OnPropertyChanged(nameof(Latitude));
+                    OnPropertyChanged(nameof(Longitude));
+                    OnPropertyChanged(nameof(OutputFilename));
+                    OnPropertyChanged(nameof(Rotation));
+                    OnPropertyChanged();
+                }
+                finally
+                {
+                    _logService.TraceExit(stopwatch);
+                }
             }
         }
 
@@ -588,7 +774,7 @@ namespace PhotoLabel
                 _current.Rotation = value;
 
                 // redraw the image
-                LoadImage();
+                LoadBackgroundImage();
 
                 OnPropertyChanged();
             }
@@ -871,6 +1057,8 @@ namespace PhotoLabel
 
         private void CacheImage(int position)
         {
+            var stopWatch = new Stopwatch().StartStopwatch();
+
             _logService.TraceEnter();
             try
             {
@@ -891,7 +1079,7 @@ namespace PhotoLabel
             }
             finally
             {
-                _logService.TraceExit();
+                _logService.TraceExit(stopWatch);
             }
         }
 
@@ -932,7 +1120,7 @@ namespace PhotoLabel
                 _current.IsSaved = false;
 
                 _logService.Trace("Reloading image...");
-                LoadImage();
+                CaptionImage();
 
                 _logService.Trace("Reloading preview...");
                 LoadPreview(_current.Filename, _openCancellationTokenSource.Token);
@@ -1016,99 +1204,54 @@ namespace PhotoLabel
             }
         }
 
-        private void ImageThread(Models.ImageModel imageModel, CancellationToken cancellationToken)
+        private void CaptionThread(object parameters)
         {
             _logService.TraceEnter();
             try
             {
-                if (cancellationToken.IsCancellationRequested) return;
+                var parametersArray = (object[]) parameters;
+                var imageModel = (Models.ImageModel) parametersArray[0];
+                var cancellationToken = (CancellationToken) parametersArray[1];
 
-                // load the image on another thread
                 if (cancellationToken.IsCancellationRequested) return;
-                var task = Task<Image>.Factory.StartNew(() => _imageService.Get(imageModel.Filename), cancellationToken,
-                    TaskCreationOptions.LongRunning, TaskScheduler.Current);
-                task.ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
+                _logService.Trace("Waiting for background image to load...");
+                _backgroundImageManualResetEvent.WaitOne();
 
-                // if there was no metadata file, we need to load the Exif 
-                // data to get the default caption
                 if (cancellationToken.IsCancellationRequested) return;
-                if (!imageModel.IsMetadataLoaded && !imageModel.IsExifLoaded)
+                lock (_imageLock)
                 {
-                    var exifResetEvent = new ManualResetEvent(false);
-
-                    Task.Factory.StartNew(() => ExifThread(imageModel, exifResetEvent), cancellationToken,
-                            TaskCreationOptions.LongRunning, TaskScheduler.Current)
-                        .ContinueWith(OnError, cancellationToken, TaskContinuationOptions.OnlyOnFaulted);
-
-                    // wait for the Exif data to load
-                    exifResetEvent.WaitOne();
-                }
-
-                // get the image
-                // this will wait until the thread has completed
-                var image = task.Result;
-
-                // work out the values to use
-                if (cancellationToken.IsCancellationRequested) return;
-                var backgroundColour = imageModel.BackgroundColour ?? _configurationService.BackgroundColour;
-                var captionAlignment = imageModel.CaptionAlignment ?? _configurationService.CaptionAlignment;
-                var colour = imageModel.Colour ?? _configurationService.Colour;
-                var fontBold = imageModel.FontBold ?? _configurationService.FontBold;
-                var fontName = imageModel.FontName ?? _configurationService.FontName;
-                var fontSize = imageModel.FontSize ?? _configurationService.FontSize;
-                var fontType = imageModel.FontType ?? _configurationService.FontType;
-                var rotation = imageModel.Rotation ?? Rotations.Zero;
-
-                // what is the caption?
-                if (cancellationToken.IsCancellationRequested) return;
-                var captionBuilder = new StringBuilder(imageModel.Caption);
-
-                // is there a date taken?
-                if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace($@"Checking if ""{imageModel.Filename}"" has a date taken set...");
-                if (imageModel.DateTaken != null &&
-                    (imageModel.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption))
-                {
-                    if (captionBuilder.Length > 0) captionBuilder.Append(" - ");
-
-                    captionBuilder.Append(imageModel.DateTaken);
-                }
-
-                var caption = captionBuilder.ToString();
-
-                // create the caption
-                if (cancellationToken.IsCancellationRequested) return;
-                _logService.Trace($@"Caption for ""{imageModel.Filename}"" is ""{caption}"".  Creating image...");
-                var captionedImage = _imageService.Caption(image, caption, captionAlignment, fontName, fontSize,
-                    fontType, fontBold, new SolidBrush(colour), backgroundColour, rotation, imageModel.Brightness, cancellationToken);
-                try
-                {
-                    // update the image in a thread safe manner
                     if (cancellationToken.IsCancellationRequested) return;
+                    _logService.Trace("Adding caption to background image...");
+                    var captionedImage = AddCaptionToImage(_backgroundImage, imageModel, cancellationToken);
 
-                    _logService.Trace($@"Setting ""{imageModel.Filename}"" as current image...");
-                    _current = imageModel;
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        captionedImage?.Dispose();
+
+                        return;
+                    }
 
                     _logService.Trace($@"Setting image for ""{imageModel.Filename}""...");
-                    if (cancellationToken.IsCancellationRequested) return;
                     Image = captionedImage;
                 }
-                finally
-                {
-                    if (cancellationToken.IsCancellationRequested) captionedImage?.Dispose();
-                }
 
+                if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace("Mapping to service layer...");
                 var metadata = Mapper.Map<Services.Models.Metadata>(imageModel);
 
+                if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace($@"Loading new list of quick captions for ""{imageModel.Filename}""...");
                 _quickCaptionService.Switch(imageModel.Filename, metadata);
 
-                // flag that the image has loaded
-                _imageManualResetEvent.Set();
-
                 if (cancellationToken.IsCancellationRequested) return;
                 OnPropertyChanged(nameof(Image));
+
+                // flag that the image has loaded
+                _imageManualResetEvent.Set();
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
             }
             finally
             {
@@ -1116,35 +1259,69 @@ namespace PhotoLabel
             }
         }
 
-        private void LoadImage()
+        private void LoadBackgroundImage()
+        {
+            var stopWatch = new Stopwatch().StartStopwatch();
+
+            _logService.TraceEnter();
+            try
+            {
+                // cancel any in progress load
+                _backgroundImageCancellationTokenSource?.Cancel();
+
+                // resetting signal
+                _logService.Trace("Resetting signal...");
+                _backgroundImageManualResetEvent.Reset();
+
+                _logService.Trace("Creating new cancellation token...");
+                var cancellationTokenSource = new CancellationTokenSource();
+                _backgroundImageCancellationTokenSource = cancellationTokenSource;
+
+                lock (_imageLock) Image = null;
+
+                // get the image to load
+                var imageToLoad = _images[_position];
+                _current = imageToLoad;
+
+                // create the background thread to load the image on
+                var backgroundImageThread = new Thread(new ParameterizedThreadStart(BackgroundImageThread))
+                {
+                    IsBackground = true,
+                    Priority = ThreadPriority.BelowNormal
+                };
+                backgroundImageThread.Start(new object[] {imageToLoad,cancellationTokenSource.Token});
+            }
+            finally
+            {
+                _logService.TraceExit(stopWatch);
+            }
+        }
+
+        private void CaptionImage()
         {
             _logService.TraceEnter();
             try
             {
                 // cancel any in progress load
-                _imageCancellationTokenSource?.Cancel();
+                _captionImageCancellationTokenSource?.Cancel();
 
                 _logService.Trace("Creating new cancellation token...");
                 var cancellationTokenSource = new CancellationTokenSource();
-                _imageCancellationTokenSource = cancellationTokenSource;
+                _captionImageCancellationTokenSource = cancellationTokenSource;
 
-                // flag that the image is loading
+                // flag that the image is being captioned
                 _imageManualResetEvent.Reset();
 
-                lock (_imageLock)
+                // save the current image
+                var imageToLoad = _current;
+
+                // create the thread to caption the image
+                var thread = new Thread(new ParameterizedThreadStart(CaptionThread))
                 {
-                    // clear the image
-                    Image = null;
-                }
-
-                // get the image to load
-                var imageToLoad = _images[_position];
-
-                // load the image on a background thread
-                Task.Factory.StartNew(t => ImageThread(imageToLoad, cancellationTokenSource.Token), null,
-                        cancellationTokenSource.Token)
-                    .ContinueWith(OnError, cancellationTokenSource.Token,
-                        TaskContinuationOptions.OnlyOnFaulted);
+                    IsBackground = true,
+                    Priority = ThreadPriority.BelowNormal
+                };
+                thread.Start(new object[] {imageToLoad, cancellationTokenSource.Token});
             }
             finally
             {
@@ -1355,6 +1532,8 @@ namespace PhotoLabel
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
+            var stopWatch = new Stopwatch().StartStopwatch();
+
             _logService.TraceEnter();
             try
             {
@@ -1372,7 +1551,7 @@ namespace PhotoLabel
             }
             finally
             {
-                _logService.TraceExit();
+                _logService.TraceExit(stopWatch);
             }
         }
 
@@ -1464,6 +1643,7 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
         }
+
         public void Open(string directory)
         {
             if (directory == null) throw new ArgumentNullException(nameof(directory));
@@ -1512,10 +1692,7 @@ namespace PhotoLabel
                     _position = -1;
 
                     _logService.Trace("Locking image...");
-                    lock (_imageLock)
-                    {
-                        Image = null;
-                    }
+                    lock (_imageLock) Image = null;
 
                     _logService.Trace("Unlocked image");
 
@@ -1618,10 +1795,7 @@ namespace PhotoLabel
 
                 // save the image
                 _logService.Trace("Saving image to disk...");
-                lock (_imageLock)
-                {
-                    _imageService.Save(Image, filename, imageFormatServices);
-                }
+                lock (_imageLock) _imageService.Save(Image, filename, imageFormatServices);
 
                 _logService.Trace("Populating current image with default values...");
                 _current.AppendDateTakenToCaption = AppendDateTakenToCaption;

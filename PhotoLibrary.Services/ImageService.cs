@@ -35,7 +35,7 @@ namespace PhotoLabel.Services
             _shortDateFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("yyyy", "yy");
         }
 
-        private Bitmap AdjustBrightness(Image source, int brightness)
+        public Image Brightness(Image source, int brightness)
         {
             _logService.TraceEnter();
             try
@@ -79,7 +79,6 @@ namespace PhotoLabel.Services
             }
         }
 
-
         public Image Circle(Color color, int width, int height)
         {
             _logService.TraceEnter();
@@ -111,7 +110,11 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
-                return _imageLoaderService.Load(filename);
+                _logService.Trace($@"Loading ""{filename}""...");
+                var image = _imageLoaderService.Load(filename);
+
+                _logService.Trace(@"Creating a duplicate of the loaded image...");
+                return Duplicate(image);
             }
             finally
             {
@@ -275,35 +278,19 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, Rotations rotation, int brightness, CancellationToken cancellationToken)
+        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
             {
-                Bitmap image;
-
-                if (cancellationToken.IsCancellationRequested) return null;
-                lock (original)
-                {
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    _logService.Trace("Creating a copy of the original image...");
-                    image = AdjustBrightness(original, brightness);
-                }
-
-                try
-                {
                     // work out the style of the font
                     if (cancellationToken.IsCancellationRequested) return null;
                     var fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
 
-                    // rotate the original image to it's desired position
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    Rotate(image, rotation);
-
                     // create a copy of the rotated image (to workaround the problem drawing strings
                     // outside the bounds of the unrotated image)
                     if (cancellationToken.IsCancellationRequested) return null;
-                    var rotatedImage = Duplicate(image);
+                    var rotatedImage = Duplicate(original);
 
                     // is there a caption to display?
                     if (cancellationToken.IsCancellationRequested) return null;
@@ -398,12 +385,6 @@ namespace PhotoLabel.Services
                     }
 
                     return rotatedImage;
-                }
-                finally
-                {
-                    // release the image copy
-                    image.Dispose();
-                }
             }
             finally
             {
@@ -416,21 +397,25 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($"Creating image {source.Width}px x {source.Height}px...");
-                var image = new Bitmap(source.Width, source.Height, source.PixelFormat);
-
-                _logService.Trace("Copying source image onto copy...");
-                using (var imageGraphics = Graphics.FromImage(image))
+                _logService.Trace("Creating a unique lock on the source image...");
+                lock (source)
                 {
-                    _logService.Trace("Setting up graphics manager...");
-                    imageGraphics.SmoothingMode = SmoothingMode.HighQuality;
-                    imageGraphics.CompositingQuality = CompositingQuality.HighQuality;
-                    imageGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    _logService.Trace($"Creating image {source.Width}px x {source.Height}px...");
+                    var image = new Bitmap(source.Width, source.Height, source.PixelFormat);
 
-                    imageGraphics.DrawImage(source, 0, 0, source.Width, source.Height);
+                    _logService.Trace("Copying source image onto copy...");
+                    using (var imageGraphics = Graphics.FromImage(image))
+                    {
+                        _logService.Trace("Setting up graphics manager...");
+                        imageGraphics.SmoothingMode = SmoothingMode.HighQuality;
+                        imageGraphics.CompositingQuality = CompositingQuality.HighQuality;
+                        imageGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                        imageGraphics.DrawImage(source, 0, 0, source.Width, source.Height);
+                    }
+
+                    return image;
                 }
-
-                return image;
             }
             finally
             {
@@ -438,7 +423,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private void Rotate(Image image, Rotations rotation)
+        public Image Rotate(Image image, Rotations rotation)
         {
             _logService.Trace($"Rotating copy to {rotation}...");
             switch (rotation)
@@ -453,6 +438,8 @@ namespace PhotoLabel.Services
                     image.RotateFlip(RotateFlipType.Rotate270FlipNone);
                     break;
             }
+
+            return image;
         }
 
         private void CaptionBottomCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
