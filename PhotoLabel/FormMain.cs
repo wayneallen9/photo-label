@@ -58,6 +58,8 @@ namespace PhotoLabel
 
         private void ProgressChangedHandler(object sender, ProgressChangedEventArgs e)
         {
+            if (IsDisposed) return;
+
             _logService.TraceEnter();
             try
             {
@@ -459,6 +461,8 @@ namespace PhotoLabel
 
         private void ErrorHandler(object sender, ErrorEventArgs e)
         {
+            if (IsDisposed) return;
+
             _logService.TraceEnter();
             try
             {

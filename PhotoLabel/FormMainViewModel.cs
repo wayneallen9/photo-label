@@ -72,7 +72,6 @@ namespace PhotoLabel
         private CancellationTokenSource _captionImageCancellationTokenSource;
         private CancellationTokenSource _openCancellationTokenSource;
         private int _position = -1;
-        private CancellationTokenSource _positionCancellationTokenSource;
         private readonly IDisposable _quickCaptionServiceSubscription;
         private CancellationTokenSource _recentlyUsedDirectoriesCancellationTokenSource;
         #endregion
@@ -1277,7 +1276,7 @@ namespace PhotoLabel
                 var cancellationTokenSource = new CancellationTokenSource();
                 _backgroundImageCancellationTokenSource = cancellationTokenSource;
 
-                lock (_imageLock) Image = null;
+                Image = null;
 
                 // get the image to load
                 var imageToLoad = _images[_position];
@@ -1692,7 +1691,7 @@ namespace PhotoLabel
                     _position = -1;
 
                     _logService.Trace("Locking image...");
-                    lock (_imageLock) Image = null;
+                    Image = null;
 
                     _logService.Trace("Unlocked image");
 
@@ -1795,7 +1794,8 @@ namespace PhotoLabel
 
                 // save the image
                 _logService.Trace("Saving image to disk...");
-                lock (_imageLock) _imageService.Save(Image, filename, imageFormatServices);
+                var image = Image;
+                _imageService.Save(image, filename, imageFormatServices);
 
                 _logService.Trace("Populating current image with default values...");
                 _current.AppendDateTakenToCaption = AppendDateTakenToCaption;
