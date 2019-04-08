@@ -22,13 +22,21 @@ namespace PhotoLabel
     {
         #region delegates
         public delegate void ImageFoundEventHandler(object sender, ImageFoundEventArgs e);
+        public delegate void OpenedEventHandler(object sender, OpenedEventArgs e);
         public delegate void OpeningEventHandler(object sender, OpeningEventArgs e);
+        public delegate void PreviewLoadedEventHandler(object sender, PreviewLoadedEventArgs e);
         public delegate void ProgressChangedEventHandler(object sender, ProgressChangedEventArgs e);
         public delegate void QuickCaptionHandler(object sender, QuickCaptionEventArgs e);
         public delegate void RecentlyUsedDirectoryHandler(object sender, RecentlyUsedDirectoryEventArgs e);
 
         private delegate void OnDelegate();
+        private delegate void OnErrorDelegate(Exception ex);
+        private delegate void OnImageFoundDelegate(string filename);
+        private delegate void OnOpenedDelegate(string directory, int count);
+        private delegate void OnOpeningDelegate(string directory);
+        private delegate void OnPreviewLoadedDelegate(string filename, Image image);
         private delegate void OnProgressDelegate(string directory, int current, int count);
+        private delegate void OnPropertyChangedDelegate(string propertyName);
         private delegate void OnQuickCaptionDelegate(string caption);
         private delegate void OnRecentlyUsedDirectoryDelegate(Models.Directory recentlyUsedDirectory);
         #endregion
@@ -110,7 +118,7 @@ namespace PhotoLabel
 
             // subscribe to events from the services
             _directoryOpenerService.Subscribe(this);
-            _quickCaptionServiceSubscription=_quickCaptionService.Subscribe(this);
+            _quickCaptionServiceSubscription = _quickCaptionService.Subscribe(this);
             _recentlyUsedDirectoriesService.Subscribe(this);
         }
 
@@ -243,9 +251,9 @@ namespace PhotoLabel
             try
             {
                 // extract the parameters
-                var parametersArray = (object[]) parameters;
-                var imageModel = (Models.ImageModel) parametersArray[0];
-                var cancellationToken = (CancellationToken) parametersArray[1];
+                var parametersArray = (object[])parameters;
+                var imageModel = (Models.ImageModel)parametersArray[0];
+                var cancellationToken = (CancellationToken)parametersArray[1];
 
                 // release the current background image
                 if (cancellationToken.IsCancellationRequested) return;
@@ -613,8 +621,11 @@ namespace PhotoLabel
                         return;
                     }
 
-                    _logService.Trace($"Seeting new value of {nameof(Image)}...");
-                    _image = value;
+                    lock (_imageLock)
+                    {
+                        _logService.Trace($"Seeting new value of {nameof(Image)}...");
+                        _image = value;
+                    }
 
                     OnPropertyChanged();
                 }
@@ -1044,16 +1055,6 @@ namespace PhotoLabel
             }
         }
 
-        private delegate void OnErrorDelegate(Exception ex);
-
-        private delegate void OnOpeningDelegate(string directory);
-
-        private delegate void OnPreviewLoadedDelegate(string filename, Image image);
-
-        private delegate void OnPropertyChangedDelegate(string propertyName);
-
-        private delegate void OnImageFoundDelegate(string filename);
-
         private void CacheImage(int position)
         {
             var stopWatch = new Stopwatch().StartStopwatch();
@@ -1208,9 +1209,9 @@ namespace PhotoLabel
             _logService.TraceEnter();
             try
             {
-                var parametersArray = (object[]) parameters;
-                var imageModel = (Models.ImageModel) parametersArray[0];
-                var cancellationToken = (CancellationToken) parametersArray[1];
+                var parametersArray = (object[])parameters;
+                var imageModel = (Models.ImageModel)parametersArray[0];
+                var cancellationToken = (CancellationToken)parametersArray[1];
 
                 if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace("Waiting for background image to load...");
@@ -1288,7 +1289,7 @@ namespace PhotoLabel
                     IsBackground = true,
                     Priority = ThreadPriority.BelowNormal
                 };
-                backgroundImageThread.Start(new object[] {imageToLoad,cancellationTokenSource.Token});
+                backgroundImageThread.Start(new object[] { imageToLoad, cancellationTokenSource.Token });
             }
             finally
             {
@@ -1320,7 +1321,7 @@ namespace PhotoLabel
                     IsBackground = true,
                     Priority = ThreadPriority.BelowNormal
                 };
-                thread.Start(new object[] {imageToLoad, cancellationTokenSource.Token});
+                thread.Start(new object[] { imageToLoad, cancellationTokenSource.Token });
             }
             finally
             {
@@ -1405,7 +1406,7 @@ namespace PhotoLabel
                     return;
                 }
 
-                ImageFound?.Invoke(this, new ImageFoundEventArgs {Filename = filename});
+                ImageFound?.Invoke(this, new ImageFoundEventArgs { Filename = filename });
             }
             finally
             {
@@ -1454,7 +1455,7 @@ namespace PhotoLabel
                 }
 
                 _logService.Trace($@"Notifying ""{directory} opening...");
-                Opening?.Invoke(this, new OpeningEventArgs {Directory = directory});
+                Opening?.Invoke(this, new OpeningEventArgs { Directory = directory });
             }
             finally
             {
@@ -1479,7 +1480,8 @@ namespace PhotoLabel
                 _logService.Trace($@"Notifying preview loaded for ""{filename}""...");
                 PreviewLoaded?.Invoke(this, new PreviewLoadedEventArgs { Filename = filename, Image = image });
             }
-            catch (ObjectDisposedException) {
+            catch (ObjectDisposedException)
+            {
                 // ignore this exception
             }
             finally
@@ -1517,10 +1519,11 @@ namespace PhotoLabel
                 }
 
                 _logService.Trace($@"Notifying progress for ""{directory}""...");
-                ProgressChanged?.Invoke(this, new ProgressChangedEventArgs {
-                    Count=count,
-                    Current=current,
-                    Directory =directory
+                ProgressChanged?.Invoke(this, new ProgressChangedEventArgs
+                {
+                    Count = count,
+                    Current = current,
+                    Directory = directory
                 });
             }
             finally
@@ -1568,7 +1571,7 @@ namespace PhotoLabel
                     return;
                 }
 
-                QuickCaption?.Invoke(this, new QuickCaptionEventArgs{Caption=caption});
+                QuickCaption?.Invoke(this, new QuickCaptionEventArgs { Caption = caption });
             }
             finally
             {
@@ -1635,7 +1638,7 @@ namespace PhotoLabel
                     return;
                 }
 
-                RecentlyUsedDirectory?.Invoke(this, new RecentlyUsedDirectoryEventArgs { RecentlyUsedDirectory=recentlyUsedDirectory });
+                RecentlyUsedDirectory?.Invoke(this, new RecentlyUsedDirectoryEventArgs { RecentlyUsedDirectory = recentlyUsedDirectory });
             }
             finally
             {
@@ -1864,15 +1867,5 @@ namespace PhotoLabel
                 _logService.TraceExit();
             }
         }
-
-        #region delegates
-
-        private delegate void OnOpenedDelegate(string directory, int count);
-
-        public delegate void OpenedEventHandler(object sender, OpenedEventArgs e);
-
-        public delegate void PreviewLoadedEventHandler(object sender, PreviewLoadedEventArgs e);
-
-        #endregion
     }
 }

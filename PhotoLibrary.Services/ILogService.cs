@@ -5,10 +5,10 @@ namespace PhotoLabel.Services
 {
     public interface ILogService
     {
-        void Trace(string message);
-        void TraceEnter();
+        void Trace(string message, string callerMemberName = "");
+        void TraceEnter(string callerMemberName = "");
         void Error(Exception ex);
-        void TraceExit();
-        void TraceExit(Stopwatch stopWatch);
+        void TraceExit(string callerMemberName = "");
+        void TraceExit(Stopwatch stopWatch, string callerMemberName = "");
     }
 }
