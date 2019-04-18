@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -122,7 +123,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Get(string filename, int width, int height)
+        public Bitmap Get(string filename, int width, int height)
         {
             _logService.TraceEnter();
             try
@@ -141,6 +142,8 @@ namespace PhotoLabel.Services
 
         public Models.ExifData GetExifData(string filename)
         {
+            var stopWatch = Stopwatch.StartNew();
+
             _logService.TraceEnter();
             try
             {
@@ -149,7 +152,7 @@ namespace PhotoLabel.Services
 
                 using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    var bitmapSource = BitmapFrame.Create(fs);
+                    var bitmapSource = BitmapFrame.Create(fs, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
                     if (!(bitmapSource.Metadata is BitmapMetadata bitmapMetadata)) return exifData;
 
                     // try and parse the date
@@ -174,7 +177,7 @@ namespace PhotoLabel.Services
             }
             finally
             {
-                _logService.TraceExit();
+                _logService.TraceExit(stopWatch);
             }
         }
 
@@ -278,7 +281,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Caption(Image original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
+        public Bitmap Caption(Image original, string caption, Rotations rotation, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
         {
             _logService.TraceEnter();
             try
@@ -287,104 +290,131 @@ namespace PhotoLabel.Services
                     if (cancellationToken.IsCancellationRequested) return null;
                     var fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
 
-                    // create a copy of the rotated image (to workaround the problem drawing strings
-                    // outside the bounds of the unrotated image)
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    var rotatedImage = Duplicate(original);
-
-                    // is there a caption to display?
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    if (string.IsNullOrWhiteSpace(caption)) return rotatedImage;
-
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    _logService.Trace("Getting graphics manager for new image...");
-                    using (var graphics = Graphics.FromImage(rotatedImage))
+                    // create a duplicate of the original image so that the original remains unchanged
+                    _logService.Trace("Creating a duplicate copy of the original...");
+                    using (var duplicate = Duplicate(original))
                     {
-                        _logService.Trace("Setting up graphics manager...");
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
-                        // how is the caption sized?
-                        float fontSizeInPoints;
-                        if (fontType == "pts")
+                        _logService.Trace("Rotating duplicate image...");
+                        switch (rotation)
                         {
-                            // use the value provided by the user
-                            fontSizeInPoints = fontSize;
-                        }
-                        else
-                        {
-                            // work out the logical height of the image (allowing for padding)
-                            var height = rotatedImage.Height - 8;
+                        case Rotations.Ninety:
+                            duplicate.RotateFlip(RotateFlipType.Rotate90FlipNone);
 
-                            // work out the maximum height for the caption
-                            var captionHeight = height * fontSize / 100;
+                            break;
+                        case Rotations.OneEighty:
+                            duplicate.RotateFlip(RotateFlipType.Rotate180FlipNone);
 
-                            // calculate the font size
-                            fontSizeInPoints = GetFontSize(graphics, fontName, fontStyle, caption, captionHeight);
+                            break;
+                        case Rotations.TwoSeventy:
+                            duplicate.RotateFlip(RotateFlipType.Rotate270FlipNone);
+
+                            break;
+                        case Rotations.Zero:
+                        default:
+                            break;
                         }
+
+                        // create a copy of the rotated image (to workaround the problem drawing strings
+                        // outside the bounds of the unrotated image)
+                        if (cancellationToken.IsCancellationRequested) return null;
+                        var rotatedImage = Duplicate(duplicate);
+
+                        // is there a caption to display?
+                        if (cancellationToken.IsCancellationRequested) return null;
+                        if (string.IsNullOrWhiteSpace(caption)) return rotatedImage;
 
                         if (cancellationToken.IsCancellationRequested) return null;
-                        _logService.Trace("Creating font...");
-                        using (var font = new Font(fontName, fontSizeInPoints, fontStyle))
+                        _logService.Trace("Getting graphics manager for new image...");
+                        using (var graphics = Graphics.FromImage(rotatedImage))
                         {
-                            if (cancellationToken.IsCancellationRequested) return null;
-                            _logService.Trace("Determining location for caption...");
-                            switch (captionAlignment)
+                            _logService.Trace("Setting up graphics manager...");
+                            graphics.SmoothingMode = SmoothingMode.HighQuality;
+                            graphics.CompositingQuality = CompositingQuality.HighQuality;
+                            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+
+                            // how is the caption sized?
+                            float fontSizeInPoints;
+                            if (fontType == "pts")
                             {
-                                case CaptionAlignments.BottomCentre:
-                                    CaptionBottomCentre(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                // use the value provided by the user
+                                fontSizeInPoints = fontSize;
+                            }
+                            else
+                            {
+                                // work out the logical height of the image (allowing for padding)
+                                var height = rotatedImage.Height - 8;
 
-                                    break;
-                                case CaptionAlignments.BottomLeft:
-                                    // draw them on the image
-                                    CaptionBottomLeft(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                // work out the maximum height for the caption
+                                var captionHeight = height * fontSize / 100;
 
-                                    break;
-                                case CaptionAlignments.BottomRight:
-                                    CaptionBottomRight(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                // calculate the font size
+                                fontSizeInPoints = GetFontSize(graphics, fontName, fontStyle, caption, captionHeight);
+                            }
 
-                                    break;
-                                case CaptionAlignments.MiddleCentre:
-                                    CaptionMiddleCentre(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                            if (cancellationToken.IsCancellationRequested) return null;
+                            _logService.Trace("Creating font...");
+                            using (var font = new Font(fontName, fontSizeInPoints, fontStyle))
+                            {
+                                if (cancellationToken.IsCancellationRequested) return null;
+                                _logService.Trace("Determining location for caption...");
+                                switch (captionAlignment)
+                                {
+                                    case CaptionAlignments.BottomCentre:
+                                        CaptionBottomCentre(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
 
-                                    break;
-                                case CaptionAlignments.MiddleLeft:
-                                    CaptionMiddleLeft(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                        break;
+                                    case CaptionAlignments.BottomLeft:
+                                        // draw them on the image
+                                        CaptionBottomLeft(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
 
-                                    break;
-                                case CaptionAlignments.MiddleRight:
-                                    CaptionMiddleRight(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                        break;
+                                    case CaptionAlignments.BottomRight:
+                                        CaptionBottomRight(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
 
-                                    break;
-                                case CaptionAlignments.TopCentre:
-                                    CaptionTopCentre(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                        break;
+                                    case CaptionAlignments.MiddleCentre:
+                                        CaptionMiddleCentre(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
 
-                                    break;
-                                case CaptionAlignments.TopLeft:
-                                    CaptionTopLeft(graphics, rotatedImage.Size, caption, font, brush, backgroundColour);
+                                        break;
+                                    case CaptionAlignments.MiddleLeft:
+                                        CaptionMiddleLeft(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
 
-                                    break;
-                                case CaptionAlignments.TopRight:
-                                    CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush,
-                                        backgroundColour);
+                                        break;
+                                    case CaptionAlignments.MiddleRight:
+                                        CaptionMiddleRight(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
 
-                                    break;
-                                default:
-                                    throw new ArgumentOutOfRangeException(nameof(captionAlignment), captionAlignment,
-                                        null);
+                                        break;
+                                    case CaptionAlignments.TopCentre:
+                                        CaptionTopCentre(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
+
+                                        break;
+                                    case CaptionAlignments.TopLeft:
+                                        CaptionTopLeft(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
+
+                                        break;
+                                    case CaptionAlignments.TopRight:
+                                        CaptionTopRight(graphics, rotatedImage.Size, caption, font, brush,
+                                            backgroundColour);
+
+                                        break;
+                                    default:
+                                        throw new ArgumentOutOfRangeException(nameof(captionAlignment),
+                                            captionAlignment,
+                                            null);
+                                }
                             }
                         }
-                    }
 
-                    return rotatedImage;
+                        return rotatedImage;
+                    }
             }
             finally
             {
@@ -831,7 +861,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        private Image Resize(Image image, int width, int height)
+        private Bitmap Resize(Image image, int width, int height)
         {
             _logService.TraceEnter();
             try

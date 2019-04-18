@@ -67,12 +67,14 @@
     <Compile Include="IImageLoaderService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageService.cs" />
+    <Compile Include="IIndentationService.cs" />
     <Compile Include="ILineWrapService.cs" />
     <Compile Include="ILogService.cs" />
     <Compile Include="ImageFormat.cs" />
     <Compile Include="ImageLoaderService.cs" />
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
+    <Compile Include="IndentationService.cs" />
     <Compile Include="IPercentageServices.cs" />
     <Compile Include="IQuickCaptionObserver.cs" />
     <Compile Include="IQuickCaptionService.cs" />

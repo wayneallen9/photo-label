@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2035
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.156
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel", "PhotoLabel\PhotoLabel.csproj", "{4E379922-00EA-4B37-9696-27F5FF058B21}"
 EndProject
@@ -9,9 +9,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.Services", "Phot
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "PhotoLabel.Setup", "PhotoLabel.Setup\PhotoLabel.Setup.vdproj", "{8E9AF8CD-80F4-49E0-AF29-2DCCF3D94CF9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.Test", "PhotoLabel.Test\PhotoLabel.Test.csproj", "{930984EE-6107-4163-99C3-E340BBADF72A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.Extensions", "PhotoLabel.Extensions\PhotoLabel.Extensions.csproj", "{8D3CEF97-5153-4297-9BBF-9CBD9EA64001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.Wpf", "PhotoLabel.Wpf\PhotoLabel.Wpf.csproj", "{59208F8D-F47E-4013-867D-284FB08CFE44}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,14 +29,14 @@ Global
 		{9071C57F-7B49-4C31-899B-666910064A61}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8E9AF8CD-80F4-49E0-AF29-2DCCF3D94CF9}.Debug|Any CPU.ActiveCfg = Debug
 		{8E9AF8CD-80F4-49E0-AF29-2DCCF3D94CF9}.Release|Any CPU.ActiveCfg = Release
-		{930984EE-6107-4163-99C3-E340BBADF72A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{930984EE-6107-4163-99C3-E340BBADF72A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{930984EE-6107-4163-99C3-E340BBADF72A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{930984EE-6107-4163-99C3-E340BBADF72A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8D3CEF97-5153-4297-9BBF-9CBD9EA64001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8D3CEF97-5153-4297-9BBF-9CBD9EA64001}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D3CEF97-5153-4297-9BBF-9CBD9EA64001}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D3CEF97-5153-4297-9BBF-9CBD9EA64001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59208F8D-F47E-4013-867D-284FB08CFE44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59208F8D-F47E-4013-867D-284FB08CFE44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59208F8D-F47E-4013-867D-284FB08CFE44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59208F8D-F47E-4013-867D-284FB08CFE44}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
