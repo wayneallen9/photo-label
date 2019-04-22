@@ -6,7 +6,9 @@
         xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:local="clr-namespace:PhotoLabel.Wpf"
+        xmlns:localControls="clr-namespace:PhotoLabel.Wpf.Controls"
         mc:Ignorable="d"
+        WindowState="{Binding Path=WindowState, Mode=TwoWay}"
         Title="{Binding Path=Title}" Height="450" Width="800" Icon="pack://application:,,,/Resources/camera.png">
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Closed">
@@ -21,6 +23,7 @@
         <BitmapImage x:Key="BoldImageSource" UriSource="pack://application:,,,/Resources/bold.png"></BitmapImage>
         <BitmapImage x:Key="OpenImageSource" UriSource="pack://application:,,,/Resources/open.png"></BitmapImage>
         <BitmapImage x:Key="RotateLeftImageSource" UriSource="pack://application:,,,/Resources/rotateleft.png"></BitmapImage>
+        <BitmapImage x:Key="RotateRightImageSource" UriSource="pack://application:,,,/Resources/rotateright.png"></BitmapImage>
         <BooleanToVisibilityConverter x:Key="VisibilityConverter"></BooleanToVisibilityConverter>
         <CollectionViewSource Source="{Binding Source={x:Static Fonts.SystemFontFamilies}}" x:Key="Fonts"></CollectionViewSource>
         <ControlTemplate x:Key="SizeValidation">
@@ -77,19 +80,29 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
-                <MenuItem Command="{Binding OpenCommand}" Header="_Open...">
+                <MenuItem Click="MenuOpen_Click" Header="_Open..." Name="MenuOpen">
                     <MenuItem.Icon>
                         <Image Source="{StaticResource OpenImageSource}"></Image>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator></Separator>
+                <MenuItem Header="_Recently Used" ItemsSource="{Binding Path=RecentlyUsedDirectories}">
+                    <MenuItem.ItemContainerStyle>
+                        <Style>
+                            <Setter Property="MenuItem.Command" Value="{Binding Path=DataContext.OpenRecentlyUsedDirectoryCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"></Setter>
+                            <Setter Property="MenuItem.CommandParameter" Value="{Binding Path=Path}"></Setter>
+                            <Setter Property="MenuItem.Header" Value="{Binding Path=Caption}"></Setter>
+                        </Style>
+                    </MenuItem.ItemContainerStyle>
+                </MenuItem>
+                <Separator Visibility="{Binding Path=HasRecentlyUsedDirectories, Converter={StaticResource VisibilityConverter}}"></Separator>
                 <MenuItem Command="{Binding Path=ExitCommand}" Header="E_xit"></MenuItem>
             </MenuItem>
         </Menu>
         <ToolBarTray DockPanel.Dock="Top" IsLocked="True">
             <ToolBar>
-                <Button Command="{Binding Path=OpenCommand}" ToolBar.OverflowMode="Never">
-                    <Image Height="16" Source="{StaticResource OpenImageSource}" Width="16"></Image>
+                <Button ToolBar.OverflowMode="Never" Name="ButtonOpen" Click="ButtonOpen_Click">
+                    <Image x:Name="ToolBarOpen" Height="16" Source="{StaticResource OpenImageSource}" Width="16"></Image>
                 </Button>
             </ToolBar>
             <ToolBar DataContext="{Binding SelectedImageViewModel}">
@@ -122,7 +135,7 @@
                 <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" ShowRecentColors="True" SelectedColor="{Binding Path=ForeColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Color"></wpfToolkit:ColorPicker>
                 <Separator></Separator>
                 <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" ShowRecentColors="True" SelectedColor="{Binding Path=BackColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Background Color"></wpfToolkit:ColorPicker>
-                <ComboBox IsEditable="True" Style="{StaticResource TransparencyComboBox}" Text="{Binding Path=BackColorOpacity}">
+                <ComboBox IsEditable="True" Style="{StaticResource TransparencyComboBox}" Text="{Binding Path=BackColorOpacity}" ToolTip="Background Opacity">
                     <ComboBoxItem>Off</ComboBoxItem>
                     <ComboBoxItem Opacity="0.25">25%</ComboBoxItem>
                     <ComboBoxItem Opacity="0.5">50%</ComboBoxItem>
@@ -130,12 +143,18 @@
                     <ComboBoxItem>100%</ComboBoxItem>
                 </ComboBox>
                 <Separator></Separator>
-                <Button Command="{Binding Path=RotateLeftCommand}">
+                <Button Command="{Binding Path=RotateLeftCommand}" ToolTip="Rotate Left">
                     <Image Height="16" Source="{StaticResource RotateLeftImageSource}" Width="16"></Image>
+                </Button>
+                <Button Command="{Binding Path=RotateRightCommand}" ToolTip="Rotate Right">
+                    <Image Height="16" Source="{StaticResource RotateRightImageSource}" Width="16"></Image>
                 </Button>
             </ToolBar>
         </ToolBarTray>
         <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <Label Content="{Binding Path=Status}"></Label>
+            </StatusBarItem>
             <StatusBarItem HorizontalContentAlignment="Stretch" Visibility="{Binding Path=ProgressVisible, Converter={StaticResource VisibilityConverter}}">
                 <ProgressBar Maximum="100" Minimum="0" Value="{Binding Path=Progress}"></ProgressBar>
             </StatusBarItem>
@@ -159,7 +178,7 @@
                 <TextBox Grid.Row="2" AcceptsReturn="True" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
             </Grid>
             <GridSplitter Background="Black" Grid.Column="1" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
-            <ListView  Grid.Column="2" ItemsSource="{Binding Images}" Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"  SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionMode="Single">
+            <localControls:ListView Grid.Column="2" ItemsSource="{Binding Images}" Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionMode="Single">
                 <i:Interaction.Triggers>
                     <local:RoutedEventTrigger RoutedEvent="ScrollViewer.ScrollChanged">
                         <i:InvokeCommandAction Command="{Binding Path=ScrollCommand}" />
@@ -177,7 +196,7 @@
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
-            </ListView>
+            </localControls:ListView>
         </Grid>
     </DockPanel>
 </Window>

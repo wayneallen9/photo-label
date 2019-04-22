@@ -55,12 +55,15 @@ namespace PhotoLabel.Wpf
 
             try
             {
-                while (true)
+                while (!tasks.IsAddingCompleted)
                 {
                     // wait for a task to be added
                     var task = tasks.Take();
 
                     TryExecuteTask(task);
+
+                    // don't overwhelm the UI
+                    Thread.Sleep(50);
                 }
             }
             catch (InvalidOperationException)

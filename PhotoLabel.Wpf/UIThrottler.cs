@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace PhotoLabel.Wpf
@@ -43,9 +44,13 @@ namespace PhotoLabel.Wpf
                     Application.Current?.Dispatcher.Invoke(action);
 
                     // pause so that the UI thread doesn't get overwhelmed
-                    Thread.Sleep(100);
+                    Thread.Sleep(150);
                 }
                 catch (InvalidOperationException)
+                {
+                    // ignored
+                }
+                catch (TaskCanceledException)
                 {
                     // ignored
                 }

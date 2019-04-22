@@ -15,8 +15,7 @@ namespace PhotoLabel.Wpf
             Kernel = new StandardKernel();
 
             // create the bindings for this assembly
-            Kernel.Bind<LifoTaskScheduler>().ToSelf().InSingletonScope();
-            Kernel.Bind<IUiThrottler>().To<UiThrottler>().InSingletonScope();
+            Kernel.Bind<SingleTaskScheduler>().ToSelf().InSingletonScope();
 
             // load the injections
             Kernel.Load("PhotoLabel.*.dll");
