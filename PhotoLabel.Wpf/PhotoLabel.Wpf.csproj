@@ -150,9 +150,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\save.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\opening.png" />
   </ItemGroup>
   <ItemGroup>
@@ -172,6 +169,36 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\rotateright.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\save.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\next.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\close.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\saveas.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\saved.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\topleft.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\topcentre.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\topright.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\bottomright.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\bottomleft.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

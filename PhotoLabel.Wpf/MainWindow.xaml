@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
-        xmlns:local="clr-namespace:PhotoLabel.Wpf"
+        xmlns:local="clr-namespace:PhotoLabel.Wpf;assembly=PhotoLabel.Wpf"
         xmlns:localControls="clr-namespace:PhotoLabel.Wpf.Controls"
         mc:Ignorable="d"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
@@ -21,9 +21,18 @@
     </Window.InputBindings>
     <Window.Resources>
         <BitmapImage x:Key="BoldImageSource" UriSource="pack://application:,,,/Resources/bold.png"></BitmapImage>
+        <BitmapImage x:Key="BottomLeftImageSource" UriSource="pack://application:,,,/Resources/bottomleft.png"></BitmapImage>
+        <BitmapImage x:Key="BottomRightImageSource" UriSource="pack://application:,,,/Resources/bottomright.png"></BitmapImage>
+        <BitmapImage x:Key="CloseImageSource" UriSource="pack://application:,,,/Resources/close.png"></BitmapImage>
+        <BitmapImage x:Key="NextImageSource" UriSource="pack://application:,,,/Resources/next.png"></BitmapImage>
         <BitmapImage x:Key="OpenImageSource" UriSource="pack://application:,,,/Resources/open.png"></BitmapImage>
         <BitmapImage x:Key="RotateLeftImageSource" UriSource="pack://application:,,,/Resources/rotateleft.png"></BitmapImage>
         <BitmapImage x:Key="RotateRightImageSource" UriSource="pack://application:,,,/Resources/rotateright.png"></BitmapImage>
+        <BitmapImage x:Key="SaveImageSource" UriSource="pack://application:,,,/Resources/save.png"></BitmapImage>
+        <BitmapImage x:Key="SaveAsImageSource" UriSource="pack://application:,,,/Resources/saveas.png"></BitmapImage>
+        <BitmapImage x:Key="TopCentreImageSource" UriSource="pack://application:,,,/Resources/topcentre.png"></BitmapImage>
+        <BitmapImage x:Key="TopLeftImageSource" UriSource="pack://application:,,,/Resources/topleft.png"></BitmapImage>
+        <BitmapImage x:Key="TopRightImageSource" UriSource="pack://application:,,,/Resources/topright.png"></BitmapImage>
         <BooleanToVisibilityConverter x:Key="VisibilityConverter"></BooleanToVisibilityConverter>
         <CollectionViewSource Source="{Binding Source={x:Static Fonts.SystemFontFamilies}}" x:Key="Fonts"></CollectionViewSource>
         <ControlTemplate x:Key="SizeValidation">
@@ -43,11 +52,17 @@
             <Setter Property="ShowDropDownButton" Value="False"></Setter>
             <Setter Property="Width" Value="20"></Setter>
         </Style>
-        <Style x:Key="GridEditor">
+        <Style x:Key="GridEditor" TargetType="{x:Type Grid}">
             <Style.Resources>
-                <Style TargetType="{x:Type Grid}">
+                <Style TargetType="{x:Type CheckBox}">
+                    <Setter Property="Margin" Value="5"></Setter>
+                </Style>
+                <Style x:Key="GridImage" TargetType="{x:Type Grid}">
                     <Setter Property="Background" Value="Black"></Setter>
                     <Setter Property="Margin" Value="5"></Setter>
+                </Style>
+                <Style x:Key="GridAlignment" TargetType="{x:Type Grid}">
+                    <Setter Property="Margin" Value="10,10,0,5"></Setter>
                 </Style>
                 <Style TargetType="{x:Type Label}">
                     <Setter Property="Margin" Value="5,0,5,0"></Setter>
@@ -101,12 +116,15 @@
         </Menu>
         <ToolBarTray DockPanel.Dock="Top" IsLocked="True">
             <ToolBar>
-                <Button ToolBar.OverflowMode="Never" Name="ButtonOpen" Click="ButtonOpen_Click">
+                <Button ToolBar.OverflowMode="Never" Name="ButtonOpen" Click="ButtonOpen_Click" ToolTip="Open Folder">
                     <Image x:Name="ToolBarOpen" Height="16" Source="{StaticResource OpenImageSource}" Width="16"></Image>
+                </Button>
+                <Button Command="{Binding Path=CloseCommand}" ToolTip="Close Folder">
+                    <Image Height="16" Source="{StaticResource CloseImageSource}" Width="16"></Image>
                 </Button>
             </ToolBar>
             <ToolBar DataContext="{Binding SelectedImageViewModel}">
-                <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontName}" Style="{StaticResource FontComboBox}">
+                <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" Style="{StaticResource FontComboBox}">
                     <ComboBox.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel></VirtualizingStackPanel>
@@ -149,11 +167,30 @@
                 <Button Command="{Binding Path=RotateRightCommand}" ToolTip="Rotate Right">
                     <Image Height="16" Source="{StaticResource RotateRightImageSource}" Width="16"></Image>
                 </Button>
+                <Separator></Separator>
+                <ComboBox IsEditable="False" Text="{Binding Path=ImageFormat}">
+                    <ComboBoxItem>Bmp</ComboBoxItem>
+                    <ComboBoxItem>Jpeg</ComboBoxItem>
+                    <ComboBoxItem>Png</ComboBoxItem>
+                </ComboBox>
+                <Button Click="ButtonSave_OnClick" Name="ButtonSave" ToolTip="Save">
+                    <Image Height="16" Source="{StaticResource SaveImageSource}" Width="16"></Image>
+                </Button>
+                <Button Click="ButtonSaveAs_OnClick" Name="ButtonSaveAs" ToolTip="Save">
+                    <Image Height="16" Source="{StaticResource SaveAsImageSource}" Width="16"></Image>
+                </Button>
+                <Button Command="{Binding Path=DataContext.NextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                    <Image Height="16" Source="{StaticResource NextImageSource}" Width="16"></Image>
+                </Button>
             </ToolBar>
         </ToolBarTray>
         <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem>
+            <StatusBarItem Visibility="{Binding HasStatus, Converter={StaticResource VisibilityConverter}}">
                 <Label Content="{Binding Path=Status}"></Label>
+            </StatusBarItem>
+            <Separator Visibility="{Binding HasStatus, Converter={StaticResource VisibilityConverter}}"></Separator>
+            <StatusBarItem>
+                <Label Content="{Binding Path=OutputPath}"></Label>
             </StatusBarItem>
             <StatusBarItem HorizontalContentAlignment="Stretch" Visibility="{Binding Path=ProgressVisible, Converter={StaticResource VisibilityConverter}}">
                 <ProgressBar Maximum="100" Minimum="0" Value="{Binding Path=Progress}"></ProgressBar>
@@ -166,24 +203,54 @@
                 <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridEditor}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="100"></RowDefinition>
+                    <RowDefinition Height="Auto"></RowDefinition>
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0">
+                <Grid Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Style="{DynamicResource GridImage}">
                     <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
                 </Grid>
-                <Label Grid.Row="1" Content="{Binding Path=Filename}" ToolTip="{Binding Path=Filename}"></Label>
-                <TextBox Grid.Row="2" AcceptsReturn="True" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
+                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Content="{Binding Path=Filename}" ToolTip="{Binding Path=Filename}"></Label>
+                <TextBox Grid.Column="0" Grid.Row="2" AcceptsReturn="True" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
+                <Grid Grid.Column="1" Grid.Row="2" Style="{DynamicResource GridAlignment}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24"></ColumnDefinition>
+                        <ColumnDefinition Width="24"></ColumnDefinition>
+                        <ColumnDefinition Width="24"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="24"></RowDefinition>
+                        <RowDefinition Height="24"></RowDefinition>
+                        <RowDefinition Height="24"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <ToggleButton Grid.Column="0" Grid.Row="0" IsChecked="{Binding Path=IsTopLeftAlignment}">
+                        <Image Source="{StaticResource TopLeftImageSource}"></Image>
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="1" Grid.Row="0" IsChecked="{Binding Path=IsTopCentreAlignment}">
+                        <Image Source="{StaticResource TopCentreImageSource}"></Image>
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="2" Grid.Row="0" IsChecked="{Binding Path=IsTopRightAlignment}">
+                        <Image Source="{StaticResource TopRightImageSource}"></Image>
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="0" Grid.Row="2" IsChecked="{Binding Path=IsBottomLeftAlignment}">
+                        <Image Source="{StaticResource BottomLeftImageSource}"></Image>
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="2" Grid.Row="2" IsChecked="{Binding Path=IsBottomRightAlignment}">
+                        <Image Source="{StaticResource BottomRightImageSource}"></Image>
+                    </ToggleButton>
+                </Grid>
+                <CheckBox Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3" IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=DataContext.HasDateTaken, Converter={StaticResource VisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                    <TextBlock Text="{Binding Path=DateTaken, StringFormat={}Append {0}?}"></TextBlock>
+                </CheckBox>
             </Grid>
             <GridSplitter Background="Black" Grid.Column="1" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
-            <localControls:ListView Grid.Column="2" ItemsSource="{Binding Images}" Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionMode="Single">
-                <i:Interaction.Triggers>
-                    <local:RoutedEventTrigger RoutedEvent="ScrollViewer.ScrollChanged">
-                        <i:InvokeCommandAction Command="{Binding Path=ScrollCommand}" />
-                    </local:RoutedEventTrigger>
-                </i:Interaction.Triggers>
+            <ListView Grid.Column="2" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged">
                 <ListView.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel Margin="0" />
@@ -196,7 +263,7 @@
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
-            </localControls:ListView>
+            </ListView>
         </Grid>
     </DockPanel>
 </Window>

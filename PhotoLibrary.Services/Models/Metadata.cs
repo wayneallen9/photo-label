@@ -19,6 +19,7 @@ namespace PhotoLabel.Services.Models
         public ImageFormat? ImageFormat { get; set; }
         public float? Latitude { get; set;}
         public float? Longitude { get; set; }
+        public string OutputFilename { get; set; }
         public Rotations? Rotation { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace PhotoLabel.Wpf
 {
@@ -38,7 +39,7 @@ namespace PhotoLabel.Wpf
             if (Application.Current?.Dispatcher.CheckAccess() == false)
             {
                 return (BitmapSource) Application.Current.Dispatcher.Invoke(
-                    new CreateBitmapSourceFromHBitmapDelegate(CreateBitmapSourceFromHBitmap), bitmap);
+                    new CreateBitmapSourceFromHBitmapDelegate(CreateBitmapSourceFromHBitmap), DispatcherPriority.ApplicationIdle, bitmap);
             }
 
             // get the handle of the bitmap

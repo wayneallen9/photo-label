@@ -11,17 +11,23 @@ namespace PhotoLabel.Wpf
         #region variables
 
         private bool _disposedValue;
-        private readonly BlockingCollection<Task> _tasks;
+        private readonly ConcurrentStack<Task> _tasks;
+        private readonly Thread _taskThread;
         #endregion
 
         public SingleTaskScheduler()
         {
             // initialise variables
-            _tasks = new BlockingCollection<Task>();
+            _tasks = new ConcurrentStack<Task>();
 
             // create the thread that will process each task
-            var taskThread = new Thread(TaskThread);
-            taskThread.Start(_tasks);
+            _taskThread = new Thread(TaskThread);
+            _taskThread.Start(_tasks);
+        }
+
+        public void Clear()
+        {
+            _tasks.Clear();
         }
 
         protected override IEnumerable<Task> GetScheduledTasks()
@@ -36,7 +42,7 @@ namespace PhotoLabel.Wpf
             try
             {
                 // add this task to the queue
-                _tasks.Add(task);
+                _tasks.Push(task);
             }
             catch (InvalidOperationException)
             {
@@ -51,24 +57,29 @@ namespace PhotoLabel.Wpf
 
         private void TaskThread(object state)
         {
-            var tasks = (BlockingCollection<Task>) state;
+            var tasks = (ConcurrentStack<Task>) state;
 
             try
             {
-                while (!tasks.IsAddingCompleted)
+                while (true)
                 {
                     // wait for a task to be added
-                    var task = tasks.Take();
+                    if (!tasks.TryPop(out var task)) continue;
 
                     TryExecuteTask(task);
-
-                    // don't overwhelm the UI
-                    Thread.Sleep(50);
                 }
             }
-            catch (InvalidOperationException)
+            /*catch (InvalidOperationException)
             {
                 // ignored
+            }*/
+            catch (ThreadAbortException)
+            {
+                // ignored
+            }
+            catch (Exception ex)
+            {
+                ex.ToString();
             }
         }
 
@@ -79,8 +90,8 @@ namespace PhotoLabel.Wpf
 
             if (disposing)
             {
-                // flag that we are disposing
-                _tasks.CompleteAdding();
+                // stop the background thread
+                _taskThread.Abort();
             }
 
             _disposedValue = true;
