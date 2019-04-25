@@ -21,9 +21,12 @@
     </Window.InputBindings>
     <Window.Resources>
         <BitmapImage x:Key="BoldImageSource" UriSource="pack://application:,,,/Resources/bold.png"></BitmapImage>
+        <BitmapImage x:Key="BottomCentreImageSource" UriSource="pack://application:,,,/Resources/bottomcentre.png"></BitmapImage>
         <BitmapImage x:Key="BottomLeftImageSource" UriSource="pack://application:,,,/Resources/bottomleft.png"></BitmapImage>
         <BitmapImage x:Key="BottomRightImageSource" UriSource="pack://application:,,,/Resources/bottomright.png"></BitmapImage>
         <BitmapImage x:Key="CloseImageSource" UriSource="pack://application:,,,/Resources/close.png"></BitmapImage>
+        <BitmapImage x:Key="MiddleLeftImageSource" UriSource="pack://application:,,,/Resources/middleleft.png"></BitmapImage>
+        <BitmapImage x:Key="MiddleRightImageSource" UriSource="pack://application:,,,/Resources/middleright.png"></BitmapImage>
         <BitmapImage x:Key="NextImageSource" UriSource="pack://application:,,,/Resources/next.png"></BitmapImage>
         <BitmapImage x:Key="OpenImageSource" UriSource="pack://application:,,,/Resources/open.png"></BitmapImage>
         <BitmapImage x:Key="RotateLeftImageSource" UriSource="pack://application:,,,/Resources/rotateleft.png"></BitmapImage>
@@ -238,8 +241,17 @@
                     <ToggleButton Grid.Column="2" Grid.Row="0" IsChecked="{Binding Path=IsTopRightAlignment}">
                         <Image Source="{StaticResource TopRightImageSource}"></Image>
                     </ToggleButton>
+                    <ToggleButton Grid.Column="0" Grid.Row="1" IsChecked="{Binding Path=IsMiddleLeftAlignment}">
+                        <Image Source="{StaticResource MiddleLeftImageSource}"></Image>
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="3" Grid.Row="1" IsChecked="{Binding Path=IsMiddleRightAlignment}">
+                        <Image Source="{StaticResource MiddleRightImageSource}"></Image>
+                    </ToggleButton>
                     <ToggleButton Grid.Column="0" Grid.Row="2" IsChecked="{Binding Path=IsBottomLeftAlignment}">
                         <Image Source="{StaticResource BottomLeftImageSource}"></Image>
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="1" Grid.Row="2" IsChecked="{Binding Path=IsBottomCentreAlignment}">
+                        <Image Source="{StaticResource BottomCentreImageSource}"></Image>
                     </ToggleButton>
                     <ToggleButton Grid.Column="2" Grid.Row="2" IsChecked="{Binding Path=IsBottomRightAlignment}">
                         <Image Source="{StaticResource BottomRightImageSource}"></Image>

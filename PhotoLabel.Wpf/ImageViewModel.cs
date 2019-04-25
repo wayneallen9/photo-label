@@ -148,7 +148,7 @@ namespace PhotoLabel.Wpf
                             break;
                         default:
                             var percentage = value.ToPercentage();
-                            opacityValue = (byte) (percentage / 100 * 255);
+                            opacityValue = (byte)(percentage / 100 * 255);
 
                             break;
                     }
@@ -247,8 +247,11 @@ namespace PhotoLabel.Wpf
                     _logService.Trace($@"Loading image for ""{Filename}""...");
                     LoadImage();
 
+                    OnPropertyChanged(nameof(IsBottomCentreAlignment));
                     OnPropertyChanged(nameof(IsBottomLeftAlignment));
                     OnPropertyChanged(nameof(IsBottomRightAlignment));
+                    OnPropertyChanged(nameof(IsMiddleLeftAlignment));
+                    OnPropertyChanged(nameof(IsMiddleRightAlignment));
                     OnPropertyChanged(nameof(IsTopCentreAlignment));
                     OnPropertyChanged(nameof(IsTopLeftAlignment));
                     OnPropertyChanged(nameof(IsTopRightAlignment));
@@ -286,7 +289,7 @@ namespace PhotoLabel.Wpf
                     _configurationService.ImageFormat = value;
 
                     _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    IsImageFormatEdited = true;
+                    _isImageFormatEdited = true;
                     IsEdited = true;
 
                     OnPropertyChanged();
@@ -511,6 +514,34 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public bool IsBottomCentreAlignment
+        {
+            get => CaptionAlignment == CaptionAlignments.BottomCentre;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace("Checking if Bottom Centre alignment is required...");
+                    if (!value)
+                    {
+                        _logService.Trace("Bottom Centre alignment is not required.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace("Setting caption alignment to Bottom Centre...");
+                    CaptionAlignment = CaptionAlignments.BottomCentre;
+
+                    _logService.Trace("Flagging that image has been edited...");
+                    IsEdited = true;
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         public bool IsBottomLeftAlignment
         {
             get => CaptionAlignment == CaptionAlignments.BottomLeft;
@@ -598,11 +629,65 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private bool IsImageFormatEdited { get; set; }
-
         private bool IsMetadataChecked { get; set; }
 
         private bool IsRotationEdited { get; set; }
+
+        public bool IsMiddleLeftAlignment
+        {
+            get => CaptionAlignment == CaptionAlignments.MiddleLeft;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace("Checking if Middle left alignment is required...");
+                    if (!value)
+                    {
+                        _logService.Trace("Middle left alignment is not required.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace("Setting caption alignment to Middle left...");
+                    CaptionAlignment = CaptionAlignments.MiddleLeft;
+
+                    _logService.Trace("Flagging that image has been edited...");
+                    IsEdited = true;
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        public bool IsMiddleRightAlignment
+        {
+            get => CaptionAlignment == CaptionAlignments.MiddleRight;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace("Checking if Middle Right alignment is required...");
+                    if (!value)
+                    {
+                        _logService.Trace("Middle Right alignment is not required.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace("Setting caption alignment to Middle Right...");
+                    CaptionAlignment = CaptionAlignments.MiddleRight;
+
+                    _logService.Trace("Flagging that image has been edited...");
+                    IsEdited = true;
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
 
         private bool IsSaved
         {
@@ -798,7 +883,7 @@ namespace PhotoLabel.Wpf
                 if (Application.Current.CheckAccess() == false)
                 {
                     loggingService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    return (BitmapSource) Application.Current.Dispatcher.Invoke(
+                    return (BitmapSource)Application.Current.Dispatcher.Invoke(
                         new CreateOpeningBitmapSourceDelegate(GetOpeningBitmapSource),
                         DispatcherPriority.ApplicationIdle);
                 }
@@ -823,7 +908,7 @@ namespace PhotoLabel.Wpf
 
         private void LoadImageThread(object state)
         {
-            var cancellationToken = (CancellationToken) state;
+            var cancellationToken = (CancellationToken)state;
 
             // create dependencies
             var imageService = NinjectKernel.Get<IImageService>();
@@ -929,7 +1014,7 @@ namespace PhotoLabel.Wpf
         {
             Image originalImage;
 
-            var cancellationToken = (CancellationToken) state;
+            var cancellationToken = (CancellationToken)state;
 
             // create dependencies
             var imageService = NinjectKernel.Get<IImageService>();
@@ -995,7 +1080,7 @@ namespace PhotoLabel.Wpf
 
         private void LoadMetadataThread(object state)
         {
-            var cancellationToken = (CancellationToken) state;
+            var cancellationToken = (CancellationToken)state;
 
             // get dependencies
             var imageMetadataService = NinjectKernel.Get<IImageMetadataService>();
@@ -1108,7 +1193,7 @@ namespace PhotoLabel.Wpf
 
         private void LoadPreviewThread(object state)
         {
-            var cancellationToken = (CancellationToken) state;
+            var cancellationToken = (CancellationToken)state;
 
             // get dependencies
             var imageService = NinjectKernel.Get<IImageService>();
@@ -1317,13 +1402,13 @@ namespace PhotoLabel.Wpf
                     Latitude = Latitude,
                     Longitude = Longitude,
                     OutputFilename = Path.Combine(outputPath,
-                        Path.GetFileName(Filename) ?? throw new NullReferenceException()),
+                        $"{Path.GetFileName(Filename)}.{(ImageFormat == ImageFormat.Bmp ? "bmp" : ImageFormat == ImageFormat.Jpeg ? "jpg" : "png")}"),
                     Rotation = Rotation
                 };
 
                 _logService.Trace($@"Saving to ""{metadata.OutputFilename}"" on background thread...");
                 Task.Factory.StartNew(SaveThread,
-                    new object[] {GetOriginalImage(), metadata, _saveFinishManualResetEvent},
+                    new object[] { GetOriginalImage(), metadata, _saveFinishManualResetEvent },
                     new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
             }
             finally
@@ -1334,10 +1419,10 @@ namespace PhotoLabel.Wpf
 
         private void SaveThread(object state)
         {
-            var stateArray = (object[]) state;
-            var originalImage = (Bitmap) stateArray[0];
-            var metadata = (Metadata) stateArray[1];
-            var saveManualResetEvent = (ManualResetEvent) stateArray[2];
+            var stateArray = (object[])state;
+            var originalImage = (Bitmap)stateArray[0];
+            var metadata = (Metadata)stateArray[1];
+            var saveManualResetEvent = (ManualResetEvent)stateArray[2];
 
             // get dependencies
             var imageMetadataService = NinjectKernel.Get<IImageMetadataService>();
@@ -1551,7 +1636,16 @@ namespace PhotoLabel.Wpf
                 if (!_isCaptionAlignmentEdited && metadata.CaptionAlignment.HasValue)
                 {
                     logService.Trace($@"Setting caption alignment for ""{Filename}"" from metadata...");
-                    CaptionAlignment = metadata.CaptionAlignment.Value;
+                    _captionAlignment = metadata.CaptionAlignment.Value;
+
+                    OnPropertyChanged(nameof(IsBottomCentreAlignment));
+                    OnPropertyChanged(nameof(IsBottomLeftAlignment));
+                    OnPropertyChanged(nameof(IsBottomRightAlignment));
+                    OnPropertyChanged(nameof(IsMiddleLeftAlignment));
+                    OnPropertyChanged(nameof(IsMiddleRightAlignment));
+                    OnPropertyChanged(nameof(IsTopCentreAlignment));
+                    OnPropertyChanged(nameof(IsTopLeftAlignment));
+                    OnPropertyChanged(nameof(IsTopRightAlignment));
                 }
 
                 DateTaken = metadata.DateTaken;
@@ -1597,7 +1691,7 @@ namespace PhotoLabel.Wpf
                     OnPropertyChanged(nameof(ForeColor));
                 }
 
-                if (!IsImageFormatEdited && metadata.ImageFormat.HasValue)
+                if (!_isImageFormatEdited && metadata.ImageFormat.HasValue)
                 {
                     logService.Trace($@"Setting image format for ""{Filename}"" to ""{metadata.ImageFormat.Value}...");
                     _imageFormat = metadata.ImageFormat.Value;
@@ -1734,8 +1828,8 @@ namespace PhotoLabel.Wpf
         private bool _isFontSizeEdited;
         private readonly TaskScheduler _taskScheduler;
         private bool _isFontTypeEdited;
-        private ICommand _setCaptionAlignmentCommand;
         private bool _isForeColorEdited;
+        private bool _isImageFormatEdited;
 
         #endregion
 

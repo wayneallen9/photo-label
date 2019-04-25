@@ -227,9 +227,10 @@ namespace PhotoLabel.Wpf
                 var listViewBounds = new Rect(0, 0, listViewImages.ActualWidth, listViewImages.ActualHeight);
 
                 _logService.Trace("Finding all visible images...");
-                foreach (var item in listViewImages.Items)
+                for (var p=listViewImages.Items.Count; p > 0;)
                 {
                     // get the container for the item
+                    var item = listViewImages.Items[--p];
                     var container = (ListViewItem) listViewImages.ItemContainerGenerator.ContainerFromItem(item);
 
                     // is the element visibly?

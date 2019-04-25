@@ -200,5 +200,14 @@
   <ItemGroup>
     <Resource Include="Resources\bottomleft.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\bottomcentre.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\middleleft.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\middleright.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
