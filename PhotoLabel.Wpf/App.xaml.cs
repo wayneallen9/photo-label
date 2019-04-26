@@ -5,6 +5,8 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
+using PhotoLabel.Services;
 
 namespace PhotoLabel.Wpf
 {
@@ -21,10 +23,40 @@ namespace PhotoLabel.Wpf
             var mainWindow = NinjectKernel.Get<MainWindow>();
 
             // assign the view model to the window
-            mainWindow.DataContext = NinjectKernel.Get<MainWindowViewModel>();
-
+            var mainWindowViewModel = NinjectKernel.Get<MainWindowViewModel>();
+            mainWindowViewModel.Subscribe(mainWindow);
+            mainWindow.DataContext = mainWindowViewModel;
+            
             // show the window
             mainWindow.Show();
+        }
+
+        private void Application_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            // get dependencies
+            var logService = NinjectKernel.Get<ILogService>();
+
+            logService.TraceEnter();
+            try
+            {
+                logService.Error(e.Exception);
+
+                MessageBox.Show(
+                    "An unexpected error was encountered completing an operation.  The error details can be found in the application log.",
+                    "Unexpected Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            finally
+            {
+                // flag that the exception has been handled
+                e.Handled = true;
+
+                logService.TraceExit();
+            }
         }
     }
 }

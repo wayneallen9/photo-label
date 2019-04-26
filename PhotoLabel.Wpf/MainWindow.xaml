@@ -50,32 +50,26 @@
                 <Label Grid.Row="1" Background="Red" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center">Value is not numeric</Label>
             </Grid>
         </ControlTemplate>
+        <Style TargetType="{x:Type CheckBox}">
+            <Setter Property="Margin" Value="5,0,0,5"></Setter>
+        </Style>
         <Style x:Key="ColorPicker" TargetType="{x:Type wpfToolkit:ColorPicker}">
             <Setter Property="Height" Value="20"></Setter>
             <Setter Property="ShowDropDownButton" Value="False"></Setter>
             <Setter Property="Width" Value="20"></Setter>
         </Style>
-        <Style x:Key="GridEditor" TargetType="{x:Type Grid}">
+        <Style x:Key="GridAlignment" TargetType="{x:Type Grid}">
             <Style.Resources>
-                <Style TargetType="{x:Type CheckBox}">
-                    <Setter Property="Margin" Value="5"></Setter>
-                </Style>
-                <Style x:Key="GridImage" TargetType="{x:Type Grid}">
-                    <Setter Property="Background" Value="Black"></Setter>
-                    <Setter Property="Margin" Value="5"></Setter>
-                </Style>
-                <Style x:Key="GridAlignment" TargetType="{x:Type Grid}">
-                    <Setter Property="Margin" Value="10,10,0,5"></Setter>
-                </Style>
-                <Style TargetType="{x:Type Label}">
-                    <Setter Property="Margin" Value="5,0,5,0"></Setter>
-                    <Setter Property="HorizontalContentAlignment" Value="Right"></Setter>
-                </Style>
-                <Style TargetType="{x:Type TextBox}">
-                    <Setter Property="Height" Value="80"></Setter>
-                    <Setter Property="Margin" Value="5"></Setter>
+                <Style TargetType="{x:Type Button}">
+                    <Setter Property="Height" Value="24"></Setter>
+                    <Setter Property="Width" Value="24"></Setter>
                 </Style>
             </Style.Resources>
+            <Setter Property="Margin" Value="0,10,0,0"></Setter>
+        </Style>
+        <Style x:Key="GridImage" TargetType="{x:Type Grid}">
+            <Setter Property="Background" Value="Black"></Setter>
+            <Setter Property="Margin" Value="5"></Setter>
         </Style>
         <Style x:Key="FontComboBox" TargetType="{x:Type ComboBox}">
             <Style.Resources>
@@ -86,9 +80,27 @@
             <Setter Property="Height" Value="20"></Setter>
             <Setter Property="MinWidth" Value="150"></Setter>
         </Style>
+        <Style TargetType="{x:Type ListView}">
+            <Setter Property="Margin" Value="5"></Setter>
+        </Style>
+        <Style x:Key="LabelFilename" TargetType="{x:Type Label}">
+            <Setter Property="Margin" Value="5,0,5,0"></Setter>
+        </Style>
+        <Style x:Key="ListViewQuickCaptions" TargetType="{x:Type ListView}">
+            <Setter Property="BorderThickness" Value="0"></Setter>
+            <Setter Property="Margin" Value="0,7,0,0"></Setter>
+            <Setter Property="Padding" Value="0"></Setter>
+        </Style>
         <Style x:Key="SizeComboBox" TargetType="{x:Type ComboBox}">
             <Setter Property="Height" Value="20"></Setter>
             <Setter Property="MinWidth" Value="30"></Setter>
+        </Style>
+        <Style TargetType="{x:Type GridSplitter}">
+            <Setter Property="Background" Value="{x:Static SystemColors.GradientInactiveCaptionBrush}"></Setter>
+        </Style>
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Height" Value="80"></Setter>
+            <Setter Property="Margin" Value="5"></Setter>
         </Style>
         <Style x:Key="TransparencyComboBox" TargetType="{x:Type ComboBox}">
             <Setter Property="Height" Value="20"></Setter>
@@ -127,7 +139,7 @@
                 </Button>
             </ToolBar>
             <ToolBar DataContext="{Binding SelectedImageViewModel}">
-                <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" Style="{StaticResource FontComboBox}">
+                <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" Style="{StaticResource FontComboBox}" ToolTip="Font">
                     <ComboBox.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel></VirtualizingStackPanel>
@@ -139,14 +151,14 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
-                <ComboBox Validation.ErrorTemplate="{StaticResource SizeValidation}" ToolBar.OverflowMode="Never" IsEditable="True" Style="{StaticResource SizeComboBox}" Text="{Binding FontSize}">
+                <ComboBox Validation.ErrorTemplate="{StaticResource SizeValidation}" ToolBar.OverflowMode="Never" IsEditable="True" Style="{StaticResource SizeComboBox}" Text="{Binding FontSize}" ToolTip="Font Size">
                     <ComboBoxItem>10</ComboBoxItem>
                     <ComboBoxItem>12</ComboBoxItem>
                     <ComboBoxItem>16</ComboBoxItem>
                     <ComboBoxItem>24</ComboBoxItem>
                     <ComboBoxItem>48</ComboBoxItem>
                 </ComboBox>
-                <ComboBox Style="{StaticResource SizeComboBox}" Text="{Binding Path=FontType}">
+                <ComboBox Style="{StaticResource SizeComboBox}" Text="{Binding Path=FontType}" ToolTip="Font Measurement">
                     <ComboBoxItem>%</ComboBoxItem>
                     <ComboBoxItem>pts</ComboBoxItem>
                 </ComboBox>
@@ -171,7 +183,7 @@
                     <Image Height="16" Source="{StaticResource RotateRightImageSource}" Width="16"></Image>
                 </Button>
                 <Separator></Separator>
-                <ComboBox IsEditable="False" Text="{Binding Path=ImageFormat}">
+                <ComboBox IsEditable="False" Text="{Binding Path=ImageFormat}" ToolTip="Image Format">
                     <ComboBoxItem>Bmp</ComboBoxItem>
                     <ComboBoxItem>Jpeg</ComboBoxItem>
                     <ComboBoxItem>Png</ComboBoxItem>
@@ -179,10 +191,10 @@
                 <Button Click="ButtonSave_OnClick" Name="ButtonSave" ToolTip="Save">
                     <Image Height="16" Source="{StaticResource SaveImageSource}" Width="16"></Image>
                 </Button>
-                <Button Click="ButtonSaveAs_OnClick" Name="ButtonSaveAs" ToolTip="Save">
+                <Button Click="ButtonSaveAs_OnClick" Name="ButtonSaveAs" ToolTip="Save As">
                     <Image Height="16" Source="{StaticResource SaveAsImageSource}" Width="16"></Image>
                 </Button>
-                <Button Command="{Binding Path=DataContext.NextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                <Button Command="{Binding Path=DataContext.NextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Next">
                     <Image Height="16" Source="{StaticResource NextImageSource}" Width="16"></Image>
                 </Button>
             </ToolBar>
@@ -200,28 +212,49 @@
             </StatusBarItem>
         </StatusBar>
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"></ColumnDefinition>
-                <ColumnDefinition Width="5"></ColumnDefinition>
-                <ColumnDefinition Width="*"></ColumnDefinition>
-            </Grid.ColumnDefinitions>
-            <Grid Grid.Column="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridEditor}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="5"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" Grid.Row="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridImage}">
+                    <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
+                </Grid>
+                <GridSplitter Grid.Column="1" Grid.Row="0" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
+                <ListView Grid.Column="2" Grid.Row="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Margin="0" />
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Background="Black" Height="128" Width="128">
+                                <Image HorizontalAlignment="Center" Source="{Binding Path=Preview}" Stretch="None" ToolTip="{Binding Path=Filename}" VerticalAlignment="Center"></Image>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+            <Grid DataContext="{Binding Path=SelectedImageViewModel}" Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"></ColumnDefinition>
                     <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"></RowDefinition>
-                    <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="100"></RowDefinition>
-                    <RowDefinition Height="Auto"></RowDefinition>
+                    <RowDefinition Height="*"></RowDefinition>
                 </Grid.RowDefinitions>
-                <Grid Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Style="{DynamicResource GridImage}">
-                    <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
-                </Grid>
-                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Content="{Binding Path=Filename}" ToolTip="{Binding Path=Filename}"></Label>
-                <TextBox Grid.Column="0" Grid.Row="2" AcceptsReturn="True" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
-                <Grid Grid.Column="1" Grid.Row="2" Style="{DynamicResource GridAlignment}">
+                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Content="{Binding Path=Filename}" Style="{StaticResource LabelFilename}" ToolTip="{Binding Path=Filename}"></Label>
+                <TextBox Grid.Column="0" Grid.Row="1" AcceptsReturn="True" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
+                <Grid Grid.Column="1" Grid.Row="1" Style="{DynamicResource GridAlignment}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"></ColumnDefinition>
                         <ColumnDefinition Width="24"></ColumnDefinition>
@@ -244,7 +277,9 @@
                     <ToggleButton Grid.Column="0" Grid.Row="1" IsChecked="{Binding Path=IsMiddleLeftAlignment}">
                         <Image Source="{StaticResource MiddleLeftImageSource}"></Image>
                     </ToggleButton>
-                    <ToggleButton Grid.Column="3" Grid.Row="1" IsChecked="{Binding Path=IsMiddleRightAlignment}">
+                    <ToggleButton Grid.Column="1" Grid.Row="1" IsChecked="{Binding Path=IsMiddleCentreAlignment}">
+                    </ToggleButton>
+                    <ToggleButton Grid.Column="2" Grid.Row="1" IsChecked="{Binding Path=IsMiddleRightAlignment}">
                         <Image Source="{StaticResource MiddleRightImageSource}"></Image>
                     </ToggleButton>
                     <ToggleButton Grid.Column="0" Grid.Row="2" IsChecked="{Binding Path=IsBottomLeftAlignment}">
@@ -257,25 +292,22 @@
                         <Image Source="{StaticResource BottomRightImageSource}"></Image>
                     </ToggleButton>
                 </Grid>
-                <CheckBox Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3" IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=DataContext.HasDateTaken, Converter={StaticResource VisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                <ListView Grid.Column="2" Grid.Row="1" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Path=DataContext.QuickCaptions, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Style="{StaticResource ListViewQuickCaptions}">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel></WrapPanel>
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding Path=DataContext.SetCaptionCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}}}" CommandParameter="{Binding}" Content="{Binding}"></Button>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <CheckBox Grid.Column="0" Grid.Row="2" IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=DataContext.HasDateTaken, Converter={StaticResource VisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
                     <TextBlock Text="{Binding Path=DateTaken, StringFormat={}Append {0}?}"></TextBlock>
                 </CheckBox>
             </Grid>
-            <GridSplitter Background="Black" Grid.Column="1" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
-            <ListView Grid.Column="2" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged">
-                <ListView.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Margin="0" />
-                    </ItemsPanelTemplate>
-                </ListView.ItemsPanel>
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <Grid Background="Black" Height="128" Width="128">
-                            <Image HorizontalAlignment="Center" Source="{Binding Path=Preview}" Stretch="None" ToolTip="{Binding Path=Filename}" VerticalAlignment="Center"></Image>
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
         </Grid>
     </DockPanel>
 </Window>

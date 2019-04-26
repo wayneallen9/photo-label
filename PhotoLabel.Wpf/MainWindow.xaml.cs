@@ -12,7 +12,7 @@ namespace PhotoLabel.Wpf
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IObserver
     {
         #region variables
 
@@ -39,9 +39,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
@@ -90,9 +88,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
@@ -122,9 +118,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
@@ -163,8 +157,6 @@ namespace PhotoLabel.Wpf
 
         private void ButtonSaveAs_OnClick(object sender, RoutedEventArgs e)
         {
-            var mainWindowViewModel = (MainWindowViewModel)DataContext;
-
             _logService.TraceEnter();
             try
             {
@@ -173,9 +165,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
@@ -202,9 +192,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
@@ -246,14 +234,12 @@ namespace PhotoLabel.Wpf
 
                     // load this image
                     var imageViewModel = (ImageViewModel) container.DataContext;
-                    imageViewModel.LoadPreview(_loadPreviewCancellationTokenSource.Token);
+                    imageViewModel.LoadPreview(false, _loadPreviewCancellationTokenSource.Token);
                 }
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
@@ -280,14 +266,35 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK, MessageBoxImage.Error);
+                OnError(ex);
             }
             finally
             {
                 _logService.TraceExit();
             }
         }
+
+        #region IObserver
+
+        public void OnError(Exception ex)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+        #endregion
     }
 }

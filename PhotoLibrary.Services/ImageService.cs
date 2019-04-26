@@ -16,19 +16,16 @@ namespace PhotoLabel.Services
     public class ImageService : IImageService
     {
         #region variables
-        private readonly IImageLoaderService _imageLoaderService;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
         private readonly string _shortDateFormat;
         #endregion
 
         public ImageService(
-            IImageLoaderService imageLoaderService,
             ILineWrapService lineWrapService,
             ILogService logService)
         {
             // save the dependency injections
-            _imageLoaderService = imageLoaderService;
             _lineWrapService = lineWrapService;
             _logService = logService;
 
@@ -99,23 +96,6 @@ namespace PhotoLabel.Services
                 }
 
                 return image;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public Image Get(string filename)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($@"Loading ""{filename}""...");
-                var image = _imageLoaderService.Load(filename);
-
-                _logService.Trace(@"Creating a duplicate of the loaded image...");
-                return Duplicate(image);
             }
             finally
             {

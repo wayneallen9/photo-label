@@ -89,10 +89,13 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Controls\ListView.cs" />
+    <Compile Include="IObservable.cs" />
+    <Compile Include="IObserver.cs" />
     <Compile Include="Mapper.cs" />
     <Compile Include="RecentlyUsedDirectoryViewModel.cs" />
     <Compile Include="RoutedEventTrigger.cs" />
     <Compile Include="SingleTaskScheduler.cs" />
+    <Compile Include="Subscriber.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

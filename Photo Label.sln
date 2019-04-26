@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28803.156
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel", "PhotoLabel\PhotoLabel.csproj", "{4E379922-00EA-4B37-9696-27F5FF058B21}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.Services", "PhotoLibrary.Services\PhotoLabel.Services.csproj", "{9071C57F-7B49-4C31-899B-666910064A61}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "PhotoLabel.Setup", "PhotoLabel.Setup\PhotoLabel.Setup.vdproj", "{8E9AF8CD-80F4-49E0-AF29-2DCCF3D94CF9}"
@@ -19,10 +17,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4E379922-00EA-4B37-9696-27F5FF058B21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4E379922-00EA-4B37-9696-27F5FF058B21}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4E379922-00EA-4B37-9696-27F5FF058B21}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4E379922-00EA-4B37-9696-27F5FF058B21}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9071C57F-7B49-4C31-899B-666910064A61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9071C57F-7B49-4C31-899B-666910064A61}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9071C57F-7B49-4C31-899B-666910064A61}.Release|Any CPU.ActiveCfg = Release|Any CPU

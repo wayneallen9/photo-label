@@ -65,20 +65,16 @@
     <Compile Include="IConfigurationService.cs" />
     <Compile Include="IDirectoryOpenerObserver.cs" />
     <Compile Include="IDirectoryOpenerService.cs" />
-    <Compile Include="IImageLoaderService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageService.cs" />
     <Compile Include="IIndentationService.cs" />
     <Compile Include="ILineWrapService.cs" />
     <Compile Include="ILogService.cs" />
     <Compile Include="ImageFormat.cs" />
-    <Compile Include="ImageLoaderService.cs" />
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="IndentationService.cs" />
     <Compile Include="IPercentageServices.cs" />
-    <Compile Include="IQuickCaptionObserver.cs" />
-    <Compile Include="IQuickCaptionService.cs" />
     <Compile Include="IRecentlyUsedDirectoriesObserver.cs" />
     <Compile Include="IRecentlyUsedDirectoriesService.cs" />
     <Compile Include="IXmlFileSerialiser.cs" />
@@ -88,6 +84,7 @@
     <Compile Include="Models\Directory.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />
+    <Compile Include="Models\QuickCaptionModel.cs" />
     <Compile Include="NinjectModule.cs" />
     <Compile Include="PercentageServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -96,7 +93,6 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="QuickCaptionService.cs" />
     <Compile Include="RecentlyUsedDirectoriesService.cs" />
     <Compile Include="Rotations.cs" />
     <Compile Include="Unsubscriber.cs" />

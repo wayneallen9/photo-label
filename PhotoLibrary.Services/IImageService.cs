@@ -12,7 +12,6 @@ namespace PhotoLabel.Services
         Image Circle(Color color, int width, int height);
         IList<string> Find(string directory);
         ExifData GetExifData(string filename);
-        Image Get(string filename);
         Bitmap Get(string filename, int width, int height);
         Bitmap Overlay(Bitmap image, Image overlay, int x, int y);
         Image Rotate(Image image, Rotations rotation);
