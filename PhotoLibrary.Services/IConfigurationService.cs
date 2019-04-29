@@ -17,6 +17,8 @@ namespace PhotoLabel.Services
         ImageFormat ImageFormat { get; set; }
         string OutputPath { get; set; }
         Color? SecondColour { get; set; }
+        string WhereUrl { get; }
+
         FormWindowState WindowState { get; set; }
     }
 }

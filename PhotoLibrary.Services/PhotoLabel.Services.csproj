@@ -59,9 +59,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BrowseService.cs" />
     <Compile Include="CaptionAlignments.cs" />
     <Compile Include="ConfigurationService.cs" />
     <Compile Include="DirectoryOpenerService.cs" />
+    <Compile Include="IBrowseService.cs" />
     <Compile Include="IConfigurationService.cs" />
     <Compile Include="IDirectoryOpenerObserver.cs" />
     <Compile Include="IDirectoryOpenerService.cs" />
@@ -77,6 +79,7 @@
     <Compile Include="IPercentageServices.cs" />
     <Compile Include="IRecentlyUsedDirectoriesObserver.cs" />
     <Compile Include="IRecentlyUsedDirectoriesService.cs" />
+    <Compile Include="IWhereService.cs" />
     <Compile Include="IXmlFileSerialiser.cs" />
     <Compile Include="LineWrapService.cs" />
     <Compile Include="LogService.cs" />
@@ -96,6 +99,7 @@
     <Compile Include="RecentlyUsedDirectoriesService.cs" />
     <Compile Include="Rotations.cs" />
     <Compile Include="Unsubscriber.cs" />
+    <Compile Include="WhereService.cs" />
     <Compile Include="XmlFileSerialiser.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -106,12 +110,6 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\PhotoLabel.Extensions\PhotoLabel.Extensions.csproj">
-      <Project>{8d3cef97-5153-4297-9bbf-9cbd9ea64001}</Project>
-      <Name>PhotoLabel.Extensions</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

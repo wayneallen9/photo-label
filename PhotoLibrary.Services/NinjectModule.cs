@@ -8,6 +8,7 @@ namespace PhotoLabel.Services
     {
         public override void Load()
         {
+            Bind<IBrowseService>().To<BrowseService>().InSingletonScope();
             Bind<IConfigurationService>().To<ConfigurationService>().InSingletonScope();
             Bind<IDirectoryOpenerService>().To<DirectoryOpenerService>().InSingletonScope();
             Bind<IImageMetadataService>().To<ImageMetadataService>().InSingletonScope();
@@ -17,6 +18,7 @@ namespace PhotoLabel.Services
             Bind<IPercentageService>().To<PercentageService>().InSingletonScope();
             Bind<IRecentlyUsedDirectoriesService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
+            Bind<IWhereService>().To<WhereService>().InSingletonScope();
             Bind<IXmlFileSerialiser>().To<XmlFileSerialiser>().InSingletonScope();
 
             Bind<ILogger>()

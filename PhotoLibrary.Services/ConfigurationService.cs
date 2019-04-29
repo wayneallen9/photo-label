@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Configuration;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -338,6 +339,8 @@ namespace PhotoLabel.Services
                 _logService.TraceExit();
             }
         }
+
+        public string WhereUrl => ConfigurationManager.AppSettings["WhereUrl"];
 
         #region variables
 

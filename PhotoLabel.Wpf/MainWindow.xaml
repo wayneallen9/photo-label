@@ -7,6 +7,7 @@
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:local="clr-namespace:PhotoLabel.Wpf;assembly=PhotoLabel.Wpf"
         xmlns:localControls="clr-namespace:PhotoLabel.Wpf.Controls"
+        xmlns:grayscale="clr-namespace:GrayscaleEffect;assembly=GrayscaleEffect"
         mc:Ignorable="d"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
         Title="{Binding Path=Title}" Height="450" Width="800" Icon="pack://application:,,,/Resources/camera.png">
@@ -17,6 +18,7 @@
     </i:Interaction.Triggers>
     <Window.InputBindings>
         <KeyBinding Command="{Binding OpenCommand}" Key="O" Modifiers="Control"></KeyBinding>
+        <KeyBinding Command="{Binding Path=SaveCommand}" Key="S" Modifiers="Control"></KeyBinding>
         <KeyBinding Command="{Binding Path=ExitCommand}" Key="X" Modifiers="Control"></KeyBinding>
     </Window.InputBindings>
     <Window.Resources>
@@ -25,6 +27,7 @@
         <BitmapImage x:Key="BottomLeftImageSource" UriSource="pack://application:,,,/Resources/bottomleft.png"></BitmapImage>
         <BitmapImage x:Key="BottomRightImageSource" UriSource="pack://application:,,,/Resources/bottomright.png"></BitmapImage>
         <BitmapImage x:Key="CloseImageSource" UriSource="pack://application:,,,/Resources/close.png"></BitmapImage>
+        <BitmapImage x:Key="DeleteImageSource" UriSource="pack://application:,,,/Resources/delete.png"></BitmapImage>
         <BitmapImage x:Key="MiddleLeftImageSource" UriSource="pack://application:,,,/Resources/middleleft.png"></BitmapImage>
         <BitmapImage x:Key="MiddleRightImageSource" UriSource="pack://application:,,,/Resources/middleright.png"></BitmapImage>
         <BitmapImage x:Key="NextImageSource" UriSource="pack://application:,,,/Resources/next.png"></BitmapImage>
@@ -36,6 +39,7 @@
         <BitmapImage x:Key="TopCentreImageSource" UriSource="pack://application:,,,/Resources/topcentre.png"></BitmapImage>
         <BitmapImage x:Key="TopLeftImageSource" UriSource="pack://application:,,,/Resources/topleft.png"></BitmapImage>
         <BitmapImage x:Key="TopRightImageSource" UriSource="pack://application:,,,/Resources/topright.png"></BitmapImage>
+        <BitmapImage x:Key="WorldImageSource" UriSource="pack://application:,,,/Resources/world.png"></BitmapImage>
         <BooleanToVisibilityConverter x:Key="VisibilityConverter"></BooleanToVisibilityConverter>
         <CollectionViewSource Source="{Binding Source={x:Static Fonts.SystemFontFamilies}}" x:Key="Fonts"></CollectionViewSource>
         <ControlTemplate x:Key="SizeValidation">
@@ -98,9 +102,35 @@
         <Style TargetType="{x:Type GridSplitter}">
             <Setter Property="Background" Value="{x:Static SystemColors.GradientInactiveCaptionBrush}"></Setter>
         </Style>
+        <Style TargetType="{x:Type MenuItem}">
+            <Style.Resources>
+                <Style TargetType="{x:Type Image}">
+                    <Style.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.2"></Setter>
+                        </Trigger>
+                    </Style.Triggers>
+                    <Setter Property="Height" Value="16"></Setter>
+                    <Setter Property="Width" Value="16"></Setter>
+                </Style>
+            </Style.Resources>
+        </Style>
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="Height" Value="80"></Setter>
             <Setter Property="Margin" Value="5"></Setter>
+        </Style>
+        <Style TargetType="{x:Type ToolBar}">
+            <Style.Resources>
+                <Style TargetType="{x:Type Image}">
+                    <Style.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.2"></Setter>
+                        </Trigger>
+                    </Style.Triggers>
+                    <Setter Property="Height" Value="16"></Setter>
+                    <Setter Property="Width" Value="16"></Setter>
+                </Style>
+            </Style.Resources>
         </Style>
         <Style x:Key="TransparencyComboBox" TargetType="{x:Type ComboBox}">
             <Setter Property="Height" Value="20"></Setter>
@@ -110,9 +140,30 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
-                <MenuItem Click="MenuOpen_Click" Header="_Open..." Name="MenuOpen">
+                <MenuItem Command="{Binding Path=OpenCommand}" Header="_Open..." InputGestureText="Ctrl+O" ToolTip="Open Folder">
                     <MenuItem.Icon>
                         <Image Source="{StaticResource OpenImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Command="{Binding Path=CloseCommand}" Header="_Close..." ToolTip="Close Folder">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource CloseImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator></Separator>
+                <MenuItem Command="{Binding Path=SaveCommand}" Header="_Save" InputGestureText="Ctrl+S" ToolTip="Save">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource SaveImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Command="{Binding Path=SaveAsCommand}" Header="Save _As..." ToolTip="Save As">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource SaveAsImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Command="{Binding Path=DeleteCommand}" Header="Delete _Caption" ToolTip="Delete Caption">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource DeleteImageSource}"></Image>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator></Separator>
@@ -126,16 +177,28 @@
                     </MenuItem.ItemContainerStyle>
                 </MenuItem>
                 <Separator Visibility="{Binding Path=HasRecentlyUsedDirectories, Converter={StaticResource VisibilityConverter}}"></Separator>
-                <MenuItem Command="{Binding Path=ExitCommand}" Header="E_xit"></MenuItem>
+                <MenuItem Command="{Binding Path=ExitCommand}" Header="E_xit" InputGestureText="Ctrl+X"></MenuItem>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Command="{Binding Path=RotateLeftCommand}" Header="Rotate _Left" ToolTip="Rotate Left">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource RotateLeftImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Command="{Binding Path=RotateRightCommand}" Header="Rotate _Right" ToolTip="Rotate Right">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource RotateRightImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
         <ToolBarTray DockPanel.Dock="Top" IsLocked="True">
             <ToolBar>
-                <Button ToolBar.OverflowMode="Never" Name="ButtonOpen" Click="ButtonOpen_Click" ToolTip="Open Folder">
-                    <Image x:Name="ToolBarOpen" Height="16" Source="{StaticResource OpenImageSource}" Width="16"></Image>
+                <Button ToolBar.OverflowMode="Never" Command="{Binding Path=OpenCommand}" ToolTip="Open Folder">
+                    <Image x:Name="ToolBarOpen" Source="{StaticResource OpenImageSource}"></Image>
                 </Button>
                 <Button Command="{Binding Path=CloseCommand}" ToolTip="Close Folder">
-                    <Image Height="16" Source="{StaticResource CloseImageSource}" Width="16"></Image>
+                    <Image Source="{StaticResource CloseImageSource}"></Image>
                 </Button>
             </ToolBar>
             <ToolBar DataContext="{Binding SelectedImageViewModel}">
@@ -176,26 +239,33 @@
                     <ComboBoxItem>100%</ComboBoxItem>
                 </ComboBox>
                 <Separator></Separator>
-                <Button Command="{Binding Path=RotateLeftCommand}" ToolTip="Rotate Left">
-                    <Image Height="16" Source="{StaticResource RotateLeftImageSource}" Width="16"></Image>
+                <Button Command="{Binding Path=DataContext.RotateLeftCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Rotate Left">
+                    <Image Source="{StaticResource RotateLeftImageSource}"></Image>
                 </Button>
-                <Button Command="{Binding Path=RotateRightCommand}" ToolTip="Rotate Right">
-                    <Image Height="16" Source="{StaticResource RotateRightImageSource}" Width="16"></Image>
+                <Button Command="{Binding Path=DataContext.RotateRightCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Rotate Right">
+                    <Image Source="{StaticResource RotateRightImageSource}"></Image>
                 </Button>
                 <Separator></Separator>
-                <ComboBox IsEditable="False" Text="{Binding Path=ImageFormat}" ToolTip="Image Format">
+                <ComboBox IsEditable="False" Text="{Binding Path=DataContext.ImageFormat, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Image Format">
                     <ComboBoxItem>Bmp</ComboBoxItem>
                     <ComboBoxItem>Jpeg</ComboBoxItem>
                     <ComboBoxItem>Png</ComboBoxItem>
                 </ComboBox>
-                <Button Click="ButtonSave_OnClick" Name="ButtonSave" ToolTip="Save">
-                    <Image Height="16" Source="{StaticResource SaveImageSource}" Width="16"></Image>
+                <Button  Command="{Binding Path=DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Save">
+                    <Image Source="{StaticResource SaveImageSource}"></Image>
                 </Button>
-                <Button Click="ButtonSaveAs_OnClick" Name="ButtonSaveAs" ToolTip="Save As">
-                    <Image Height="16" Source="{StaticResource SaveAsImageSource}" Width="16"></Image>
+                <Button  Command="{Binding Path=DataContext.SaveAsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Save As">
+                    <Image Source="{StaticResource SaveAsImageSource}"></Image>
+                </Button>
+                <Button Command="{Binding Path=DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Delete Caption">
+                    <Image Source="{StaticResource DeleteImageSource}"></Image>
                 </Button>
                 <Button Command="{Binding Path=DataContext.NextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Next">
-                    <Image Height="16" Source="{StaticResource NextImageSource}" Width="16"></Image>
+                    <Image Source="{StaticResource NextImageSource}"></Image>
+                </Button>
+                <Separator></Separator>
+                <Button Command="{Binding Path=DataContext.WhereCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Where Is This?">
+                    <Image Source="{StaticResource WorldImageSource}"></Image>
                 </Button>
             </ToolBar>
         </ToolBarTray>

@@ -278,6 +278,119 @@ namespace PhotoLabel.Wpf
 
         public string DateTaken { get; private set; }
 
+        public void Delete()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($@"Deleting metadata for ""{Filename}"" on a background thread...");
+                Task.Factory.StartNew(DeleteThread, new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void DeleteThread()
+        { 
+            // create dependencies
+            var imageService = NinjectKernel.Get<IImageService>();
+            var imageMetadataService = NinjectKernel.Get<IImageMetadataService>();
+            var logService = NinjectKernel.Get<ILogService>();
+
+            logService.TraceEnter();
+            try
+            {
+                logService.Trace($@"Checking if metadata exists for ""{Filename}""...");
+                var metadata = imageMetadataService.Load(Filename);
+
+                if (metadata == null)
+                {
+                    logService.Trace($@"""{Filename}"" does not have any metadata.  Exiting...");
+                    return;
+                }
+
+                logService.Trace($@"Checking if ""{Filename}"" has been saved...");
+                if (!string.IsNullOrWhiteSpace(metadata.OutputFilename))
+                {
+                    logService.Trace($@"Deleting ""{metadata.OutputFilename}""...");
+                    try
+                    {
+                        File.Delete(metadata.OutputFilename);
+                    }
+                    catch (Exception)
+                    {
+                        // ignored
+                    }
+                }
+
+                logService.Trace($@"Deleting metadata for ""{Filename}""...");
+                imageMetadataService.Delete(Filename);
+
+                logService.Trace($@"Resetting properties of ""{Filename}"" to defaults...");
+                _backColor = null;
+                OnPropertyChanged(nameof(BackColor));
+                _captionAlignment = null;
+                OnPropertyChanged(nameof(CaptionAlignment));
+                _fontBold = null;
+                OnPropertyChanged(nameof(FontBold));
+                _fontFamily = null;
+                OnPropertyChanged(nameof(FontFamily));
+                _fontSize = null;
+                OnPropertyChanged(nameof(FontSize));
+                _fontType = null;
+                OnPropertyChanged(nameof(FontType));
+                _foreColor = null;
+                OnPropertyChanged(nameof(ForeColor));
+                _imageFormat = null;
+                OnPropertyChanged(nameof(ImageFormat));
+                _rotation = null;
+
+                logService.Trace($@"Flagging that ""{Filename}"" does not have metadata...");
+                HasMetadata = false;
+
+                logService.Trace($@"Metadata does not exist for ""{Filename}"".  Loading Exif data...");
+                var exifData = imageService.GetExifData(Filename);
+
+                if (exifData != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(exifData.Title))
+                    {
+                        logService.Trace($@"Setting caption of ""{Filename}"" to ""{exifData.Title}""...");
+                        _caption = exifData.Title;
+                    }
+                    else
+                    {
+                        logService.Trace(
+                            $@"Setting caption of ""{Filename}"" to ""{Path.GetFileNameWithoutExtension(Filename)}""...");
+                        _caption = Path.GetFileNameWithoutExtension(Filename);
+                    }
+
+                    OnPropertyChanged(nameof(Caption));
+                }
+
+                logService.Trace($@"Flagging that ""{Filename}"" has not been edited...");
+                IsEdited = false;
+                IsSaved = false;
+
+                logService.Trace($@"Reloading image of ""{Filename}""...");
+                LoadImage();
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                logService.TraceExit();
+            }
+        }
+
         public string Filename { get; }
 
         private BitmapSource GetOpeningBitmapSource()
@@ -340,9 +453,6 @@ namespace PhotoLabel.Wpf
                     _logService.Trace($@"Setting value of {nameof(ImageFormat)} to ""{value}""...");
                     _imageFormat = value;
 
-                    _logService.Trace(@"Saving image format as default...");
-                    _configurationService.ImageFormat = value;
-
                     _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
                     _isImageFormatEdited = true;
                     IsEdited = true;
@@ -362,7 +472,7 @@ namespace PhotoLabel.Wpf
 
         public bool FontBold
         {
-            get => _fontBold;
+            get => _fontBold ?? _configurationService.FontBold;
             set
             {
                 _logService.TraceEnter();
@@ -602,6 +712,39 @@ namespace PhotoLabel.Wpf
         }
 
         public bool HasDateTaken => !string.IsNullOrWhiteSpace(DateTaken);
+
+        public bool HasMetadata
+        {
+            get => _hasMetadata;
+            private set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(HasMetadata)} has changed...");
+                    if (_hasMetadata == value)
+                    {
+                        _logService.Trace($"Value of {nameof(HasMetadata)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting value of {nameof(HasMetadata)} to {value}...");
+                    _hasMetadata = value;
+
+                    _logService.Trace($@"Reloading preview image for ""{Filename}""...");
+                    _loadPreviewCancellationTokenSource?.Cancel();
+                    _loadPreviewCancellationTokenSource = new CancellationTokenSource();
+                    LoadPreview(true, _loadPreviewCancellationTokenSource.Token);
+
+                    OnPropertyChanged();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+
+            }
+        }
 
         public BitmapSource Image => _imageWrapper?.BitmapSource ?? GetOpeningBitmapSource();
 
@@ -989,7 +1132,7 @@ namespace PhotoLabel.Wpf
 
         public BitmapSource Preview => _previewWrapper?.BitmapSource ?? GetOpeningBitmapSource();
 
-        private void RotateLeft()
+        public void RotateLeft()
         {
             _logService.TraceEnter();
             try
@@ -1025,10 +1168,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ICommand RotateLeftCommand =>
-            _rotateLeftCommand ?? (_rotateLeftCommand = new CommandHandler(RotateLeft, true));
-
-        private void RotateRight()
+        public void RotateRight()
         {
             _logService.TraceEnter();
             try
@@ -1063,9 +1203,6 @@ namespace PhotoLabel.Wpf
                 _logService.TraceExit();
             }
         }
-
-        public ICommand RotateRightCommand =>
-            _rotateRightCommand ?? (_rotateRightCommand = new CommandHandler(RotateRight, true));
 
         private Rotations Rotation
         {
@@ -1110,8 +1247,12 @@ namespace PhotoLabel.Wpf
 
         private void LoadImageThread(object state)
         {
-            var cancellationToken = (CancellationToken)state;
+            var cancellationToken = (CancellationToken) state;
 
+            LoadImageThread(cancellationToken);
+        }
+
+        private void LoadImageThread(CancellationToken cancellationToken) { 
             // create dependencies
             var imageService = NinjectKernel.Get<IImageService>();
             var logService = NinjectKernel.Get<ILogService>();
@@ -1318,6 +1459,10 @@ namespace PhotoLabel.Wpf
                     logService.Trace($@"Loading metadata for ""{Filename}""...");
                     var metadata = imageMetadataService.Load(Filename);
 
+                    if (cancellationToken.IsCancellationRequested) return;
+                    logService.Trace($@"Flagging that metadata has been checked for ""{Filename}""...");
+                    _isMetadataChecked = true;
+
                     if (metadata == null)
                     {
                         logService.Trace($@"Metadata does not exist for ""{Filename}"".  Loading Exif data...");
@@ -1340,12 +1485,8 @@ namespace PhotoLabel.Wpf
                         UpdateMetadata(metadata);
 
                         logService.Trace($@"Flagging that ""{Filename}"" has metadata...");
-                        _hasMetadata = true;
+                        HasMetadata = true;
                     }
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Flagging that metadata has been checked for ""{Filename}""...");
-                    _isMetadataChecked = true;
                 }
             }
             catch (Exception ex)
@@ -1383,9 +1524,6 @@ namespace PhotoLabel.Wpf
                 _loadPreviewCancellationTokenSource?.Cancel();
                 _loadPreviewCancellationTokenSource = new CancellationTokenSource();
 
-                logService.Trace("Registering cancellation token...");
-                cancellationToken.Register(LoadPreviewCancel);
-
                 logService.Trace($@"Loading preview of ""{Filename}"" on background thread...");
                 Task.Factory.StartNew(LoadPreviewThread, _loadPreviewCancellationTokenSource.Token,
                     _loadPreviewCancellationTokenSource.Token, TaskCreationOptions.None, _taskScheduler);
@@ -1420,8 +1558,12 @@ namespace PhotoLabel.Wpf
 
         private void LoadPreviewThread(object state)
         {
-            var cancellationToken = (CancellationToken)state;
+            var cancellationToken = (CancellationToken) state;
 
+            LoadPreviewThread(cancellationToken);
+        }
+
+        private void LoadPreviewThread(CancellationToken cancellationToken) {
             // get dependencies
             var imageService = NinjectKernel.Get<IImageService>();
             var logService = NinjectKernel.Get<ILogService>();
@@ -1459,7 +1601,7 @@ namespace PhotoLabel.Wpf
                         imageService.Overlay(preview, Resources.edited,
                             PreviewWidth - Resources.edited.Width - 8, 4);
                     }
-                    else if (_hasMetadata)
+                    else if (HasMetadata)
                     {
                         logService.Trace($@"Adding metadata icon to ""{Filename}"" preview...");
                         imageService.Overlay(preview, Resources.metadata,
@@ -1636,6 +1778,9 @@ namespace PhotoLabel.Wpf
                 logService.Trace("Saving image metadata...");
                 imageMetadataService.Save(metadata, Filename);
 
+                logService.Trace("Flagging that image has metadata...");
+                HasMetadata = true;
+
                 logService.Trace("Flagging that image has been saved...");
                 IsEdited = false;
                 IsSaved = true;
@@ -1679,9 +1824,12 @@ namespace PhotoLabel.Wpf
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($@"Disposing of original image for ""{Filename}""...");
-                _originalImage?.Dispose();
-                _originalImage = null;
+                lock (_originalImageLock)
+                {
+                    _logService.Trace($@"Disposing of original image for ""{Filename}""...");
+                    _originalImage?.Dispose();
+                    _originalImage = null;
+                }
 
                 _logService.Trace($@"Disposing of caption image for ""{Filename}""...");
                 _imageWrapper?.Dispose();
@@ -1989,7 +2137,7 @@ namespace PhotoLabel.Wpf
         private readonly IConfigurationService _configurationService;
         private bool _disposedValue;
         private ImageFormat? _imageFormat;
-        private bool _fontBold;
+        private bool? _fontBold;
         private FontFamily _fontFamily;
         private float? _fontSize;
         private string _fontType;
@@ -2006,8 +2154,6 @@ namespace PhotoLabel.Wpf
         private readonly object _originalImageLock;
         private readonly ManualResetEvent _originalImageManualResetEvent;
         private BitmapWrapper _previewWrapper;
-        private ICommand _rotateLeftCommand;
-        private ICommand _rotateRightCommand;
         private Rotations? _rotation;
         private readonly ManualResetEvent _saveFinishManualResetEvent;
         private ICommand _setCaptionCommand;
