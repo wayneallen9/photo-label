@@ -220,5 +220,11 @@
   <ItemGroup>
     <Resource Include="Resources\world.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\zoomin.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\zoomout.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

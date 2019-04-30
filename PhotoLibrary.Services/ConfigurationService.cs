@@ -1,8 +1,13 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
+using System.Windows.Media;
+using Color = System.Windows.Media.Color;
 
 namespace PhotoLabel.Services
 {
@@ -35,39 +40,16 @@ namespace PhotoLabel.Services
 
         public Color BackgroundColour
         {
-            get => Color.FromArgb(_configurationModel.BackgroundColour);
+            get => _configurationModel.BackgroundColour ?? Colors.Transparent;
             set
             {
                 _logService.TraceEnter();
                 try
                 {
                     _logService.Trace($"Setting new value of {nameof(BackgroundColour)}...");
-                    _configurationModel.BackgroundColour = value.ToArgb();
+                    _configurationModel.BackgroundColour = value;
 
                     _logService.Trace($"Persisting new value of {nameof(BackgroundColour)}...");
-                    Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
-                }
-            }
-        }
-
-        public Color? BackgroundSecondColour
-        {
-            get => _configurationModel.BackgroundSecondColour == null
-                ? (Color?) null
-                : Color.FromArgb(_configurationModel.BackgroundSecondColour.Value);
-            set
-            {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Setting new value of {nameof(BackgroundSecondColour)}...");
-                    _configurationModel.BackgroundSecondColour = value?.ToArgb();
-
-                    _logService.Trace($"Persisting new value of {nameof(BackgroundSecondColour)}...");
                     Save();
                 }
                 finally
@@ -90,13 +72,24 @@ namespace PhotoLabel.Services
             }
         }
 
+        public double CaptionSize
+        {
+            get => _configurationModel.CaptionSize ?? 12;
+            set
+            {
+                // save the new size
+                _configurationModel.CaptionSize = value;
+
+                Save();
+            }
+        }
         public Color Colour
         {
-            get => Color.FromArgb(_configurationModel.Colour);
+            get => _configurationModel.Colour ?? new Color();
             set
             {
                 // save the new value
-                _configurationModel.Colour = value.ToArgb();
+                _configurationModel.Colour = value;
 
                 // persist the change
                 Save();
@@ -208,24 +201,6 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Color? SecondColour
-        {
-            get
-            {
-                if (_configurationModel.SecondColour == null) return null;
-
-                return Color.FromArgb(_configurationModel.SecondColour.Value);
-            }
-            set
-            {
-                // update the value
-                _configurationModel.SecondColour = value?.ToArgb();
-
-                // persist it
-                Save();
-            }
-        }
-
         public FormWindowState WindowState
         {
             get => _configurationModel.WindowState;
@@ -251,10 +226,10 @@ namespace PhotoLabel.Services
         {
             return new Models.Configuration
             {
-                Colour = Color.White.ToArgb(),
                 FontName = SystemFonts.DefaultFont.Name,
                 FontSize = 10f,
-                FontType = "%"
+                FontType = "%",
+                RecentlyUsedBackColors = new List<Color>()
             };
         }
 
@@ -312,6 +287,28 @@ namespace PhotoLabel.Services
             finally
             {
                 _logService.TraceExit();
+            }
+        }
+
+        public IList<Color> RecentlyUsedBackColors
+        {
+            get => _configurationModel.RecentlyUsedBackColors;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Setting new value of {nameof(RecentlyUsedBackColors)}...");
+                    _configurationModel.RecentlyUsedBackColors = value.ToList();
+
+                    _logService.Trace($"Persisting new value of {nameof(WindowState)}...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+
             }
         }
 

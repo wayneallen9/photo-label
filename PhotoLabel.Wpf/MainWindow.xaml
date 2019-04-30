@@ -17,7 +17,8 @@
         </i:EventTrigger>
     </i:Interaction.Triggers>
     <Window.InputBindings>
-        <KeyBinding Command="{Binding OpenCommand}" Key="O" Modifiers="Control"></KeyBinding>
+        <KeyBinding Command="{Binding Path=NextCommand}" Key="N" Modifiers="Control"></KeyBinding>
+        <KeyBinding Command="{Binding Path=OpenCommand}" Key="O" Modifiers="Control"></KeyBinding>
         <KeyBinding Command="{Binding Path=SaveCommand}" Key="S" Modifiers="Control"></KeyBinding>
         <KeyBinding Command="{Binding Path=ExitCommand}" Key="X" Modifiers="Control"></KeyBinding>
     </Window.InputBindings>
@@ -54,13 +55,19 @@
                 <Label Grid.Row="1" Background="Red" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center">Value is not numeric</Label>
             </Grid>
         </ControlTemplate>
-        <Style TargetType="{x:Type CheckBox}">
-            <Setter Property="Margin" Value="5,0,0,5"></Setter>
-        </Style>
         <Style x:Key="ColorPicker" TargetType="{x:Type wpfToolkit:ColorPicker}">
             <Setter Property="Height" Value="20"></Setter>
             <Setter Property="ShowDropDownButton" Value="False"></Setter>
             <Setter Property="Width" Value="20"></Setter>
+        </Style>
+        <Style x:Key="DockPanelCaption" TargetType="{x:Type DockPanel}">
+            <Style.Resources>
+                <Style TargetType="{x:Type Button}">
+                    <Setter Property="Height" Value="16"></Setter>
+                    <Setter Property="Width" Value="16"></Setter>
+                </Style>
+            </Style.Resources>
+            <Setter Property="Margin" Value="5,0,5,5"></Setter>
         </Style>
         <Style x:Key="GridAlignment" TargetType="{x:Type Grid}">
             <Style.Resources>
@@ -69,7 +76,6 @@
                     <Setter Property="Width" Value="24"></Setter>
                 </Style>
             </Style.Resources>
-            <Setter Property="Margin" Value="0,10,0,0"></Setter>
         </Style>
         <Style x:Key="GridImage" TargetType="{x:Type Grid}">
             <Setter Property="Background" Value="Black"></Setter>
@@ -83,6 +89,13 @@
             </Style.Resources>
             <Setter Property="Height" Value="20"></Setter>
             <Setter Property="MinWidth" Value="150"></Setter>
+        </Style>
+        <Style TargetType="{x:Type Image}">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.2"></Setter>
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style TargetType="{x:Type ListView}">
             <Setter Property="Margin" Value="5"></Setter>
@@ -117,7 +130,7 @@
         </Style>
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="Height" Value="80"></Setter>
-            <Setter Property="Margin" Value="5"></Setter>
+            <Setter Property="Margin" Value="5,0,5,0"></Setter>
         </Style>
         <Style TargetType="{x:Type ToolBar}">
             <Style.Resources>
@@ -164,6 +177,11 @@
                 <MenuItem Command="{Binding Path=DeleteCommand}" Header="Delete _Caption" ToolTip="Delete Caption">
                     <MenuItem.Icon>
                         <Image Source="{StaticResource DeleteImageSource}"></Image>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Command="{Binding Path=NextCommand}" Header="_Next" InputGestureText="Ctrl+N" ToolTip="Next">
+                    <MenuItem.Icon>
+                        <Image Source="{StaticResource NextImageSource}"></Image>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator></Separator>
@@ -230,7 +248,7 @@
                 </ToggleButton>
                 <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" ShowRecentColors="True" SelectedColor="{Binding Path=ForeColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Color"></wpfToolkit:ColorPicker>
                 <Separator></Separator>
-                <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" ShowRecentColors="True" SelectedColor="{Binding Path=BackColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Background Color"></wpfToolkit:ColorPicker>
+                <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" RecentColors="{Binding Path=DataContext.RecentlyUsedBackColors, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ShowRecentColors="True" SelectedColor="{Binding Path=BackColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Background Color"></wpfToolkit:ColorPicker>
                 <ComboBox IsEditable="True" Style="{StaticResource TransparencyComboBox}" Text="{Binding Path=BackColorOpacity}" ToolTip="Background Opacity">
                     <ComboBoxItem>Off</ComboBoxItem>
                     <ComboBoxItem Opacity="0.25">25%</ComboBoxItem>
@@ -302,6 +320,14 @@
                             <WrapPanel Margin="0" />
                         </ItemsPanelTemplate>
                     </ListView.ItemsPanel>
+                    <ListView.Resources>
+                        <Style TargetType="{x:Type ListViewItem}">
+                            <Style.Resources>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Red"></SolidColorBrush>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="BlueViolet"></SolidColorBrush>
+                            </Style.Resources>
+                        </Style>
+                    </ListView.Resources>
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <Grid Background="Black" Height="128" Width="128">
@@ -319,11 +345,11 @@
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"></RowDefinition>
-                    <RowDefinition Height="100"></RowDefinition>
+                    <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="*"></RowDefinition>
                 </Grid.RowDefinitions>
                 <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Content="{Binding Path=Filename}" Style="{StaticResource LabelFilename}" ToolTip="{Binding Path=Filename}"></Label>
-                <TextBox Grid.Column="0" Grid.Row="1" AcceptsReturn="True" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
+                <TextBox Grid.Column="0" Grid.Row="1" AcceptsReturn="True" FontSize="{Binding Path=DataContext.CaptionSize, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
                 <Grid Grid.Column="1" Grid.Row="1" Style="{DynamicResource GridAlignment}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"></ColumnDefinition>
@@ -374,9 +400,17 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                <CheckBox Grid.Column="0" Grid.Row="2" IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=DataContext.HasDateTaken, Converter={StaticResource VisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
-                    <TextBlock Text="{Binding Path=DateTaken, StringFormat={}Append {0}?}"></TextBlock>
-                </CheckBox>
+                <DockPanel Grid.Column="0" Grid.Row="2" Style="{StaticResource DockPanelCaption}">
+                    <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ZoomInCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Zoom In">
+                        <Image Source="pack://application:,,,/Resources/zoomin.png"></Image>
+                    </Button>
+                    <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ZoomOutCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Zoom Out">
+                        <Image Source="pack://application:,,,/Resources/zoomout.png"></Image>
+                    </Button>
+                    <CheckBox IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=DataContext.HasDateTaken, Converter={StaticResource VisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                        <TextBlock Text="{Binding Path=DateTaken, StringFormat={}Append {0}?}"></TextBlock>
+                    </CheckBox>
+                </DockPanel>
             </Grid>
         </Grid>
     </DockPanel>

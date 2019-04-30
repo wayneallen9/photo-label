@@ -21,7 +21,10 @@ namespace PhotoLabel.Wpf
             _tasks = new ConcurrentStack<Task>();
 
             // create the thread that will process each task
-            _taskThread = new Thread(TaskThread);
+            _taskThread = new Thread(TaskThread)
+            {
+                Priority = ThreadPriority.BelowNormal
+            };
             _taskThread.Start(_tasks);
         }
 
@@ -69,10 +72,6 @@ namespace PhotoLabel.Wpf
                     TryExecuteTask(task);
                 }
             }
-            /*catch (InvalidOperationException)
-            {
-                // ignored
-            }*/
             catch (ThreadAbortException)
             {
                 // ignored

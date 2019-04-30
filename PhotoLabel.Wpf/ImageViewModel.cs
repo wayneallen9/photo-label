@@ -47,7 +47,7 @@ namespace PhotoLabel.Wpf
 
             // load metadata on a low priority background thread
             _loadPreviewCancellationTokenSource = new CancellationTokenSource();
-            Task.Factory.StartNew(() => LoadPreviewThread(_loadPreviewCancellationTokenSource.Token),
+            Task.Factory.StartNew(LoadPreviewThread, _loadPreviewCancellationTokenSource.Token,
                 _loadPreviewCancellationTokenSource.Token, TaskCreationOptions.None, _taskScheduler);
         }
 
@@ -94,7 +94,7 @@ namespace PhotoLabel.Wpf
 
         public Color BackColor
         {
-            get => _backColor ?? _configurationService.BackgroundColour.ToWindowsMediaColor();
+            get => _backColor ?? _configurationService.BackgroundColour;
             set
             {
                 _logService.TraceEnter();
@@ -111,7 +111,7 @@ namespace PhotoLabel.Wpf
                     _backColor = value;
 
                     _logService.Trace(@"Saving back color as default...");
-                    _configurationService.BackgroundColour = value.ToDrawingColor();
+                    _configurationService.BackgroundColour = value;
 
                     _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
                     _isBackColorEdited = true;
@@ -169,7 +169,7 @@ namespace PhotoLabel.Wpf
                         BackColor.G, BackColor.B);
 
                     _logService.Trace("Setting as default background opacity...");
-                    _configurationService.BackgroundColour = _backColor.Value.ToDrawingColor();
+                    _configurationService.BackgroundColour = _backColor.Value;
 
                     _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
                     _isBackColorEdited = true;
@@ -641,7 +641,7 @@ namespace PhotoLabel.Wpf
 
         public Color ForeColor
         {
-            get => _foreColor ?? _configurationService.Colour.ToWindowsMediaColor();
+            get => _foreColor ?? _configurationService.Colour;
             set
             {
                 _logService.TraceEnter();
@@ -658,7 +658,7 @@ namespace PhotoLabel.Wpf
                     _foreColor = value;
 
                     _logService.Trace(@"Saving as default fore color...");
-                    _configurationService.Colour = value.ToDrawingColor();
+                    _configurationService.Colour = value;
 
                     _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
                     _isForeColorEdited = true;
@@ -2090,6 +2090,10 @@ namespace PhotoLabel.Wpf
                 _previewWrapper = new BitmapWrapper(image);
 
                 OnPropertyChanged(nameof(Preview));
+            }
+            catch (ThreadAbortException)
+            {
+                // ignored
             }
             catch (Exception ex)
             {

@@ -1,22 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
+using PhotoLabel.Wpf.Extensions;
 using PhotoLabel.Wpf.Properties;
-
+using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
+using WindowState = System.Windows.WindowState;
 
 namespace PhotoLabel.Wpf
 {
@@ -42,6 +45,7 @@ namespace PhotoLabel.Wpf
             // initialise variables
             Images = new ObservableCollection<ImageViewModel>();
             _observers = new List<IObserver>();
+            _recentlyUsedBackColors = LoadRecentlyUsedBackColors();
             RecentlyUsedDirectories = new ObservableCollection<RecentlyUsedDirectoryViewModel>();
             _selectedIndex = -1;
 
@@ -54,6 +58,94 @@ namespace PhotoLabel.Wpf
             OpenLastUsedDirectory();
         }
 
+        public double CaptionSize
+        {
+            get => _configurationService.CaptionSize;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(CaptionSize)} has changed...");
+                    if (Math.Abs(_configurationService.CaptionSize - value) < double.Epsilon)
+                    {
+                        _logService.Trace($"Value of {nameof(CaptionSize)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting value of {nameof(CaptionSize)} to {value}...");
+                    _configurationService.CaptionSize = value;
+
+                    OnPropertyChanged();
+                    (_zoomOutCommand as ICommandHandler)?.Notify();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        private void CheckCommandsEnabled()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Notifying commands enabled change...");
+                (_deleteCommand as ICommandHandler)?.Notify();
+                (_nextCommand as ICommandHandler)?.Notify();
+                (_rotateLeftCommand as ICommandHandler)?.Notify();
+                (_rotateRightCommand as ICommandHandler)?.Notify();
+                (_saveAsCommand as ICommandHandler)?.Notify();
+                (_saveCommand as ICommandHandler)?.Notify();
+                (_whereCommand as ICommandHandler)?.Notify();
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void ClearImages()
+        {
+            // create dependencies
+            var logService = NinjectKernel.Get<ILogService>();
+
+            logService.TraceEnter();
+            try
+            {
+                logService.Trace("Checking if running on UI thread...");
+                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                {
+                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                    Application.Current?.Dispatcher.Invoke(new ClearImagesDelegate(ClearImages),
+                        DispatcherPriority.Background);
+
+                    return;
+                }
+
+                logService.Trace("Clearing the list of images...");
+                Images.Clear();
+
+                OnPropertyChanged(nameof(HasDateTaken));
+                OnPropertyChanged(nameof(HasStatus));
+                OnPropertyChanged(nameof(SelectedImageViewModel));
+
+                CheckCommandsEnabled();
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                logService.TraceExit();
+            }
+        }
 
         private void Close()
         {
@@ -65,10 +157,7 @@ namespace PhotoLabel.Wpf
                 _recentlyUsedDirectoriesCancellationTokenSource?.Cancel();
 
                 _logService.Trace("Clearing list of images...");
-                Images.Clear();
-
-                OnPropertyChanged(nameof(HasDateTaken));
-                OnPropertyChanged(nameof(HasStatus));
+                ClearImages();
             }
             catch (Exception ex)
             {
@@ -102,13 +191,61 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public ICommand DeleteCommand => _deleteCommand ?? (_deleteCommand = new CommandHandler(Delete, DeleteEnabled));
+
+        private bool DeleteEnabled()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                return _selectedImageViewModel != null && _selectedImageViewModel.HasMetadata;
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+
+                return false;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private void Exit()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Cancelling any in progress background tasks...");
+                _openCancellationTokenSource?.Cancel();
+                _recentlyUsedDirectoriesCancellationTokenSource.Cancel();
+                _taskScheduler.Dispose();
+
+                _logService.Trace("Stopping application...");
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex);
+
+                MessageBox.Show(Resources.ErrorText, Resources.ErrorCaption, MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         public ICommand ExitCommand => _exitCommand ?? (_exitCommand = new CommandHandler(Exit, true));
 
         public bool HasDateTaken => SelectedImageViewModel?.HasDateTaken ?? false;
 
         public bool HasRecentlyUsedDirectories => RecentlyUsedDirectories.Count > 0;
 
-        public bool HasStatus => Images.Any();
+        public bool HasStatus => _selectedImageViewModel != null;
+
 
         public ImageFormat ImageFormat
         {
@@ -150,6 +287,94 @@ namespace PhotoLabel.Wpf
 
         public ObservableCollection<ImageViewModel> Images { get; }
 
+        private void ImageViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var imageViewModel = (ImageViewModel) sender;
+
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($@"Changed property is ""{e.PropertyName}"".  Handling change...");
+                switch (e.PropertyName)
+                {
+                    case "BackColorOpacity":
+                        _logService.Trace("Checking if opacity is activated...");
+                        if (imageViewModel.BackColorOpacity == "100%")
+                        {
+                            _logService.Trace("Opacity is not activated.  Exiting...");
+                            break;
+                        }
+
+                        _logService.Trace($@"Creating color item for ""{imageViewModel.BackColor.ToString()}""...");
+                        var colorItem = new ColorItem(imageViewModel.BackColor, imageViewModel.BackColor.ToString());
+
+                        _logService.Trace($@"Checking if ""{imageViewModel.BackColor.ToString()}"" is already in list of recently used back colors...");
+                        if (RecentlyUsedBackColors.Contains(colorItem))
+                        {
+                            _logService.Trace(
+                                $@"""{imageViewModel.BackColor.ToString()}"" is already in list of recently used back colors.  Exiting...");
+                            break;
+                        }
+
+                        // add the recently used colors
+                        RecentlyUsedBackColors.Add(colorItem);
+
+                        break;
+                    case "DateTaken":
+                        OnPropertyChanged(nameof(QuickCaptions));
+
+                        break;
+                    case "HasDateTaken":
+                        OnPropertyChanged(nameof(HasDateTaken));
+
+                        break;
+                    case "HasMetadata":
+                        (_deleteCommand as ICommandHandler)?.Notify();
+
+                        break;
+                    case "Latitude":
+                    case "Longitude":
+                        (_whereCommand as ICommandHandler)?.Notify();
+
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private ObservableCollection<ColorItem> LoadRecentlyUsedBackColors()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Creating observable collection to return...");
+                var observableCollection = new ObservableCollection<ColorItem>();
+
+                _logService.Trace("Populating observable collection from configuration...");
+                foreach (var color in _configurationService.RecentlyUsedBackColors)
+                {
+                    _logService.Trace($@"Adding ""{color}"" to list of recently used back colors...");
+                    observableCollection.Add(new ColorItem(color, color.ToString()));
+                }
+
+                _logService.Trace("Watching for changes to observable collection...");
+                observableCollection.CollectionChanged += RecentlyUsedBackColors_CollectionChanged;
+
+                return observableCollection;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private void Next()
         {
             _logService.TraceEnter();
@@ -173,6 +398,7 @@ namespace PhotoLabel.Wpf
 
         public ICommand NextCommand => _nextCommand ?? (_nextCommand = new CommandHandler(Next, NextEnabled));
 
+
         private bool NextEnabled()
         {
             _logService.TraceEnter();
@@ -192,6 +418,56 @@ namespace PhotoLabel.Wpf
                 OnError(ex);
 
                 return false;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
+        {
+            // get dependencies
+            var logService = NinjectKernel.Get<ILogService>();
+
+            logService.TraceEnter();
+            try
+            {
+                logService.Trace("Checking if running on UI thread...");
+                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                {
+                    logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Application.Current.Dispatcher.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged),
+                        DispatcherPriority.ApplicationIdle,
+                        propertyName);
+
+                    return;
+                }
+
+                logService.Trace("Running on UI thread.  Executing...");
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+            finally
+            {
+                logService.TraceExit();
+            }
+        }
+
+        private void Open()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Prompting for directory...");
+                var selectedPath = _browseService.Browse("Where are your photos?", string.Empty);
+                if (selectedPath == null)
+                {
+                    _logService.Trace("User has cancelled dialog.  Exiting...");
+                    return;
+                }
+
+                _logService.Trace($@"Calling view model method with directory ""{selectedPath}""...");
+                Open(selectedPath);
             }
             finally
             {
@@ -265,11 +541,57 @@ namespace PhotoLabel.Wpf
 
         public bool ProgressVisible => _progress > 0 && _progress < 100;
 
+
         public IList<string> QuickCaptions => Images
             .Where(i => !string.IsNullOrWhiteSpace(i.Caption) && !string.IsNullOrWhiteSpace(i.DateTaken) &&
                         i.Caption != SelectedImageViewModel?.Caption &&
                         i.DateTaken == SelectedImageViewModel?.DateTaken).OrderBy(i => i.Caption)
             .Select(i => i.Caption.Replace("_", "__")).ToList();
+
+        public ObservableCollection<ColorItem> RecentlyUsedBackColors
+        {
+            get => _recentlyUsedBackColors;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace("Saving new list of recently used colours...");
+                    _recentlyUsedBackColors = value;
+
+                    OnPropertyChanged();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
+        private void RecentlyUsedBackColors_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            var recentlyUsedBackColors = (ObservableCollection<ColorItem>) sender;
+
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Persisting recently used back colors...");
+                _configurationService.RecentlyUsedBackColors =
+                    recentlyUsedBackColors.Select(i => i.Color ?? Colors.Transparent).Take(11).ToList();
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
 
         public ObservableCollection<RecentlyUsedDirectoryViewModel> RecentlyUsedDirectories { get; }
 
@@ -310,15 +632,11 @@ namespace PhotoLabel.Wpf
 
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(HasDateTaken));
+                    OnPropertyChanged(nameof(HasStatus));
                     OnPropertyChanged(nameof(QuickCaptions));
 
-                    (_deleteCommand as ICommandHandler)?.Notify();
-                    (_nextCommand as ICommandHandler)?.Notify();
-                    (_rotateLeftCommand as ICommandHandler)?.Notify();
-                    (_rotateRightCommand as ICommandHandler)?.Notify();
-                    (_saveAsCommand as ICommandHandler)?.Notify();
-                    (_saveCommand as ICommandHandler)?.Notify();
-                    (_whereCommand as ICommandHandler)?.Notify();
+                    _logService.Trace("Checking which commands are enabled...");
+                    CheckCommandsEnabled();
                 }
                 finally
                 {
@@ -365,6 +683,48 @@ namespace PhotoLabel.Wpf
         public string Status => $"{_selectedIndex + 1} of {Images.Count}";
 
         public string Title => Resources.ApplicationName;
+
+
+        private void Where()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Displaying where photo was taken on UI...");
+                _whereService.Open(_selectedImageViewModel?.Latitude ?? 0, _selectedImageViewModel?.Longitude ?? 0);
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public ICommand WhereCommand => _whereCommand ?? (_whereCommand = new CommandHandler(Where, WhereEnabled));
+
+
+        private bool WhereEnabled()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if current image has geolocation...");
+                return _selectedImageViewModel?.Latitude != null && _selectedImageViewModel.Longitude != null;
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+
+                return false;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
 
         public WindowState WindowState
         {
@@ -415,13 +775,13 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void Where()
+        private void ZoomIn()
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Displaying where photo was taken on UI...");
-                _whereService.Open(_selectedImageViewModel?.Latitude ?? 0, _selectedImageViewModel?.Longitude ?? 0);
+                _logService.Trace("Increasing size of caption font...");
+                CaptionSize++;
             }
             catch (Exception ex)
             {
@@ -433,118 +793,49 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ICommand WhereCommand => _whereCommand ?? (_whereCommand = new CommandHandler(Where, WhereEnabled));
+        public ICommand ZoomInCommand => _zoomInCommand ?? (_zoomInCommand = new CommandHandler(ZoomIn, true));
 
-        private bool WhereEnabled()
+        private void ZoomOut()
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace("Checking if current image has geolocation...");
-                return _selectedImageViewModel?.Latitude != null && _selectedImageViewModel.Longitude != null;
+                _logService.Trace($"Checking if {nameof(CaptionSize)} can be reduced...");
+                if (Math.Abs(CaptionSize - MinimumCaptionSize) <= double.Epsilon)
+                {
+                    _logService.Trace($"{nameof(CaptionSize)} cannot be reduced.  Exiting...");
+                    return;
+                }
+
+                _logService.Trace($"Reducing value of {nameof(CaptionSize)}...");
+                CaptionSize--;
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public ICommand ZoomOutCommand =>
+            _zoomOutCommand ?? (_zoomOutCommand = new CommandHandler(ZoomOut, ZoomOutEnabled));
+
+        private bool ZoomOutEnabled()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace($"Current caption size is {CaptionSize}.  Checking if it can be reduced...");
+                return Math.Abs(CaptionSize - MinimumCaptionSize) > double.Epsilon;
             }
             catch (Exception ex)
             {
                 OnError(ex);
 
                 return false;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public ICommand DeleteCommand => _deleteCommand ?? (_deleteCommand = new CommandHandler(Delete, DeleteEnabled));
-
-        private bool DeleteEnabled()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                return _selectedImageViewModel != null && _selectedImageViewModel.HasMetadata;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-
-                return false;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void Exit()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Cancelling any in progress background tasks...");
-                _openCancellationTokenSource?.Cancel();
-                _recentlyUsedDirectoriesCancellationTokenSource.Cancel();
-                _taskScheduler.Dispose();
-
-                _logService.Trace("Stopping application...");
-                Application.Current.Shutdown();
-            }
-            catch (Exception ex)
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Resources.ErrorText, Resources.ErrorCaption, MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
-        {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
-            {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
-                {
-                    logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Application.Current.Dispatcher.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged),
-                        DispatcherPriority.ApplicationIdle,
-                        propertyName);
-
-                    return;
-                }
-
-                logService.Trace("Running on UI thread.  Executing...");
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            }
-            finally
-            {
-                logService.TraceExit();
-            }
-        }
-
-        private void Open()
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Prompting for directory...");
-                var selectedPath = _browseService.Browse("Where are your photos?", string.Empty);
-                if (selectedPath == null)
-                {
-                    _logService.Trace("User has cancelled dialog.  Exiting...");
-                    return;
-                }
-
-                _logService.Trace($@"Calling view model method with directory ""{selectedPath}""...");
-                Open(selectedPath);
             }
             finally
             {
@@ -643,11 +934,10 @@ namespace PhotoLabel.Wpf
             logService.TraceEnter();
             try
             {
-                var imageViewModels = new List<ImageViewModel>();
-
                 if (cancellationToken.IsCancellationRequested) return;
                 logService.Trace("Clearing any in progress preview loads...");
                 _taskScheduler.Clear();
+                ClearImages();
 
                 if (cancellationToken.IsCancellationRequested) return;
                 logService.Trace($@"Finding image files in ""{filename}""...");
@@ -667,20 +957,16 @@ namespace PhotoLabel.Wpf
                     var imageViewModel = new ImageViewModel(imageFilename);
                     imageViewModel.Subscribe(this);
 
-                    logService.Trace($@"Adding ""{filename}"" to list of images...");
                     if (cancellationToken.IsCancellationRequested) return;
-                    imageViewModels.Insert(0, imageViewModel);
+                    UpdateImage(imageViewModel);
                 }
 
                 logService.Trace($@"Adding ""{filename}"" to recently used directories...");
                 recentlyUsedDirectoriesService.Add(filename);
 
                 if (cancellationToken.IsCancellationRequested) return;
-                UpdateImages(imageViewModels);
-
-                if (cancellationToken.IsCancellationRequested) return;
                 logService.Trace($@"Checking if there are any images in ""{filename}""...");
-                if (imageViewModels.Count == 0)
+                if (Images.Count == 0)
                 {
                     logService.Trace($@"No images were found in ""{filename}"".  Exiting...");
                     return;
@@ -692,20 +978,20 @@ namespace PhotoLabel.Wpf
                 if (mostRecentlyUsedImageViewModelFilename == null)
                 {
                     logService.Trace("No recently used image found.  Defaulting to start...");
-                    _selectedImageViewModel = imageViewModels[0];
+                    _selectedImageViewModel = Images[0];
                 }
                 else
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     logService.Trace($@"Finding image view model ""{mostRecentlyUsedImageViewModelFilename}""...");
                     var selectedImageViewModel =
-                        imageViewModels.FirstOrDefault(i => i.Filename == mostRecentlyUsedImageViewModelFilename);
+                        Images.FirstOrDefault(i => i.Filename == mostRecentlyUsedImageViewModelFilename);
                     if (selectedImageViewModel == null)
                     {
                         if (cancellationToken.IsCancellationRequested) return;
                         logService.Trace(
                             $@"""{mostRecentlyUsedImageViewModelFilename}"" not found in directory.  Defaulting to first...");
-                        _selectedImageViewModel = imageViewModels[0];
+                        _selectedImageViewModel = Images[0];
                     }
                     else
                     {
@@ -813,7 +1099,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private bool Save(string outputPath)
+        private void Save(string outputPath)
         {
             _logService.TraceEnter();
             try
@@ -825,7 +1111,7 @@ namespace PhotoLabel.Wpf
                 if (_selectedImageViewModel == null)
                 {
                     _logService.Trace("There is no selected image.  Exiting...");
-                    return true;
+                    return;
                 }
 
                 _logService.Trace($@"Saving ""{_selectedImageViewModel.Filename}""...");
@@ -835,7 +1121,7 @@ namespace PhotoLabel.Wpf
                 if (_selectedIndex >= Images.Count - 1)
                 {
                     _logService.Trace("There is no image to move to.  Exiting...");
-                    return true;
+                    return;
                 }
 
                 _logService.Trace($"Moving to image at position {_selectedIndex + 1}...");
@@ -849,8 +1135,6 @@ namespace PhotoLabel.Wpf
             {
                 _logService.TraceExit();
             }
-
-            return true;
         }
 
         private void SaveAs()
@@ -899,44 +1183,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void ImageViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($@"Changed property is ""{e.PropertyName}"".  Handling change...");
-                switch (e.PropertyName)
-                {
-                    case "DateTaken":
-                        OnPropertyChanged(nameof(QuickCaptions));
-
-                        break;
-                    case "HasDateTaken":
-                        OnPropertyChanged(nameof(HasDateTaken));
-
-                        break;
-                    case "HasMetadata":
-                        (_deleteCommand as ICommandHandler)?.Notify();
-
-                        break;
-                    case "Latitude":
-                    case "Longitude":
-                        (_whereCommand as ICommandHandler)?.Notify();
-
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private void UpdateImages(List<ImageViewModel> imageViewModels)
+        private void UpdateImage(ImageViewModel imageViewModel)
         {
             // get dependencies
             var logService = NinjectKernel.Get<ILogService>();
@@ -948,19 +1195,20 @@ namespace PhotoLabel.Wpf
                 if (Application.Current?.Dispatcher.CheckAccess() == false)
                 {
                     logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new UpdateImagesDelegate(UpdateImages),
-                        DispatcherPriority.Background, imageViewModels);
+                    Application.Current?.Dispatcher.Invoke(new UpdateImageDelegate(UpdateImage),
+                        DispatcherPriority.Background, imageViewModel);
 
                     return;
                 }
 
-                logService.Trace("Clearing current images...");
-                Images.Clear();
-
-                logService.Trace($"Adding {imageViewModels.Count} images on UI thread...");
-                foreach (var imageViewModel in imageViewModels) Images.Add(imageViewModel);
+                logService.Trace($@"Adding ""{imageViewModel.Filename}"" to the list of images...");
+                Images.Insert(0, imageViewModel);
 
                 OnPropertyChanged(nameof(HasStatus));
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
             }
             finally
             {
@@ -968,22 +1216,28 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        #region constants
+
+        private const double MinimumCaptionSize = 8d;
+
+        #endregion
+
         #region delegates
 
+        private delegate void ClearImagesDelegate();
         private delegate void OnClearDelegate();
 
         private delegate void OnErrorDelegate(Exception error);
         private delegate void OnNextDelegate(Directory directory);
 
         private delegate void OnPropertyChangedDelegate(string propertyName);
-
-        private delegate void UpdateImagesDelegate(List<ImageViewModel> images);
+        private delegate void UpdateImageDelegate(ImageViewModel image);
 
         #endregion
 
         #region variables
 
-        private IBrowseService _browseService;
+        private readonly IBrowseService _browseService;
         private ICommand _closeCommand;
         private readonly IConfigurationService _configurationService;
         private ICommand _deleteCommand;
@@ -1001,6 +1255,7 @@ namespace PhotoLabel.Wpf
         private CancellationTokenSource _openCancellationTokenSource;
         private readonly SingleTaskScheduler _taskScheduler;
         private bool _disposedValue; // To detect redundant calls
+        private ObservableCollection<ColorItem> _recentlyUsedBackColors;
         private readonly CancellationTokenSource _recentlyUsedDirectoriesCancellationTokenSource;
         private ICommand _rotateLeftCommand;
         private ICommand _rotateRightCommand;
@@ -1009,7 +1264,8 @@ namespace PhotoLabel.Wpf
         private ICommand _whereCommand;
         private readonly IWhereService _whereService;
         private ICommand _openCommand;
-
+        private ICommand _zoomInCommand;
+        private ICommand _zoomOutCommand;
         #endregion
 
         #region IDisposable
