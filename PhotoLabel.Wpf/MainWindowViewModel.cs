@@ -97,6 +97,7 @@ namespace PhotoLabel.Wpf
                 _logService.Trace("Notifying commands enabled change...");
                 (_deleteCommand as ICommandHandler)?.Notify();
                 (_nextCommand as ICommandHandler)?.Notify();
+                (_resetBrightnessCommand as ICommandHandler)?.Notify();
                 (_rotateLeftCommand as ICommandHandler)?.Notify();
                 (_rotateRightCommand as ICommandHandler)?.Notify();
                 (_saveAsCommand as ICommandHandler)?.Notify();
@@ -317,6 +318,10 @@ namespace PhotoLabel.Wpf
 
                         // add the recently used colors
                         RecentlyUsedBackColors.Add(colorItem);
+
+                        break;
+                    case "Brightness":
+                        (_resetBrightnessCommand as ICommandHandler)?.Notify();
 
                         break;
                     case "DateTaken":
@@ -1007,6 +1012,55 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        private void ResetBrightness()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if there is a selected image...");
+                if (_selectedImageViewModel == null)
+                {
+                    _logService.Trace("There is no selected image.  Exiting...");
+                    return;
+                }
+
+                _logService.Trace($@"Resetting brightness of ""{_selectedImageViewModel.Filename}"" to 0...");
+                _selectedImageViewModel.Brightness = 0;
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public ICommand ResetBrightnessCommand => _resetBrightnessCommand ??
+                                                  (_resetBrightnessCommand = new CommandHandler(ResetBrightness,
+                                                      ResetBrightnessEnabled));
+
+        private bool ResetBrightnessEnabled()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Checking if selected image has had brightness adjusted...");
+                return (_selectedImageViewModel?.Brightness ?? 0) != 0;
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+
+                return false;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private bool RotateEnabled()
         {
             _logService.TraceEnter();
@@ -1256,6 +1310,7 @@ namespace PhotoLabel.Wpf
         private bool _disposedValue; // To detect redundant calls
         private ObservableCollection<ColorItem> _recentlyUsedBackColors;
         private readonly CancellationTokenSource _recentlyUsedDirectoriesCancellationTokenSource;
+        private ICommand _resetBrightnessCommand;
         private ICommand _rotateLeftCommand;
         private ICommand _rotateRightCommand;
         private ICommand _saveCommand;

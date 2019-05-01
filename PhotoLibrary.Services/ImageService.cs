@@ -33,7 +33,7 @@ namespace PhotoLabel.Services
             _shortDateFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("yyyy", "yy");
         }
 
-        public Image Brightness(Image source, int brightness)
+        public Bitmap Brightness(Image source, int brightness)
         {
             _logService.TraceEnter();
             try

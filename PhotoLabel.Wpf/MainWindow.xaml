@@ -57,6 +57,27 @@
             <Setter Property="ShowDropDownButton" Value="False"></Setter>
             <Setter Property="Width" Value="20"></Setter>
         </Style>
+        <Style x:Key="DockPanelBrightness" TargetType="{x:Type DockPanel}">
+            <Style.Resources>
+                <Style TargetType="{x:Type Button}">
+                    <Style.Resources>
+                        <Style TargetType="{x:Type Image}">
+                            <Setter Property="Height" Value="16"></Setter>
+                            <Setter Property="Width" Value="16"></Setter>
+                        </Style>
+                    </Style.Resources>
+                    <Setter Property="ToolTip" Value="Reset Brightness"></Setter>
+                </Style>
+                <Style TargetType="{x:Type Slider}">
+                    <Setter Property="Maximum" Value="100"></Setter>
+                    <Setter Property="Minimum" Value="-100"></Setter>
+                    <Setter Property="ToolTip" Value="Adjust Brightness"></Setter>
+                    <Setter Property="Value" Value="{Binding Path=Brightness}"></Setter>
+                </Style>
+            </Style.Resources>
+            <Setter Property="Grid.ColumnSpan" Value="2"></Setter>
+            <Setter Property="Margin" Value="5,5,10,0"></Setter>
+        </Style>
         <Style x:Key="DockPanelCaption" TargetType="{x:Type DockPanel}">
             <Style.Resources>
                 <Style TargetType="{x:Type Button}">
@@ -377,11 +398,21 @@
                     <ColumnDefinition Width="5"></ColumnDefinition>
                     <ColumnDefinition Width="*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="Auto"></RowDefinition>
+                </Grid.RowDefinitions>
                 <Grid Grid.Column="0" Grid.Row="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridImage}">
                     <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
                 </Grid>
-                <GridSplitter Grid.Column="1" Grid.Row="0" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
-                <ListView Grid.Column="2" Grid.Row="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged" Style="{StaticResource ListViewPreview}">
+                <DockPanel Grid.Column="0" Grid.Row="1" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource DockPanelBrightness}">
+                    <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ResetBrightnessCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                        <Image Source="pack://application:,,,/Resources/brightness.png"></Image>
+                    </Button>
+                    <Slider />
+                </DockPanel>
+                <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
+                <ListView Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged" Style="{StaticResource ListViewPreview}">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel />

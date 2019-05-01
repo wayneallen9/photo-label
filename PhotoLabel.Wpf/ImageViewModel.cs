@@ -192,6 +192,44 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public int Brightness
+        {
+            get => _brightness ?? 0;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Checking if value of {nameof(Brightness)} has changed...");
+                    if (_brightness == value)
+                    {
+                        _logService.Trace($"Value of {nameof(Brightness)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace($"Setting value of {nameof(Brightness)} to {value}...");
+                    _brightness = value;
+
+                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                    _isBrightnessEdited = true;
+                    IsEdited = true;
+
+                    _logService.Trace($@"Loading image for ""{Filename}""...");
+                    LoadImage();
+
+                    OnPropertyChanged();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         public string Caption
         {
             get => _caption;
@@ -1252,7 +1290,8 @@ namespace PhotoLabel.Wpf
             LoadImageThread(cancellationToken);
         }
 
-        private void LoadImageThread(CancellationToken cancellationToken) { 
+        private void LoadImageThread(CancellationToken cancellationToken)
+        {
             // create dependencies
             var imageService = NinjectKernel.Get<IImageService>();
             var logService = NinjectKernel.Get<ILogService>();
@@ -1270,29 +1309,43 @@ namespace PhotoLabel.Wpf
                     logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
                     LoadMetadataThread(cancellationToken);
 
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace("Building caption...");
-                    var captionBuilder = new StringBuilder(Caption);
-                    if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
-                    {
-                        if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
-                        captionBuilder.Append(DateTaken);
-                    }
+                    // get the variables
+                    var brightness = Brightness;
 
                     if (cancellationToken.IsCancellationRequested) return;
-                    var brush = new SolidBrush(ForeColor.ToDrawingColor());
-                    logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
-                    var captionedImage = imageService.Caption(originalImage, captionBuilder.ToString(),
-                        CaptionAlignment, FontFamily.Source, FontSize, FontType,
-                        FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
+                    logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
+                    var brightenedImage =
+                        brightness == 0 ? originalImage : imageService.Brightness(originalImage, brightness);
                     try
                     {
                         if (cancellationToken.IsCancellationRequested) return;
-                        UpdateImage(captionedImage);
+                        logService.Trace("Building caption...");
+                        var captionBuilder = new StringBuilder(Caption);
+                        if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
+                        {
+                            if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
+                            captionBuilder.Append(DateTaken);
+                        }
+
+                        if (cancellationToken.IsCancellationRequested) return;
+                        var brush = new SolidBrush(ForeColor.ToDrawingColor());
+                        logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
+                        var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
+                            CaptionAlignment, FontFamily.Source, FontSize, FontType,
+                            FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
+                        try
+                        {
+                            if (cancellationToken.IsCancellationRequested) return;
+                            UpdateImage(captionedImage);
+                        }
+                        finally
+                        {
+                            captionedImage?.Dispose();
+                        }
                     }
                     finally
                     {
-                        captionedImage?.Dispose();
+                        if (brightness != 0) brightenedImage?.Dispose();
                     }
                 }
             }
@@ -1699,6 +1752,7 @@ namespace PhotoLabel.Wpf
                 var metadata = new Metadata
                 {
                     AppendDateTakenToCaption = AppendDateTakenToCaption,
+                    Brightness = Brightness,
                     Caption = Caption,
                     CaptionAlignment = CaptionAlignment,
                     DateTaken = DateTaken,
@@ -1970,6 +2024,14 @@ namespace PhotoLabel.Wpf
                     OnPropertyChanged(nameof(BackColor));
                 }
 
+                if (!_isBrightnessEdited)
+                {
+                    _logService.Trace($@"Setting brightness for ""{Filename}"" from metadata...");
+                    _brightness = metadata.Brightness;
+
+                    OnPropertyChanged(nameof(Brightness));
+                }
+
                 if (!_isCaptionEdited)
                 {
                     logService.Trace($@"Setting caption for ""{Filename}"" to ""{metadata.Caption}""...");
@@ -2149,6 +2211,14 @@ namespace PhotoLabel.Wpf
         private bool _hasMetadata;
         private BitmapWrapper _imageWrapper;
         private Stretch _imageStretch;
+        private bool _isAppendDateTakenToCaptionEdited;
+        private bool _isBackColorEdited;
+        private bool _isBrightnessEdited;
+        private bool _isCaptionAlignmentEdited;
+        private bool _isCaptionEdited;
+        private bool _isFontBoldEdited;
+        private bool _isFontFamilyEdited;
+        private bool _isFontSizeEdited;
         private bool _isEdited;
         private bool _isSaved;
         private readonly ILogService _logService;
@@ -2161,13 +2231,6 @@ namespace PhotoLabel.Wpf
         private Rotations? _rotation;
         private readonly ManualResetEvent _saveFinishManualResetEvent;
         private ICommand _setCaptionCommand;
-        private bool _isAppendDateTakenToCaptionEdited;
-        private bool _isBackColorEdited;
-        private bool _isCaptionAlignmentEdited;
-        private bool _isCaptionEdited;
-        private bool _isFontBoldEdited;
-        private bool _isFontFamilyEdited;
-        private bool _isFontSizeEdited;
         private readonly TaskScheduler _taskScheduler;
         private bool _isFontTypeEdited;
         private bool _isForeColorEdited;
@@ -2176,6 +2239,7 @@ namespace PhotoLabel.Wpf
         private bool _isRotationEdited;
         private readonly IList<IObserver> _observers;
         private CancellationTokenSource _loadPreviewCancellationTokenSource;
+        private int? _brightness;
 
         #endregion
 
