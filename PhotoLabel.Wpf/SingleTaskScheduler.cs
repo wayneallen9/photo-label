@@ -76,10 +76,6 @@ namespace PhotoLabel.Wpf
             {
                 // ignored
             }
-            catch (Exception ex)
-            {
-                ex.ToString();
-            }
         }
 
         #region IDisposable Support

@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using Ninject;
+﻿using Ninject;
 
 namespace PhotoLabel.Wpf
 {

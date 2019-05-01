@@ -5,9 +5,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
-        xmlns:local="clr-namespace:PhotoLabel.Wpf;assembly=PhotoLabel.Wpf"
-        xmlns:localControls="clr-namespace:PhotoLabel.Wpf.Controls"
-        xmlns:grayscale="clr-namespace:GrayscaleEffect;assembly=GrayscaleEffect"
         mc:Ignorable="d"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
         Title="{Binding Path=Title}" Height="450" Width="800" Icon="pack://application:,,,/Resources/camera.png">
@@ -79,7 +76,7 @@
         </Style>
         <Style x:Key="GridImage" TargetType="{x:Type Grid}">
             <Setter Property="Background" Value="Black"></Setter>
-            <Setter Property="Margin" Value="5"></Setter>
+            <Setter Property="Margin" Value="5,5,5,0"></Setter>
         </Style>
         <Style x:Key="FontComboBox" TargetType="{x:Type ComboBox}">
             <Style.Resources>
@@ -97,15 +94,85 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <Style TargetType="{x:Type ListView}">
-            <Setter Property="Margin" Value="5"></Setter>
+        <Style x:Key="ListViewPreview" TargetType="{x:Type ListView}">
+            <Style.Resources>
+                <Style TargetType="{x:Type ListViewItem}">
+                    <Style.Resources>
+                        <Style TargetType="{x:Type Border}">
+                            <Style.Resources>
+                                <Style TargetType="{x:Type Grid}">
+                                    <Style.Resources>
+                                        <Style TargetType="{x:Type Image}">
+                                            <Setter Property="Source" Value="{Binding Path=Preview}"></Setter>
+                                            <Setter Property="Stretch" Value="None"></Setter>
+                                            <Setter Property="ToolTip" Value="{Binding Path=Filename}"></Setter>
+                                        </Style>
+                                    </Style.Resources>
+                                    <Setter Property="Background" Value="Black"></Setter>
+                                    <Setter Property="Height" Value="128"></Setter>
+                                    <Setter Property="Width" Value="128"></Setter>
+                                </Style>
+                            </Style.Resources>
+                            <Setter Property="BorderBrush" Value="Transparent"></Setter>
+                            <Setter Property="BorderThickness" Value="3"></Setter>
+                            <Setter Property="Cursor" Value="Hand"></Setter>
+                            <Setter Property="Margin" Value="0,0,5,5"></Setter>
+                        </Style>
+                    </Style.Resources>
+                    <Setter Property="OverridesDefaultStyle" Value="True"></Setter>
+                    <Setter Property="SnapsToDevicePixels" Value="True"></Setter>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type ListViewItem}">
+                                <Border x:Name="BorderPreview">
+                                    <Grid>
+                                        <Image></Image>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="BorderBrush" TargetName="BorderPreview" Value="OrangeRed"></Setter>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Style.Resources>
+            <Setter Property="Margin" Value="5,5,5,0"></Setter>
         </Style>
         <Style x:Key="LabelFilename" TargetType="{x:Type Label}">
+            <Setter Property="HorizontalContentAlignment" Value="Center"></Setter>
             <Setter Property="Margin" Value="5,0,5,0"></Setter>
         </Style>
         <Style x:Key="ListViewQuickCaptions" TargetType="{x:Type ListView}">
+            <Style.Resources>
+                <Style TargetType="{x:Type ListViewItem}">
+                    <Setter Property="BorderThickness" Value="0"></Setter>
+                    <Setter Property="Margin" Value="0,0,5,0"></Setter>
+                    <Setter Property="OverridesDefaultStyle" Value="True"></Setter>
+                    <Setter Property="SnapsToDevicePixels" Value="True"></Setter>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListViewItem">
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True"></Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True"></Trigger>
+                                </ControlTemplate.Triggers>
+                                <Button Command="{Binding Path=DataContext.SetCaptionCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}}}" CommandParameter="{Binding}"  Content="{Binding}">
+                                    <Button.Resources>
+                                        <Style TargetType="{x:Type Button}">
+                                            <Setter Property="Margin" Value="0,0,0,5"></Setter>
+                                        </Style>
+                                    </Button.Resources>
+                                </Button>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Style.Resources>
             <Setter Property="BorderThickness" Value="0"></Setter>
-            <Setter Property="Margin" Value="0,7,0,0"></Setter>
+            <Setter Property="Margin" Value="5,0,5,0"></Setter>
             <Setter Property="Padding" Value="0"></Setter>
         </Style>
         <Style x:Key="SizeComboBox" TargetType="{x:Type ComboBox}">
@@ -158,7 +225,7 @@
                         <Image Source="{StaticResource OpenImageSource}"></Image>
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Command="{Binding Path=CloseCommand}" Header="_Close..." ToolTip="Close Folder">
+                <MenuItem Command="{Binding Path=CloseCommand}" Header="_Close" ToolTip="Close Folder">
                     <MenuItem.Icon>
                         <Image Source="{StaticResource CloseImageSource}"></Image>
                     </MenuItem.Icon>
@@ -314,27 +381,12 @@
                     <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
                 </Grid>
                 <GridSplitter Grid.Column="1" Grid.Row="0" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
-                <ListView Grid.Column="2" Grid.Row="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged">
+                <ListView Grid.Column="2" Grid.Row="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged" Style="{StaticResource ListViewPreview}">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Margin="0" />
+                            <WrapPanel />
                         </ItemsPanelTemplate>
                     </ListView.ItemsPanel>
-                    <ListView.Resources>
-                        <Style TargetType="{x:Type ListViewItem}">
-                            <Style.Resources>
-                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Red"></SolidColorBrush>
-                                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="BlueViolet"></SolidColorBrush>
-                            </Style.Resources>
-                        </Style>
-                    </ListView.Resources>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Background="Black" Height="128" Width="128">
-                                <Image HorizontalAlignment="Center" Source="{Binding Path=Preview}" Stretch="None" ToolTip="{Binding Path=Filename}" VerticalAlignment="Center"></Image>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
                 </ListView>
             </Grid>
             <Grid DataContext="{Binding Path=SelectedImageViewModel}" Row="1">
@@ -348,7 +400,7 @@
                     <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="*"></RowDefinition>
                 </Grid.RowDefinitions>
-                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Content="{Binding Path=Filename}" Style="{StaticResource LabelFilename}" ToolTip="{Binding Path=Filename}"></Label>
+                <Label Grid.Column="0" Grid.Row="0" Content="{Binding Path=Filename}" Style="{StaticResource LabelFilename}" ToolTip="{Binding Path=Filename}"></Label>
                 <TextBox Grid.Column="0" Grid.Row="1" AcceptsReturn="True" FontSize="{Binding Path=DataContext.CaptionSize, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Text="{Binding Path=Caption, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"></TextBox>
                 <Grid Grid.Column="1" Grid.Row="1" Style="{DynamicResource GridAlignment}">
                     <Grid.ColumnDefinitions>
@@ -394,11 +446,6 @@
                             <WrapPanel></WrapPanel>
                         </ItemsPanelTemplate>
                     </ListView.ItemsPanel>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Button Command="{Binding Path=DataContext.SetCaptionCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}}}" CommandParameter="{Binding}" Content="{Binding}"></Button>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
                 </ListView>
                 <DockPanel Grid.Column="0" Grid.Row="2" Style="{StaticResource DockPanelCaption}">
                     <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ZoomInCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Zoom In">

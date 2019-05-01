@@ -14,7 +14,6 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
-using PhotoLabel.Wpf.Extensions;
 using PhotoLabel.Wpf.Properties;
 using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
@@ -546,7 +545,7 @@ namespace PhotoLabel.Wpf
             .Where(i => !string.IsNullOrWhiteSpace(i.Caption) && !string.IsNullOrWhiteSpace(i.DateTaken) &&
                         i.Caption != SelectedImageViewModel?.Caption &&
                         i.DateTaken == SelectedImageViewModel?.DateTaken).OrderBy(i => i.Caption)
-            .Select(i => i.Caption.Replace("_", "__")).ToList();
+            .Select(i => i.Caption.Replace("_", "__")).Distinct().ToList();
 
         public ObservableCollection<ColorItem> RecentlyUsedBackColors
         {

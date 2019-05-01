@@ -35,7 +35,7 @@ namespace PhotoLabel.Wpf
 
         public bool CanExecute(object parameter)
         {
-            return _canExecuteFunction == null ? _canExecute : _canExecuteFunction();
+            return _canExecuteFunction?.Invoke() ?? _canExecute;
         }
 
         public void Execute(object parameter)
@@ -62,16 +62,18 @@ namespace PhotoLabel.Wpf
             _canExecute = canExecute;
         }
 
+        #region ICommand
+        public event EventHandler CanExecuteChanged;
+
         public bool CanExecute(object parameter)
         {
             return _canExecute;
         }
 
-        public event EventHandler CanExecuteChanged;
-
         public void Execute(object parameter)
         {
             _action((T)parameter);
         }
+        #endregion
     }
 }

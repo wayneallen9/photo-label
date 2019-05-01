@@ -77,32 +77,6 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Image Circle(Color color, int width, int height)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Creating a {color.ToArgb()} circle {width}x{height}...");
-
-                var brush = new SolidBrush(color);
-
-                var image = new Bitmap(width, height);
-                using (var graphics = Graphics.FromImage(image))
-                {
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                    graphics.FillEllipse(brush, 1, 1, width - 2, height - 2);
-                }
-
-                return image;
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         public Bitmap Get(string filename, int width, int height)
         {
             _logService.TraceEnter();
@@ -375,38 +349,6 @@ namespace PhotoLabel.Services
             {
                 _logService.TraceExit(stopwatch);
             }
-        }
-
-        private Bitmap Duplicate(Image source)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                lock (source) return new Bitmap(source);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        public Image Rotate(Image image, Rotations rotation)
-        {
-            _logService.Trace($"Rotating copy to {rotation}...");
-            switch (rotation)
-            {
-                case Rotations.Ninety:
-                    image.RotateFlip(RotateFlipType.Rotate90FlipNone);
-                    break;
-                case Rotations.OneEighty:
-                    image.RotateFlip(RotateFlipType.Rotate180FlipNone);
-                    break;
-                case Rotations.TwoSeventy:
-                    image.RotateFlip(RotateFlipType.Rotate270FlipNone);
-                    break;
-            }
-
-            return image;
         }
 
         private void CaptionBottomCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)

@@ -1,17 +1,18 @@
-﻿using PhotoLabel.Services.Models;
+﻿using AutoMapper;
+using PhotoLabel.Services.Models;
 
 namespace PhotoLabel.Wpf
 {
     public static class Mapper
     {
         #region variables
-        private static readonly AutoMapper.IMapper _mapper;
+        private static readonly IMapper AutoMapper;
         #endregion
 
         static Mapper()
         {
             // create the mapper
-            _mapper = new AutoMapper.MapperConfiguration(config =>
+            AutoMapper = new MapperConfiguration(config =>
             {
                 config.CreateMap<RecentlyUsedDirectoryViewModel, Directory>();
             }).CreateMapper();
@@ -19,7 +20,7 @@ namespace PhotoLabel.Wpf
 
         public static TDestination Map<TDestination>(object source)
         {
-            return _mapper.Map<TDestination>(source);
+            return AutoMapper.Map<TDestination>(source);
         }
     }
 }

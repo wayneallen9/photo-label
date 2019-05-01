@@ -1,5 +1,4 @@
 ﻿using NLog;
-using System.Threading.Tasks;
 
 namespace PhotoLabel.Services
 {
@@ -10,12 +9,10 @@ namespace PhotoLabel.Services
         {
             Bind<IBrowseService>().To<BrowseService>().InSingletonScope();
             Bind<IConfigurationService>().To<ConfigurationService>().InSingletonScope();
-            Bind<IDirectoryOpenerService>().To<DirectoryOpenerService>().InSingletonScope();
             Bind<IImageMetadataService>().To<ImageMetadataService>().InSingletonScope();
             Bind<IImageService>().To<ImageService>().InSingletonScope();
             Bind<IIndentationService>().To<IndentationService>().InThreadScope();
             Bind<ILogService>().To<LogService>().InTransientScope();
-            Bind<IPercentageService>().To<PercentageService>().InSingletonScope();
             Bind<IRecentlyUsedDirectoriesService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
             Bind<IWhereService>().To<WhereService>().InSingletonScope();
