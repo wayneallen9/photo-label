@@ -179,6 +179,27 @@ namespace PhotoLabel.Services
             }
         }
 
+        public ulong? MaxImageSize
+        {
+            get => _configurationModel.MaxImageSize;
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace($"Setting value of {nameof(MaxImageSize)} to {value}...");
+                    _configurationModel.MaxImageSize = value;
+
+                    _logService.Trace("Saving change...");
+                    Save();
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
+        }
+
         public string OutputPath
         {
             get => _configurationModel.OutputPath;

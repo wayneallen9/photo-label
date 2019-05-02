@@ -17,6 +17,7 @@ namespace PhotoLabel.Services
         float FontSize { get; set; }
         string FontType { get; set; }
         ImageFormat ImageFormat { get; set; }
+        ulong? MaxImageSize { get; set; }
         string OutputPath { get; set; }
         IList<Color> RecentlyUsedBackColors { get; set; }
         string WhereUrl { get; }

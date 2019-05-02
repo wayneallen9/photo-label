@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -16,16 +17,20 @@ namespace PhotoLabel.Services
     public class ImageService : IImageService
     {
         #region variables
+
+        private readonly IConfigurationService _configurationService;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogService _logService;
         private readonly string _shortDateFormat;
         #endregion
 
         public ImageService(
+            IConfigurationService configurationService,
             ILineWrapService lineWrapService,
             ILogService logService)
         {
             // save the dependency injections
+            _configurationService = configurationService;
             _lineWrapService = lineWrapService;
             _logService = logService;
 
@@ -83,10 +88,27 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace($"Getting \"{filename}\"...");
-                using (var image = Image.FromFile(filename))
+                using (var image = (Bitmap)Image.FromFile(filename))
                 {
                     return Resize(image, width, height);
                 }
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        private ImageCodecInfo GetEncoder(System.Drawing.Imaging.ImageFormat imageFormat)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Getting image decoders...");
+                var codecs = ImageCodecInfo.GetImageDecoders();
+
+                _logService.Trace($"Searching {codecs.Length} codecs for a match...");
+                return codecs.FirstOrDefault(c => c.FormatID == imageFormat.Guid);
             }
             finally
             {
@@ -740,7 +762,40 @@ namespace PhotoLabel.Services
             }
         }
 
-        private Bitmap Resize(Image image, int width, int height)
+        public Stream ReduceQuality(Bitmap image, long quality)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Getting JPEG encoder...");
+                var jpegEncoder = GetEncoder(System.Drawing.Imaging.ImageFormat.Jpeg) ??
+                                  throw new InvalidOperationException("Cannot find Jpeg image decoder codec");
+
+                _logService.Trace("Creating encoder quality parameter...");
+                var qualityEncoder = System.Drawing.Imaging.Encoder.Quality;
+                var encoderParameters = new EncoderParameters(1)
+                {
+                    Param = {[0] = new EncoderParameter(qualityEncoder, quality)}
+                };
+
+                _logService.Trace("Creating stream to return...");
+                var memoryStream = new MemoryStream();
+
+                _logService.Trace($"Reducing image quality to {quality}...");
+                image.Save(memoryStream, jpegEncoder, encoderParameters);
+
+                _logService.Trace($"Resetting memory position to 0 of {memoryStream.Length}");
+                memoryStream.Position = 0;
+
+                return memoryStream;
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public Bitmap Resize(Bitmap image, int width, int height)
         {
             _logService.TraceEnter();
             try
@@ -803,7 +858,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public void Save(Image image, string filename, ImageFormat imageFormat)
+        public void Save(Bitmap image, string filename, ImageFormat imageFormat)
         {
             _logService.TraceEnter();
             try
@@ -829,8 +884,22 @@ namespace PhotoLabel.Services
                 _logService.Trace($@"Creating ""{filename}""...");
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
-                    _logService.Trace($@"Saving image to ""{filename}""...");
-                    image.Save(fileStream, imagingImageFormat);
+                    _logService.Trace("Checking if there is a size limitation...");
+                    if (_configurationService.MaxImageSize != null)
+                    {
+                        _logService.Trace("Reducing image to fit size limitation...");
+                        var imageReducer = ImageReducerFactory.Create(imageFormat);
+                        using (var imageStream = imageReducer.Reduce(image))
+                        {
+                            _logService.Trace("Saving reduced image to disk...");
+                            imageStream.CopyTo(fileStream);
+                        }
+                    }
+                    else
+                    {
+                        _logService.Trace($@"Saving image to ""{filename}""...");
+                        image.Save(fileStream, imagingImageFormat);
+                    }
                 }
             }
             finally

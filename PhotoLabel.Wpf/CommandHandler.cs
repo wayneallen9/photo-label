@@ -49,11 +49,12 @@ namespace PhotoLabel.Wpf
         }
     }
 
-    public class CommandHandler<T> : ICommand
+    public class CommandHandler<T> : ICommand, ICommandHandler
     {
         #region variables
         private readonly Action<T> _action;
         private readonly bool _canExecute;
+        private readonly Func<bool> _canExecuteFunction;
         #endregion
 
         public CommandHandler(Action<T> action, bool canExecute)
@@ -62,12 +63,23 @@ namespace PhotoLabel.Wpf
             _canExecute = canExecute;
         }
 
+        public CommandHandler(Action<T> action, Func<bool> canExecute)
+        {
+            _action = action ?? throw new ArgumentNullException(nameof(action));
+            _canExecuteFunction = canExecute ?? throw new ArgumentNullException(nameof(canExecute));
+        }
+
+        public void Notify()
+        {
+            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         #region ICommand
         public event EventHandler CanExecuteChanged;
 
         public bool CanExecute(object parameter)
         {
-            return _canExecute;
+            return _canExecuteFunction?.Invoke() ?? _canExecute;
         }
 
         public void Execute(object parameter)

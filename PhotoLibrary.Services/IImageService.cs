@@ -1,6 +1,7 @@
 ﻿using PhotoLabel.Services.Models;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Threading;
 
 namespace PhotoLabel.Services
@@ -13,6 +14,8 @@ namespace PhotoLabel.Services
         ExifData GetExifData(string filename);
         Bitmap Get(string filename, int width, int height);
         Bitmap Overlay(Bitmap image, Image overlay, int x, int y);
-        void Save(Image image, string filename, ImageFormat format);
+        Stream ReduceQuality(Bitmap image, long quality);
+        Bitmap Resize(Bitmap image, int width, int height);
+        void Save(Bitmap image, string filename, ImageFormat format);
     }
 }

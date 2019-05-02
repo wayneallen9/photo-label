@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using PhotoLabel.DependencyInjection;
 using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
 using PhotoLabel.Wpf.Properties;
@@ -29,6 +30,7 @@ namespace PhotoLabel.Wpf
             IBrowseService browseService,
             IConfigurationService configurationService,
             ILogService logService,
+            INavigationService navigationService,
             IRecentlyUsedDirectoriesService recentlyUsedDirectoriesService,
             SingleTaskScheduler taskScheduler,
             IWhereService whereService)
@@ -37,6 +39,7 @@ namespace PhotoLabel.Wpf
             _browseService = browseService;
             _configurationService = configurationService;
             _logService = logService;
+            _navigationService = navigationService;
             _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
             _taskScheduler = taskScheduler;
             _whereService = whereService;
@@ -684,6 +687,29 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        private void Settings()
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Creating settings view model...");
+                var settingsViewModel = NinjectKernel.Get<SettingsViewModel>();
+
+                _logService.Trace("Showing settings window...");
+                _navigationService.ShowDialog<SettingsWindow>(settingsViewModel);
+            }
+            catch (Exception ex)
+            {
+                OnError(ex);
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
+        public ICommand SettingsCommand => _settingsCommand ?? (_settingsCommand = new CommandHandler(Settings, true));
+
         public string Status => $"{_selectedIndex + 1} of {Images.Count}";
 
         public string Title => Resources.ApplicationName;
@@ -1297,6 +1323,7 @@ namespace PhotoLabel.Wpf
         private ICommand _exitCommand;
         private ImageViewModel _imageViewModelToUnload;
         private readonly ILogService _logService;
+        private readonly INavigationService _navigationService;
         private ICommand _nextCommand;
         private readonly IList<IObserver> _observers;
         private ICommand _openRecentlyUsedDirectoryCommand;
@@ -1306,6 +1333,7 @@ namespace PhotoLabel.Wpf
         private ImageViewModel _selectedImageViewModel;
         private int _selectedIndex;
         private CancellationTokenSource _openCancellationTokenSource;
+        private ICommand _openCommand;
         private readonly SingleTaskScheduler _taskScheduler;
         private bool _disposedValue; // To detect redundant calls
         private ObservableCollection<ColorItem> _recentlyUsedBackColors;
@@ -1315,11 +1343,12 @@ namespace PhotoLabel.Wpf
         private ICommand _rotateRightCommand;
         private ICommand _saveCommand;
         private ICommand _saveAsCommand;
+        private ICommand _settingsCommand;
         private ICommand _whereCommand;
         private readonly IWhereService _whereService;
-        private ICommand _openCommand;
         private ICommand _zoomInCommand;
         private ICommand _zoomOutCommand;
+
         #endregion
 
         #region IDisposable

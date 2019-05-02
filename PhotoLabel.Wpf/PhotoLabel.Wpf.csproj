@@ -7,7 +7,7 @@
     <ProjectGuid>{59208F8D-F47E-4013-867D-284FB08CFE44}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>PhotoLabel.Wpf</RootNamespace>
-    <AssemblyName>Photo Label</AssemblyName>
+    <AssemblyName>PhotoLabel</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -96,7 +96,13 @@
     <Compile Include="IObservable.cs" />
     <Compile Include="IObserver.cs" />
     <Compile Include="Mapper.cs" />
+    <Compile Include="NinjectModule.cs" />
+    <Compile Include="Properties\Annotations.cs" />
     <Compile Include="RecentlyUsedDirectoryViewModel.cs" />
+    <Compile Include="SettingsViewModel.cs" />
+    <Compile Include="SettingsWindow.xaml.cs">
+      <DependentUpon>SettingsWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="SingleTaskScheduler.cs" />
     <Compile Include="Subscriber.cs" />
     <Page Include="MainWindow.xaml">
@@ -116,10 +122,13 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="SettingsWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MainWindowViewModel.cs" />
-    <Compile Include="NinjectKernel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -150,6 +159,10 @@
     <Resource Include="Resources\open.png" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\PhotoLabel.DependencyInjection\PhotoLabel.DependencyInjection.csproj">
+      <Project>{5e530134-84b5-43b6-b035-3dc7eb7b12ab}</Project>
+      <Name>PhotoLabel.DependencyInjection</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PhotoLibrary.Services\PhotoLabel.Services.csproj">
       <Project>{9071c57f-7b49-4c31-899b-666910064a61}</Project>
       <Name>PhotoLabel.Services</Name>

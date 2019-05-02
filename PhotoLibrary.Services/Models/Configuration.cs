@@ -17,6 +17,7 @@ namespace PhotoLabel.Services.Models
         public float FontSize { get; set; }
         public string FontType { get; set; }
         public ImageFormat ImageFormat { get; set; }
+        public ulong? MaxImageSize { get; set; }
         public string OutputPath { get; set; }
         public List<Color> RecentlyUsedBackColors { get; set; }
         public FormWindowState WindowState {get;set;}

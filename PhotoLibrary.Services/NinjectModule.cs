@@ -15,12 +15,13 @@ namespace PhotoLabel.Services
             Bind<ILogService>().To<LogService>().InTransientScope();
             Bind<IRecentlyUsedDirectoriesService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
+            Bind<INavigationService>().To<NavigationService>().InSingletonScope();
             Bind<IWhereService>().To<WhereService>().InSingletonScope();
             Bind<IXmlFileSerialiser>().To<XmlFileSerialiser>().InSingletonScope();
 
             Bind<ILogger>()
-                .ToMethod(context => LogManager.GetCurrentClassLogger(context.Request.Target?.Member.DeclaringType))
-                .InTransientScope();
+                .ToMethod(context => LogManager.GetCurrentClassLogger())
+                .InSingletonScope();
         }
     }
 }

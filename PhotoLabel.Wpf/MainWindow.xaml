@@ -296,6 +296,8 @@
                         <Image Source="{StaticResource RotateRightImageSource}"></Image>
                     </MenuItem.Icon>
                 </MenuItem>
+                <Separator></Separator>
+                <MenuItem Command="{Binding Path=SettingsCommand}" Header="_Options..." ToolTip="Options"></MenuItem>
             </MenuItem>
         </Menu>
         <ToolBarTray DockPanel.Dock="Top" IsLocked="True">
