@@ -4,15 +4,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
-        xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+        xmlns:wi="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
+        xmlns:ei="http://schemas.microsoft.com/expression/2010/interactions"
         mc:Ignorable="d"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
         Title="{Binding Path=Title}" Height="450" Width="800" Icon="pack://application:,,,/Resources/camera.png">
-    <i:Interaction.Triggers>
-        <i:EventTrigger EventName="Closed">
-            <i:InvokeCommandAction Command="{Binding Path=ExitCommand}"></i:InvokeCommandAction>
-        </i:EventTrigger>
-    </i:Interaction.Triggers>
+    <wi:Interaction.Triggers>
+        <wi:EventTrigger EventName="Closed">
+            <wi:InvokeCommandAction Command="{Binding Path=ExitCommand}"></wi:InvokeCommandAction>
+        </wi:EventTrigger>
+        <wi:EventTrigger EventName="Closing">
+            <ei:CallMethodAction MethodName="Closing" TargetObject="{Binding}"></ei:CallMethodAction>
+        </wi:EventTrigger>
+    </wi:Interaction.Triggers>
     <Window.InputBindings>
         <KeyBinding Command="{Binding Path=NextCommand}" Key="N" Modifiers="Control"></KeyBinding>
         <KeyBinding Command="{Binding Path=OpenCommand}" Key="O" Modifiers="Control"></KeyBinding>
@@ -52,16 +56,48 @@
                 <Label Grid.Row="1" Background="Red" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center">Value is not numeric</Label>
             </Grid>
         </ControlTemplate>
+
+        <!-- Base styles -->
+        <Style x:Key="ComboBoxToolbar" TargetType="{x:Type ComboBox}">
+            <Setter Property="Height" Value="20"></Setter>
+        </Style>
+        <Style x:Key="ImageButton" TargetType="{x:Type Image}">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.2"></Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Custom styles -->
         <Style x:Key="ColorPicker" TargetType="{x:Type wpfToolkit:ColorPicker}">
             <Setter Property="Height" Value="20"></Setter>
             <Setter Property="ShowDropDownButton" Value="False"></Setter>
             <Setter Property="Width" Value="20"></Setter>
         </Style>
+        <Style x:Key="ComboBoxFont" BasedOn="{StaticResource ComboBoxToolbar}" TargetType="{x:Type ComboBox}">
+            <Style.Resources>
+                <Style TargetType="{x:Type TextBlock}">
+                    <Setter Property="Height" Value="32"></Setter>
+                </Style>
+            </Style.Resources>
+            <Setter Property="Height" Value="20"></Setter>
+            <Setter Property="MinWidth" Value="150"></Setter>
+        </Style>
+        <Style x:Key="ComboBoxFontSize" BasedOn="{StaticResource ComboBoxToolbar}" TargetType="{x:Type ComboBox}">
+            <Setter Property="MinWidth" Value="40"></Setter>
+        </Style>
+        <Style x:Key="ComboBoxFontSizeType" BasedOn="{StaticResource ComboBoxToolbar}" TargetType="{x:Type ComboBox}">
+            <Setter Property="MinWidth" Value="30"></Setter>
+        </Style>
+        <Style x:Key="ComboBoxImageFormat" BasedOn="{StaticResource ComboBoxToolbar}" TargetType="{x:Type ComboBox}">
+            <Setter Property="MinWidth" Value="50"></Setter>
+        </Style>
         <Style x:Key="DockPanelBrightness" TargetType="{x:Type DockPanel}">
             <Style.Resources>
                 <Style TargetType="{x:Type Button}">
                     <Style.Resources>
-                        <Style TargetType="{x:Type Image}">
+                        <Style BasedOn="{StaticResource ImageButton}" TargetType="{x:Type Image}">
                             <Setter Property="Height" Value="16"></Setter>
                             <Setter Property="Width" Value="16"></Setter>
                         </Style>
@@ -98,22 +134,6 @@
         <Style x:Key="GridImage" TargetType="{x:Type Grid}">
             <Setter Property="Background" Value="Black"></Setter>
             <Setter Property="Margin" Value="5,5,5,0"></Setter>
-        </Style>
-        <Style x:Key="FontComboBox" TargetType="{x:Type ComboBox}">
-            <Style.Resources>
-                <Style TargetType="{x:Type TextBlock}">
-                    <Setter Property="Height" Value="32"></Setter>
-                </Style>
-            </Style.Resources>
-            <Setter Property="Height" Value="20"></Setter>
-            <Setter Property="MinWidth" Value="150"></Setter>
-        </Style>
-        <Style TargetType="{x:Type Image}">
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.2"></Setter>
-                </Trigger>
-            </Style.Triggers>
         </Style>
         <Style x:Key="ListViewPreview" TargetType="{x:Type ListView}">
             <Style.Resources>
@@ -196,21 +216,12 @@
             <Setter Property="Margin" Value="5,0,5,0"></Setter>
             <Setter Property="Padding" Value="0"></Setter>
         </Style>
-        <Style x:Key="SizeComboBox" TargetType="{x:Type ComboBox}">
-            <Setter Property="Height" Value="20"></Setter>
-            <Setter Property="MinWidth" Value="30"></Setter>
-        </Style>
         <Style TargetType="{x:Type GridSplitter}">
             <Setter Property="Background" Value="{x:Static SystemColors.GradientInactiveCaptionBrush}"></Setter>
         </Style>
         <Style TargetType="{x:Type MenuItem}">
             <Style.Resources>
-                <Style TargetType="{x:Type Image}">
-                    <Style.Triggers>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.2"></Setter>
-                        </Trigger>
-                    </Style.Triggers>
+                <Style BasedOn="{StaticResource ImageButton}" TargetType="{x:Type Image}">
                     <Setter Property="Height" Value="16"></Setter>
                     <Setter Property="Width" Value="16"></Setter>
                 </Style>
@@ -222,12 +233,7 @@
         </Style>
         <Style TargetType="{x:Type ToolBar}">
             <Style.Resources>
-                <Style TargetType="{x:Type Image}">
-                    <Style.Triggers>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.2"></Setter>
-                        </Trigger>
-                    </Style.Triggers>
+                <Style BasedOn="{StaticResource ImageButton}" TargetType="{x:Type Image}">
                     <Setter Property="Height" Value="16"></Setter>
                     <Setter Property="Width" Value="16"></Setter>
                 </Style>
@@ -310,7 +316,7 @@
                 </Button>
             </ToolBar>
             <ToolBar DataContext="{Binding SelectedImageViewModel}">
-                <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" Style="{StaticResource FontComboBox}" ToolTip="Font">
+                <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" Style="{StaticResource ComboBoxFont}" ToolTip="Font">
                     <ComboBox.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel></VirtualizingStackPanel>
@@ -322,14 +328,14 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
-                <ComboBox Validation.ErrorTemplate="{StaticResource SizeValidation}" ToolBar.OverflowMode="Never" IsEditable="True" Style="{StaticResource SizeComboBox}" Text="{Binding FontSize}" ToolTip="Font Size">
+                <ComboBox Validation.ErrorTemplate="{StaticResource SizeValidation}" ToolBar.OverflowMode="Never" IsEditable="True" Style="{StaticResource ComboBoxFontSize}" Text="{Binding FontSize}" ToolTip="Font Size">
                     <ComboBoxItem>10</ComboBoxItem>
                     <ComboBoxItem>12</ComboBoxItem>
                     <ComboBoxItem>16</ComboBoxItem>
                     <ComboBoxItem>24</ComboBoxItem>
                     <ComboBoxItem>48</ComboBoxItem>
                 </ComboBox>
-                <ComboBox Style="{StaticResource SizeComboBox}" Text="{Binding Path=FontType}" ToolTip="Font Measurement">
+                <ComboBox Style="{StaticResource ComboBoxFontSizeType}" Text="{Binding Path=FontType}" ToolTip="Font Measurement">
                     <ComboBoxItem>%</ComboBoxItem>
                     <ComboBoxItem>pts</ComboBoxItem>
                 </ComboBox>
@@ -354,7 +360,7 @@
                     <Image Source="{StaticResource RotateRightImageSource}"></Image>
                 </Button>
                 <Separator></Separator>
-                <ComboBox IsEditable="False" Text="{Binding Path=DataContext.ImageFormat, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Image Format">
+                <ComboBox IsEditable="False" Style="{StaticResource ComboBoxImageFormat}" Text="{Binding Path=DataContext.ImageFormat, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Image Format">
                     <ComboBoxItem>Bmp</ComboBoxItem>
                     <ComboBoxItem>Jpeg</ComboBoxItem>
                     <ComboBoxItem>Png</ComboBoxItem>
@@ -384,9 +390,6 @@
             <Separator Visibility="{Binding HasStatus, Converter={StaticResource VisibilityConverter}}"></Separator>
             <StatusBarItem>
                 <Label Content="{Binding Path=OutputPath}"></Label>
-            </StatusBarItem>
-            <StatusBarItem HorizontalContentAlignment="Stretch" Visibility="{Binding Path=ProgressVisible, Converter={StaticResource VisibilityConverter}}">
-                <ProgressBar Maximum="100" Minimum="0" Value="{Binding Path=Progress}"></ProgressBar>
             </StatusBarItem>
         </StatusBar>
         <Grid>

@@ -7,7 +7,7 @@ namespace PhotoLabel.Services
     {
         public override void Load()
         {
-            Bind<IBrowseService>().To<BrowseService>().InSingletonScope();
+            Bind<IDialogService>().To<DialogService>().InSingletonScope();
             Bind<IConfigurationService>().To<ConfigurationService>().InSingletonScope();
             Bind<IImageMetadataService>().To<ImageMetadataService>().InSingletonScope();
             Bind<IImageService>().To<ImageService>().InSingletonScope();

@@ -1,9 +1,9 @@
-﻿using PhotoLabel.Services;
+﻿using PhotoLabel.DependencyInjection;
+using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
 using PhotoLabel.Wpf.Extensions;
 using PhotoLabel.Wpf.Properties;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -18,13 +18,12 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using PhotoLabel.DependencyInjection;
 using Color = System.Windows.Media.Color;
 using FontFamily = System.Windows.Media.FontFamily;
 
 namespace PhotoLabel.Wpf
 {
-    public class ImageViewModel : IDisposable, INotifyPropertyChanged, IObservable
+    public class ImageViewModel : IDisposable, INotifyPropertyChanged
     {
         public ImageViewModel(string filename)
         {
@@ -33,6 +32,8 @@ namespace PhotoLabel.Wpf
 
             // get dependencies
             _configurationService = NinjectKernel.Get<IConfigurationService>();
+            _dialogService = NinjectKernel.Get<IDialogService>();
+            _imageService = NinjectKernel.Get<IImageService>();
             _taskScheduler = NinjectKernel.Get<SingleTaskScheduler>();
             _logService = NinjectKernel.Get<ILogService>();
 
@@ -41,7 +42,6 @@ namespace PhotoLabel.Wpf
             _imageStretch = Stretch.None;
             _metadataLock = new object();
             _metadataManualResetEvent = new ManualResetEvent(false);
-            _observers = new List<IObserver>();
             _originalImageLock = new object();
             _originalImageManualResetEvent = new ManualResetEvent(true);
             _saveFinishManualResetEvent = new ManualResetEvent(false);
@@ -914,7 +914,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private bool IsEdited
+        public bool IsEdited
         {
             get => _isEdited;
             set
@@ -937,6 +937,8 @@ namespace PhotoLabel.Wpf
 
                     _logService.Trace($@"Reloading preview image for ""{Filename}""...");
                     LoadPreview(true, new CancellationToken());
+
+                    OnPropertyChanged();
                 }
                 finally
                 {
@@ -1696,8 +1698,11 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
-                logService.Trace($"Notifying {_observers.Count} observers of error...");
-                foreach (var observer in _observers) observer.OnError(ex);
+                logService.Trace("Logging error...");
+                logService.Error(ex);
+
+                logService.Trace($"Notifying user of error...");
+                _dialogService.Error(Resources.ErrorText);
             }
             catch (Exception)
             {
@@ -1739,7 +1744,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public void Save(string outputPath, bool overwrite)
+        public void Save(string outputPath)
         {
             if (outputPath == null) throw new ArgumentNullException(nameof(outputPath));
 
@@ -1766,8 +1771,7 @@ namespace PhotoLabel.Wpf
                     ImageFormat = ImageFormat,
                     Latitude = Latitude,
                     Longitude = Longitude,
-                    OutputFilename = Path.Combine(outputPath,
-                        $"{Path.GetFileName(Filename)}.{(ImageFormat == ImageFormat.Bmp ? "bmp" : ImageFormat == ImageFormat.Jpeg ? "jpg" : "png")}"),
+                    OutputFilename = _imageService.GetFilename(outputPath, Filename, ImageFormat),
                     Rotation = Rotation
                 };
 
@@ -1879,12 +1883,9 @@ namespace PhotoLabel.Wpf
             _logService.TraceEnter();
             try
             {
-                lock (_originalImageLock)
-                {
-                    _logService.Trace($@"Disposing of original image for ""{Filename}""...");
-                    _originalImage?.Dispose();
-                    _originalImage = null;
-                }
+                _logService.Trace($@"Disposing of original image for ""{Filename}""...");
+                _originalImage?.Dispose();
+                _originalImage = null;
 
                 _logService.Trace($@"Disposing of caption image for ""{Filename}""...");
                 _imageWrapper?.Dispose();
@@ -2199,9 +2200,10 @@ namespace PhotoLabel.Wpf
         private bool? _appendDateTakenToCaption;
         private Color? _backColor;
         private string _caption;
+        private int? _brightness;
         private CaptionAlignments? _captionAlignment;
-        private CancellationTokenSource _loadImageCancellationTokenSource;
         private readonly IConfigurationService _configurationService;
+        private readonly IDialogService _dialogService;
         private bool _disposedValue;
         private ImageFormat? _imageFormat;
         private bool? _fontBold;
@@ -2211,18 +2213,22 @@ namespace PhotoLabel.Wpf
         private Color? _foreColor;
         private bool _hasMetadata;
         private BitmapWrapper _imageWrapper;
+        private IImageService _imageService;
         private Stretch _imageStretch;
         private bool _isAppendDateTakenToCaptionEdited;
         private bool _isBackColorEdited;
         private bool _isBrightnessEdited;
         private bool _isCaptionAlignmentEdited;
         private bool _isCaptionEdited;
+        private bool _isEdited;
         private bool _isFontBoldEdited;
         private bool _isFontFamilyEdited;
         private bool _isFontSizeEdited;
-        private bool _isEdited;
+        private bool _isFontTypeEdited;
         private bool _isSaved;
         private readonly ILogService _logService;
+        private CancellationTokenSource _loadImageCancellationTokenSource;
+        private CancellationTokenSource _loadPreviewCancellationTokenSource;
         private readonly object _metadataLock;
         private readonly ManualResetEvent _metadataManualResetEvent;
         private Image _originalImage;
@@ -2233,14 +2239,10 @@ namespace PhotoLabel.Wpf
         private readonly ManualResetEvent _saveFinishManualResetEvent;
         private ICommand _setCaptionCommand;
         private readonly TaskScheduler _taskScheduler;
-        private bool _isFontTypeEdited;
         private bool _isForeColorEdited;
         private bool _isImageFormatEdited;
         private bool _isMetadataChecked;
         private bool _isRotationEdited;
-        private readonly IList<IObserver> _observers;
-        private CancellationTokenSource _loadPreviewCancellationTokenSource;
-        private int? _brightness;
 
         #endregion
 
@@ -2274,32 +2276,6 @@ namespace PhotoLabel.Wpf
             Dispose(true);
         }
 
-        #endregion
-
-        #region IObservable
-
-        public IDisposable Subscribe(IObserver observer)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if observer is already subscribed...");
-                if (_observers.Contains(observer))
-                {
-                    _logService.Trace("Observer is already subscribed.  Returning...");
-                    return new Subscriber(_observers, observer);
-                }
-
-                _logService.Trace("Adding observer...");
-                _observers.Add(observer);
-
-                return new Subscriber(_observers, observer);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
         #endregion
 
         #region INotifyPropertyChanged

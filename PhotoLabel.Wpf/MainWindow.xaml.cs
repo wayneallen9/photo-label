@@ -9,7 +9,7 @@ namespace PhotoLabel.Wpf
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : IObserver
+    public partial class MainWindow
     {
         #region variables
 
@@ -45,7 +45,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                OnError(ex);
+                // ignored
             }
             finally
             {
@@ -92,7 +92,7 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                OnError(ex);
+                // ignored
             }
             finally
             {
@@ -119,28 +119,6 @@ namespace PhotoLabel.Wpf
             }
             catch (Exception ex)
             {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        #region IObserver
-
-        public void OnError(Exception ex)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Error(ex);
-
-                MessageBox.Show(Properties.Resources.ErrorText, Properties.Resources.ErrorCaption, MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            catch (Exception)
-            {
                 // ignored
             }
             finally
@@ -148,6 +126,5 @@ namespace PhotoLabel.Wpf
                 _logService.TraceExit();
             }
         }
-        #endregion
     }
 }

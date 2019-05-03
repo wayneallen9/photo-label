@@ -8,7 +8,7 @@
         xmlns:ei="http://schemas.microsoft.com/expression/2010/interactions"
         xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
         mc:Ignorable="d"
-        Title="{Binding Path=Title}" Height="450" Width="800" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+        Title="{Binding Path=Title}" Height="300" Width="400" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
     <wi:Interaction.Triggers>
         <wi:EventTrigger EventName="Closing">
             <ei:CallMethodAction TargetObject="{Binding}" MethodName="Closing"></ei:CallMethodAction>

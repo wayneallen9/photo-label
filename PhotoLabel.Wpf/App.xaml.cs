@@ -1,8 +1,8 @@
-﻿using System;
+﻿using PhotoLabel.DependencyInjection;
+using PhotoLabel.Services;
+using System;
 using System.Windows;
 using System.Windows.Threading;
-using PhotoLabel.DependencyInjection;
-using PhotoLabel.Services;
 
 namespace PhotoLabel.Wpf
 {
@@ -21,7 +21,6 @@ namespace PhotoLabel.Wpf
 
             // assign the view model to the window
             var mainWindowViewModel = NinjectKernel.Get<MainWindowViewModel>();
-            mainWindowViewModel.Subscribe(mainWindow);
             mainWindow.DataContext = mainWindowViewModel;
             
             // show the window

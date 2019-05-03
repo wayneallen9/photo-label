@@ -1,33 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Channels;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Threading;
-using PhotoLabel.DependencyInjection;
+﻿using PhotoLabel.DependencyInjection;
 using PhotoLabel.Services;
 using PhotoLabel.Wpf.Annotations;
 using PhotoLabel.Wpf.Properties;
+using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace PhotoLabel.Wpf
 {
-    public class SettingsViewModel : INotifyPropertyChanged, IObservable
+    public class SettingsViewModel : INotifyPropertyChanged
     {
         public SettingsViewModel(
             IConfigurationService configurationService,
+            IDialogService dialogService,
             ILogService logService)
         {
             // save dependencies
             _configurationService = configurationService;
+            _dialogService = dialogService;
             _logService = logService;
-
-            // initialise variables
-            _observers = new List<IObserver>();
 
             // get the maximum file size
             GetMaximumFileSize();
@@ -100,9 +94,8 @@ namespace PhotoLabel.Wpf
                 }
 
                 _logService.Trace("Prompting for confirmation...");
-                if (MessageBox.Show("You have unsaved changes.  Are you sure you want to exit?", "Unsaved Changes",
-                        MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
-                    e.Cancel = true;
+                e.Cancel = !_dialogService.Confirm("You have unsaved changes.  Do you wish to exit?",
+                    "Unsaved Changes");
             }
             finally
             {
@@ -205,8 +198,7 @@ namespace PhotoLabel.Wpf
                 _logService.Error(ex);
 
                 // let the user know
-                MessageBox.Show(Properties.Resources.ErrorText, Resources.ErrorCaption, MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                _dialogService.Error(Resources.ErrorText);
             }
             catch (Exception)
             {
@@ -428,46 +420,21 @@ namespace PhotoLabel.Wpf
         private ICommand _applyCommand;
         private ICommand _closeCommand;
         private readonly IConfigurationService _configurationService;
+        private readonly IDialogService _dialogService;
         private bool _forceClose;
         private bool _isEdited;
         private readonly ILogService _logService;
         private ICommand _okCommand;
         private bool _maximumFileSizeEnabled;
-        private readonly IList<IObserver> _observers;
         private int _quantity;
         private QuantityType _type;
+
         #endregion
 
         #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        #endregion
-
-        #region IObservable
-
-        public IDisposable Subscribe(IObserver observer)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if observer is already subscribed...");
-                if (_observers.Contains(observer))
-                {
-                    _logService.Trace("Observer is already subscribed.  Returning...");
-                    return new Subscriber(_observers, observer);
-                }
-
-                _logService.Trace("Adding observer...");
-                _observers.Add(observer);
-
-                return new Subscriber(_observers, observer);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
         #endregion
     }
 }

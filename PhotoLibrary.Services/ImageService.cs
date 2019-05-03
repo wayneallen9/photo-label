@@ -157,6 +157,20 @@ namespace PhotoLabel.Services
             }
         }
 
+        public string GetFilename(string outputDirectory, string imageFilename, ImageFormat imageFormat)
+        {
+            _logService.TraceEnter();
+            try
+            {
+                _logService.Trace("Getting output file name...");
+                return $"{Path.Combine(outputDirectory, imageFilename)}.{imageFormat.ToString().ToLower()}";
+            }
+            finally
+            {
+                _logService.TraceExit();
+            }
+        }
+
         private float GetFontSize(Graphics graphics, string fontName, FontStyle fontStyle, string caption, float height)
         {
             var lastSize = 0F;

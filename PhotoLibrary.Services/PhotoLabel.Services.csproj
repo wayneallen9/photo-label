@@ -66,11 +66,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BrowseService.cs" />
+    <Compile Include="DialogService.cs" />
     <Compile Include="CaptionAlignments.cs" />
     <Compile Include="ConfigurationService.cs" />
     <Compile Include="DefaultImageReducer.cs" />
-    <Compile Include="IBrowseService.cs" />
+    <Compile Include="IDialogService.cs" />
     <Compile Include="IConfigurationService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageReducer.cs" />

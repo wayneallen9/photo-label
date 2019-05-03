@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 
 namespace PhotoLabel.Services
 {
@@ -16,14 +17,28 @@ namespace PhotoLabel.Services
             _logService.TraceEnter();
             try
             {
+                _logService.Trace("Saving current parent window...");
+                var parentWindow = _parentWindow ?? Application.Current?.MainWindow;
+
                 _logService.Trace("Creating new window...");
                 var window = new T();
 
                 _logService.Trace("Assigning data context...");
                 window.DataContext = dataContext;
 
+                _logService.Trace("Assigning parent window...");
+                if (parentWindow?.IsVisible == true) window.Owner = parentWindow;
+
+                _logService.Trace("Saving new window as parent...");
+                _parentWindow = window;
+
                 _logService.Trace("Showing window as dialog...");
-                return window.ShowDialog();
+                var result = window.ShowDialog();
+
+                _logService.Trace("Resetting parent window...");
+                _parentWindow = parentWindow;
+
+                return result;
             }
             finally
             {
@@ -34,6 +49,7 @@ namespace PhotoLabel.Services
         #region variables
 
         private readonly ILogService _logService;
+        private Window _parentWindow;
 
         #endregion
     }
