@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows;
 using System.Windows.Input;
 
 namespace PhotoLabel.Wpf
@@ -10,6 +11,10 @@ namespace PhotoLabel.Wpf
 
     public class CommandHandler : ICommand, ICommandHandler
     {
+        #region delegates
+        private delegate void NotifyDelegate();
+        #endregion
+
         #region events
         public event EventHandler CanExecuteChanged;
         #endregion
@@ -45,6 +50,13 @@ namespace PhotoLabel.Wpf
 
         public void Notify()
         {
+            if (Application.Current?.Dispatcher.CheckAccess() == false)
+            {
+                Application.Current?.Dispatcher.Invoke(new NotifyDelegate(Notify));
+
+                return;
+            }
+
             CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
     }

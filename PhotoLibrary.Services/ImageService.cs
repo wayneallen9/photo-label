@@ -163,7 +163,7 @@ namespace PhotoLabel.Services
             try
             {
                 _logService.Trace("Getting output file name...");
-                return $"{Path.Combine(outputDirectory, imageFilename)}.{imageFormat.ToString().ToLower()}";
+                return $"{Path.Combine(outputDirectory, Path.GetFileName(imageFilename))}.{imageFormat.ToString().ToLower()}";
             }
             finally
             {
@@ -188,6 +188,9 @@ namespace PhotoLabel.Services
 
                     // if it is bigger than the desired height, we have found the correct size
                     if (size.Height > height) break;
+
+                    // release the font memory
+                    font.Dispose();
 
                     // save the last font size that fit
                     lastSize = i;
@@ -705,6 +708,7 @@ namespace PhotoLabel.Services
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
+
             }
             finally
             {
@@ -828,9 +832,9 @@ namespace PhotoLabel.Services
                 using (var graphics = Graphics.FromImage(canvas))
                 {
                     // initialise the pen
-                    graphics.SmoothingMode = SmoothingMode.HighQuality;
-                    graphics.CompositingQuality = CompositingQuality.HighQuality;
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    graphics.SmoothingMode = SmoothingMode.HighSpeed;
+                    graphics.CompositingQuality = CompositingQuality.HighSpeed;
+                    graphics.InterpolationMode = InterpolationMode.Low;
 
                     // draw the black background
                     graphics.FillRectangle(new SolidBrush(Color.Black), 0, 0, width, height);

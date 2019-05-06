@@ -719,13 +719,13 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private Bitmap GetOriginalImage()
+        public Bitmap LoadOriginalImage()
         {
             _logService.TraceEnter();
             try
             {
                 _logService.Trace("Wait for any background load to complete...");
-                _originalImageManualResetEvent.WaitOne();
+                _originalImageManualResetEvent.WaitOne(30000);
 
                 lock (_originalImageLock)
                 {
@@ -737,7 +737,7 @@ namespace PhotoLabel.Wpf
                         new Thread(LoadOriginalThread).Start(new CancellationToken());
 
                         _logService.Trace("Waiting for background load to complete...");
-                        _originalImageManualResetEvent.WaitOne();
+                        _originalImageManualResetEvent.WaitOne(30000);
                     }
 
                     _logService.Trace("Returning a copy of the original image...");
@@ -1268,12 +1268,6 @@ namespace PhotoLabel.Wpf
                     _isRotationEdited = true;
                     IsEdited = true;
 
-                    lock (_originalImageLock)
-                    {
-                        _logService.Trace($@"Clearing cached image for ""{Filename}""...");
-                        _originalImage = null;
-                    }
-
                     _logService.Trace($@"Loading image for ""{Filename}""...");
                     LoadImage();
 
@@ -1306,49 +1300,65 @@ namespace PhotoLabel.Wpf
             try
             {
                 if (cancellationToken.IsCancellationRequested) return;
-                using (var originalImage = GetOriginalImage())
+                using (var originalImage = LoadOriginalImage())
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
                     LoadMetadataThread(cancellationToken);
 
-                    // get the variables
-                    var brightness = Brightness;
-
                     if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
-                    var brightenedImage =
-                        brightness == 0 ? originalImage : imageService.Brightness(originalImage, brightness);
-                    try
+                    logService.Trace($@"Rotating ""{Filename}""...");
+                    switch (Rotation)
                     {
-                        if (cancellationToken.IsCancellationRequested) return;
-                        logService.Trace("Building caption...");
-                        var captionBuilder = new StringBuilder(Caption);
-                        if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
-                        {
-                            if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
-                            captionBuilder.Append(DateTaken);
-                        }
+                        case Rotations.Ninety:
+                            originalImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
+
+                            break;
+                        case Rotations.OneEighty:
+                            originalImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
+
+                            break;
+                        case Rotations.TwoSeventy:
+                            originalImage.RotateFlip(RotateFlipType.Rotate270FlipNone);
+
+                            break;
+                    }
+
+                    // duplicate the image
+                    using (var duplicateImage = new Bitmap(originalImage))
+                    {
+                        // get the variables
+                        var brightness = Brightness;
 
                         if (cancellationToken.IsCancellationRequested) return;
-                        var brush = new SolidBrush(ForeColor.ToDrawingColor());
-                        logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
-                        var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
-                            CaptionAlignment, FontFamily.Source, FontSize, FontType,
-                            FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
+                        logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
+                        var brightenedImage =
+                            brightness == 0 ? duplicateImage : imageService.Brightness(duplicateImage, brightness);
                         try
                         {
+                            if (cancellationToken.IsCancellationRequested) return;
+                            logService.Trace("Building caption...");
+                            var captionBuilder = new StringBuilder(Caption);
+                            if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
+                            {
+                                if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
+                                captionBuilder.Append(DateTaken);
+                            }
+
+                            if (cancellationToken.IsCancellationRequested) return;
+                            var brush = new SolidBrush(ForeColor.ToDrawingColor());
+                            logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
+                            var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
+                                CaptionAlignment, FontFamily.Source, FontSize, FontType,
+                                FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
+
                             if (cancellationToken.IsCancellationRequested) return;
                             UpdateImage(captionedImage);
                         }
                         finally
                         {
-                            captionedImage?.Dispose();
+                            if (brightness != 0) brightenedImage?.Dispose();
                         }
-                    }
-                    finally
-                    {
-                        if (brightness != 0) brightenedImage?.Dispose();
                     }
                 }
             }
@@ -1436,42 +1446,6 @@ namespace PhotoLabel.Wpf
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     _originalImage = System.Drawing.Image.FromStream(fileStream);
-                }
-
-                logService.Trace($@"Checking rotation of ""{Filename}""...");
-                Image originalImage;
-                switch (Rotation)
-                {
-                    case Rotations.Ninety:
-                        // rotate it into position
-                        _originalImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
-
-                        // make a copy of it
-                        originalImage = _originalImage;
-                        _originalImage = new Bitmap(originalImage);
-                        originalImage.Dispose();
-
-                        break;
-                    case Rotations.OneEighty:
-                        // rotate it into position
-                        _originalImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
-
-                        // make a copy of it
-                        originalImage = _originalImage;
-                        _originalImage = new Bitmap(originalImage);
-                        originalImage.Dispose();
-
-                        break;
-                    case Rotations.TwoSeventy:
-                        // rotate it into position
-                        _originalImage.RotateFlip(RotateFlipType.Rotate270FlipNone);
-
-                        // make a copy of it
-                        originalImage = _originalImage;
-                        _originalImage = new Bitmap(originalImage);
-                        originalImage.Dispose();
-
-                        break;
                 }
             }
             catch (Exception ex)
@@ -1642,7 +1616,7 @@ namespace PhotoLabel.Wpf
                 {
                     if (cancellationToken.IsCancellationRequested) return;
                     logService.Trace("Waiting for metadata to load...");
-                    _metadataManualResetEvent.WaitOne();
+                    _metadataManualResetEvent.WaitOne(30000);
 
                     logService.Trace($@"Checking if ""{Filename}"" has been saved...");
                     if (IsSaved)
@@ -1777,7 +1751,7 @@ namespace PhotoLabel.Wpf
 
                 _logService.Trace($@"Saving to ""{metadata.OutputFilename}"" on background thread...");
                 Task.Factory.StartNew(SaveThread,
-                    new object[] {GetOriginalImage(), metadata, _saveFinishManualResetEvent},
+                    new object[] {LoadOriginalImage(), metadata, _saveFinishManualResetEvent},
                     new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
             }
             catch (Exception ex)
@@ -2263,7 +2237,7 @@ namespace PhotoLabel.Wpf
                 _previewWrapper?.Dispose();
 
                 // wait for all background saves to complete
-                _saveFinishManualResetEvent.WaitOne();
+                _saveFinishManualResetEvent.WaitOne(30000);
             }
 
             _disposedValue = true;

@@ -640,7 +640,7 @@ namespace PhotoLabel.Wpf
                     if (_selectedIndex < Images.Count - 1)
                     {
                         _logService.Trace($@"Preloading image at position {_selectedIndex + 1}...");
-                        Images[_selectedIndex + 1].LoadImage(_openCancellationTokenSource.Token);
+                        Images[_selectedIndex + 1].LoadOriginalImage();
                     }
 
                     OnPropertyChanged();
@@ -970,7 +970,7 @@ namespace PhotoLabel.Wpf
                 if (mostRecentlyUsedImageViewModelFilename == null)
                 {
                     logService.Trace("No recently used image found.  Defaulting to start...");
-                    _selectedImageViewModel = Images[0];
+                    SelectedImageViewModel = Images[0];
                 }
                 else
                 {
@@ -983,7 +983,7 @@ namespace PhotoLabel.Wpf
                         if (cancellationToken.IsCancellationRequested) return;
                         logService.Trace(
                             $@"""{mostRecentlyUsedImageViewModelFilename}"" not found in directory.  Defaulting to first...");
-                        _selectedImageViewModel = Images[0];
+                        SelectedImageViewModel = Images[0];
                     }
                     else
                     {
