@@ -98,17 +98,23 @@
     <Compile Include="IObserver.cs" />
     <Compile Include="Mapper.cs" />
     <Compile Include="NinjectModule.cs" />
+    <Compile Include="OpenFolderViewModel.cs" />
+    <Compile Include="OpenFolderWindow.xaml.cs">
+      <DependentUpon>OpenFolderWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="PercentageValidationRule.cs" />
     <Compile Include="ProgressViewModel.cs" />
     <Compile Include="ProgressWindow.xaml.cs">
       <DependentUpon>ProgressWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\Annotations.cs" />
-    <Compile Include="RecentlyUsedDirectoryViewModel.cs" />
+    <Compile Include="FolderViewModel.cs" />
     <Compile Include="SettingsViewModel.cs" />
     <Compile Include="SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="SingleTaskScheduler.cs" />
+    <Compile Include="SubFolderViewModel.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -126,6 +132,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="OpenFolderWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="ProgressWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -253,6 +263,12 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\brightness.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\deselect.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\select.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

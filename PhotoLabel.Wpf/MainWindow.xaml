@@ -6,6 +6,7 @@
         xmlns:wpfToolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
         xmlns:wi="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
         xmlns:ei="http://schemas.microsoft.com/expression/2010/interactions"
+        xmlns:local="clr-namespace:PhotoLabel.Wpf"
         mc:Ignorable="d"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
         Title="{Binding Path=Title}" Height="450" Width="800" Icon="pack://application:,,,/Resources/camera.png">
@@ -60,13 +61,6 @@
         <!-- Base styles -->
         <Style x:Key="ComboBoxToolbar" TargetType="{x:Type ComboBox}">
             <Setter Property="Height" Value="20"></Setter>
-        </Style>
-        <Style x:Key="ImageButton" TargetType="{x:Type Image}">
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.2"></Setter>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <!-- Custom styles -->
@@ -279,16 +273,16 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator></Separator>
-                <MenuItem Header="_Recently Used" ItemsSource="{Binding Path=RecentlyUsedDirectories}">
+                <MenuItem Header="_Recently Used" IsEnabled="{Binding Path=HasRecentlyUsedDirectories}" ItemsSource="{Binding Path=RecentlyUsedFolders}">
                     <MenuItem.ItemContainerStyle>
                         <Style>
                             <Setter Property="MenuItem.Command" Value="{Binding Path=DataContext.OpenRecentlyUsedDirectoryCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"></Setter>
-                            <Setter Property="MenuItem.CommandParameter" Value="{Binding Path=Path}"></Setter>
+                            <Setter Property="MenuItem.CommandParameter" Value="{Binding}"></Setter>
                             <Setter Property="MenuItem.Header" Value="{Binding Path=Caption}"></Setter>
                         </Style>
                     </MenuItem.ItemContainerStyle>
                 </MenuItem>
-                <Separator Visibility="{Binding Path=HasRecentlyUsedDirectories, Converter={StaticResource VisibilityConverter}}"></Separator>
+                <Separator></Separator>
                 <MenuItem Command="{Binding Path=ExitCommand}" Header="E_xit" InputGestureText="Ctrl+X"></MenuItem>
             </MenuItem>
             <MenuItem Header="_Edit">
@@ -345,7 +339,14 @@
                 <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" ShowRecentColors="True" SelectedColor="{Binding Path=ForeColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Color"></wpfToolkit:ColorPicker>
                 <Separator></Separator>
                 <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" RecentColors="{Binding Path=DataContext.RecentlyUsedBackColors, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ShowRecentColors="True" SelectedColor="{Binding Path=BackColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Background Color"></wpfToolkit:ColorPicker>
-                <ComboBox IsEditable="True" Style="{StaticResource TransparencyComboBox}" Text="{Binding Path=BackColorOpacity}" ToolTip="Background Opacity">
+                <ComboBox IsEditable="True" Style="{StaticResource TransparencyComboBox}" ToolTip="Background Opacity">
+                    <ComboBox.Text>
+                        <Binding Path="DataContext.BackColorOpacity" RelativeSource="{RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}">
+                            <Binding.ValidationRules>
+                                <local:PercentageValidationRule Maximum="100" Minimum="0"></local:PercentageValidationRule>
+                            </Binding.ValidationRules>
+                        </Binding>
+                    </ComboBox.Text>
                     <ComboBoxItem>Off</ComboBoxItem>
                     <ComboBoxItem Opacity="0.25">25%</ComboBoxItem>
                     <ComboBoxItem Opacity="0.5">50%</ComboBoxItem>

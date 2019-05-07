@@ -43,7 +43,7 @@ namespace PhotoLabel.Wpf
                 _logService.Trace("Ensuring that selected image is visible...");
                 listViewImages.ScrollIntoView(e.AddedItems[0]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // ignored
             }
@@ -90,7 +90,7 @@ namespace PhotoLabel.Wpf
                     imageViewModel.LoadPreview(false, _loadPreviewCancellationTokenSource.Token);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // ignored
             }
@@ -117,7 +117,7 @@ namespace PhotoLabel.Wpf
                 _logService.Trace("Ensuring that selected image is visible...");
                 listViewImages.ScrollIntoView(listViewImages.SelectedItem);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // ignored
             }

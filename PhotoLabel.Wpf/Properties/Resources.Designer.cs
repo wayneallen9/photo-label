@@ -152,6 +152,16 @@ namespace PhotoLabel.Wpf.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap deselect {
+            get {
+                object obj = ResourceManager.GetObject("deselect", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap edited {
             get {
                 object obj = ResourceManager.GetObject("edited", resourceCulture);
@@ -285,6 +295,16 @@ namespace PhotoLabel.Wpf.Properties {
         internal static System.Drawing.Bitmap saved {
             get {
                 object obj = ResourceManager.GetObject("saved", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap select {
+            get {
+                object obj = ResourceManager.GetObject("select", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -34,6 +34,7 @@ namespace PhotoLabel.Wpf
             _configurationService = NinjectKernel.Get<IConfigurationService>();
             _dialogService = NinjectKernel.Get<IDialogService>();
             _imageService = NinjectKernel.Get<IImageService>();
+            _opacityService = NinjectKernel.Get<IOpacityService>();
             _taskScheduler = NinjectKernel.Get<SingleTaskScheduler>();
             _logService = NinjectKernel.Get<ILogService>();
 
@@ -137,40 +138,24 @@ namespace PhotoLabel.Wpf
 
         public string BackColorOpacity
         {
-            get => BackColor.A == 0 ? "Off" : $"{BackColor.A / 256d * 100,0:F0}%";
+            get => _opacityService.GetOpacity(BackColor);
             set
             {
                 _logService.TraceEnter();
                 try
                 {
-                    _logService.Trace($@"Setting background opacity to ""{value}""...");
-                    byte opacityValue;
-                    switch (value)
-                    {
-                        case "Off":
-                            opacityValue = 0;
-
-                            break;
-                        default:
-                            var percentage = value.ToPercentage();
-                            opacityValue = (byte) (percentage / 100 * 255);
-
-                            break;
-                    }
+                    _logService.Trace("Getting new background color...");
+                    var backColor = _opacityService.SetOpacity(BackColor, value);
 
                     _logService.Trace("Checking if background opacity has changed...");
-                    if (BackColor.A == opacityValue)
+                    if (BackColor == backColor)
                     {
                         _logService.Trace("Background opacity has not changed.  Exiting...");
                         return;
                     }
 
                     _logService.Trace("Setting background opacity...");
-                    _backColor = Color.FromArgb(opacityValue, BackColor.R,
-                        BackColor.G, BackColor.B);
-
-                    _logService.Trace("Setting as default background opacity...");
-                    _configurationService.BackgroundColour = _backColor.Value;
+                    _backColor = backColor;
 
                     _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
                     _isBackColorEdited = true;
@@ -1998,6 +1983,7 @@ namespace PhotoLabel.Wpf
                     _backColor = System.Drawing.Color.FromArgb(metadata.BackgroundColour.Value).ToWindowsMediaColor();
 
                     OnPropertyChanged(nameof(BackColor));
+                    OnPropertyChanged(nameof(BackColorOpacity));
                 }
 
                 if (!_isBrightnessEdited)
@@ -2205,6 +2191,7 @@ namespace PhotoLabel.Wpf
         private CancellationTokenSource _loadPreviewCancellationTokenSource;
         private readonly object _metadataLock;
         private readonly ManualResetEvent _metadataManualResetEvent;
+        private readonly IOpacityService _opacityService;
         private Image _originalImage;
         private readonly object _originalImageLock;
         private readonly ManualResetEvent _originalImageManualResetEvent;

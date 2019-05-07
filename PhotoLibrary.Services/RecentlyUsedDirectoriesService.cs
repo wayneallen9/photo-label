@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PhotoLabel.Services.Models;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -7,7 +8,7 @@ using System.Threading;
 
 namespace PhotoLabel.Services
 {
-    public class RecentlyUsedDirectoriesService : IRecentlyUsedDirectoriesService
+    public class RecentlyUsedDirectoriesService : IRecentlyUsedFoldersService
     {
         #region delegates
 
@@ -17,7 +18,7 @@ namespace PhotoLabel.Services
 
         private readonly ILogService _logService;
         private readonly List<IRecentlyUsedDirectoriesObserver> _observers;
-        private readonly List<Models.Directory> _recentlyUsedDirectories;
+        private readonly List<Folder> _recentlyUsedDirectories;
         private readonly IXmlFileSerialiser _xmlFileSerialiser;
 
         #endregion
@@ -32,7 +33,7 @@ namespace PhotoLabel.Services
 
             // initialise variables
             _observers = new List<IRecentlyUsedDirectoriesObserver>();
-            _recentlyUsedDirectories = new List<Models.Directory>();
+            _recentlyUsedDirectories = new List<Folder>();
         }
 
         private void Clear()
@@ -45,29 +46,6 @@ namespace PhotoLabel.Services
 
                 _logService.Trace($"Notifiying {_observers.Count} observers that list has been cleared...");
                 foreach (var observer in _observers) observer.OnClear();
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
-        private string GetCaption(string folder)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                // was a directory provided?
-                if (string.IsNullOrWhiteSpace(folder)) return string.Empty;
-
-                // is it less than 20 characters?
-                if (folder.Length <= 20) return folder;
-
-                // build it back up
-                var root = folder.Substring(0, folder.IndexOf(Path.DirectorySeparatorChar, 2) + 1);
-                var branch = folder.Substring(folder.LastIndexOf(Path.DirectorySeparatorChar));
-
-                return $"{root}...{branch}";
             }
             finally
             {
@@ -89,8 +67,8 @@ namespace PhotoLabel.Services
 
                 if (cancellationToken.IsCancellationRequested) return;
                 _logService.Trace($@"Loading recently used directories from ""{filename}""...");
-                _recentlyUsedDirectories.AddRange(_xmlFileSerialiser.Deserialise<List<Models.Directory>>(filename) ??
-                                                  new List<Models.Directory>());
+                _recentlyUsedDirectories.AddRange(_xmlFileSerialiser.Deserialise<List<Folder>>(filename) ??
+                                                  new List<Folder>());
 
                 foreach (var observer in _observers)
                 {
@@ -118,7 +96,7 @@ namespace PhotoLabel.Services
             try
             {
                 // build the filename for the recently used files
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Photo Label",
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Photo Label",
                     "Recently Used Files.xml");
             }
             finally
@@ -127,39 +105,35 @@ namespace PhotoLabel.Services
             }
         }
 
-        public void Add(string directory)
+        public void Add(Folder folder)
         {
             _logService.TraceEnter();
             try
             {
-                _logService.Trace($@"Adding ""{directory}"" to the list of recently used directories...");
+                _logService.Trace($@"Adding ""{folder.Path}"" to the list of recently used directories...");
 
-                _logService.Trace($@"Checking if ""{directory}"" is already in the list...");
-                var entry = _recentlyUsedDirectories.FirstOrDefault(d => d.Path == directory);
+                _logService.Trace($@"Checking if ""{folder.Path}"" is already in the list...");
+                var entry = _recentlyUsedDirectories.FirstOrDefault(d => d.Path == folder.Path);
                 if (entry == null)
                 {
-                    _logService.Trace($@"""{directory}"" is not in the list.  Adding it...");
-                    _recentlyUsedDirectories.Insert(0, new Models.Directory
-                    {
-                        Caption = GetCaption(directory),
-                        Path = directory
-                    });
+                    _logService.Trace($@"""{folder.Path}"" is not in the list.  Adding it...");
+                    _recentlyUsedDirectories.Insert(0, folder);
 
-                    _logService.Trace($@"Notifying {_observers.Count} of ""{directory}""...");
+                    _logService.Trace($@"Notifying {_observers.Count} of ""{folder.Path}""...");
                     foreach (var observer in _observers) SendRecentlyUsedDirectories(observer);
 
                     // save the list
                     Save();
                 }
-                else if (_recentlyUsedDirectories.IndexOf(entry) > 0)
+                else
                 {
-                    _logService.Trace($@"Removing ""{directory}"" from list...");
+                    _logService.Trace($@"Removing ""{folder.Path}"" from list...");
                     _recentlyUsedDirectories.Remove(entry);
 
-                    _logService.Trace($@"Inserting ""{directory}"" at the top of the list...");
-                    _recentlyUsedDirectories.Insert(0, entry);
+                    _logService.Trace($@"Inserting ""{folder.Path}"" at the top of the list...");
+                    _recentlyUsedDirectories.Insert(0, folder);
 
-                    _logService.Trace($@"Notifying {_observers.Count} of ""{directory}""...");
+                    _logService.Trace($@"Notifying {_observers.Count} of ""{folder.Path}""...");
                     foreach (var observer in _observers) SendRecentlyUsedDirectories(observer);
 
                     // save the list
@@ -172,13 +146,13 @@ namespace PhotoLabel.Services
             }
         }
 
-        public string GetMostRecentlyUsedDirectory()
+        public Folder GetMostRecentlyUsedDirectory()
         {
             _logService.TraceEnter();
             try
             {
                 _logService.Trace("Returning path to the most recently used directory...");
-                return _recentlyUsedDirectories.FirstOrDefault()?.Path;
+                return _recentlyUsedDirectories.FirstOrDefault();
             }
             finally
             {

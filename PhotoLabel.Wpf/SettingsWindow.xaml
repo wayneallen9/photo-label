@@ -45,23 +45,14 @@
                         </Style>
                     </Style.Resources>
                 </Style>
-                <Style TargetType="{x:Type DockPanel}">
-                    <Style.Resources>
-                        <Style TargetType="{x:Type Button}">
-                            <Setter Property="Margin" Value="5,0,0,0"></Setter>
-                            <Setter Property="MinWidth" Value="100"></Setter>
-                            <Setter Property="Padding" Value="5"></Setter>
-                        </Style>
-                    </Style.Resources>
-                </Style>
             </Style.Resources>
         </Style>
     </Window.Resources>
     <DockPanel Style="{StaticResource DockPanelWindow}">
         <DockPanel DockPanel.Dock="Bottom" LastChildFill="False">
-            <Button DockPanel.Dock="Right" Command="{Binding Path=CloseCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_Cancel" IsCancel="True"></Button>
-            <Button DockPanel.Dock="Right" Command="{Binding Path=ApplyCommand}" Content="_Apply"></Button>
-            <Button DockPanel.Dock="Right" Command="{Binding Path=OkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_OK"></Button>
+            <Button DockPanel.Dock="Right" Command="{Binding Path=CloseCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_Cancel" IsCancel="True" Style="{StaticResource ButtonDialog}"></Button>
+            <Button DockPanel.Dock="Right" Command="{Binding Path=ApplyCommand}" Content="_Apply" Style="{StaticResource ButtonDialog}"></Button>
+            <Button DockPanel.Dock="Right" Command="{Binding Path=OkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_OK" Style="{StaticResource ButtonDialog}"></Button>
         </DockPanel>
         <Grid>
             <Grid.RowDefinitions>

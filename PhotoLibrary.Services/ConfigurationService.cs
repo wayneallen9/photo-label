@@ -84,7 +84,7 @@ namespace PhotoLabel.Services
         }
         public Color Colour
         {
-            get => _configurationModel.Colour ?? new Color();
+            get => _configurationModel.Colour ?? Colors.White;
             set
             {
                 // save the new value
@@ -259,7 +259,7 @@ namespace PhotoLabel.Services
             try
             {
                 // build the filename for the recently used files
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Photo Label",
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Photo Label",
                     "Configuration.xml");
             }
             finally

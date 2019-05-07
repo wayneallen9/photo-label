@@ -851,12 +851,12 @@ namespace PhotoLabel.Services
             }
         }
 
-        public IList<string> Find(string directory)
+        public List<string> Find(string directory)
         {
             _logService.TraceEnter();
             try
             {
-                return Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories)
+                return Directory.EnumerateFiles(directory, "*.*", SearchOption.TopDirectoryOnly)
                     .Where(s =>
                         (
                             s.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) ||

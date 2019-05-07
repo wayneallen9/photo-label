@@ -8,18 +8,20 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Ninject.Parameters;
 using PhotoLabel.DependencyInjection;
 using PhotoLabel.Services;
 using PhotoLabel.Wpf.Properties;
 using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
-using Directory = PhotoLabel.Services.Models.Directory;
+using Folder = PhotoLabel.Services.Models.Folder;
 using MessageBox = System.Windows.MessageBox;
 using WindowState = System.Windows.WindowState;
 
@@ -31,18 +33,22 @@ namespace PhotoLabel.Wpf
         public MainWindowViewModel(
             IDialogService dialogService,
             IConfigurationService configurationService,
+            IFolderService folderService,
             IImageService imageService,
             ILogService logService,
             INavigationService navigationService,
-            IRecentlyUsedDirectoriesService recentlyUsedDirectoriesService,
+            IOpacityService opacityService,
+            IRecentlyUsedFoldersService recentlyUsedDirectoriesService,
             SingleTaskScheduler taskScheduler,
             IWhereService whereService)
         {
             // save dependencies
             _dialogService = dialogService;
             _configurationService = configurationService;
+            _folderService = folderService;
             _imageService = imageService;
             _logService = logService;
+            _opacityService = opacityService;
             _navigationService = navigationService;
             _recentlyUsedDirectoriesService = recentlyUsedDirectoriesService;
             _taskScheduler = taskScheduler;
@@ -52,7 +58,7 @@ namespace PhotoLabel.Wpf
             Images = new ObservableCollection<ImageViewModel>();
             _observers = new List<IObserver>();
             _recentlyUsedBackColors = LoadRecentlyUsedBackColors();
-            RecentlyUsedDirectories = new ObservableCollection<RecentlyUsedDirectoryViewModel>();
+            RecentlyUsedFolders = new ObservableCollection<FolderViewModel>();
             _selectedIndex = -1;
 
             // load the recently used directories
@@ -62,6 +68,37 @@ namespace PhotoLabel.Wpf
 
             // automatically open the last used directory
             OpenLastUsedDirectory();
+        }
+
+        public string BackColorOpacity
+        {
+            get => _selectedImageViewModel?.BackColorOpacity ?? _opacityService.GetOpacity(_configurationService.BackgroundColour);
+            set
+            {
+                _logService.TraceEnter();
+                try
+                {
+                    _logService.Trace("Setting default opacity...");
+                    _configurationService.BackgroundColour = _opacityService.SetOpacity(_configurationService.BackgroundColour, value);
+
+                    _logService.Trace("Checking if there is a selected image view model...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        _logService.Trace("Setting selected image opacity...");
+                        _selectedImageViewModel.BackColor = _opacityService.SetOpacity(_selectedImageViewModel.BackColor, value);
+                    }
+
+                    OnPropertyChanged();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    _logService.TraceExit();
+                }
+            }
         }
 
         public double CaptionSize
@@ -242,7 +279,7 @@ namespace PhotoLabel.Wpf
 
         public bool HasDateTaken => SelectedImageViewModel?.HasDateTaken ?? false;
 
-        public bool HasRecentlyUsedDirectories => RecentlyUsedDirectories.Count > 0;
+        public bool HasRecentlyUsedDirectories => RecentlyUsedFolders.Count > 0;
 
         public bool HasStatus => _selectedImageViewModel != null;
 
@@ -318,6 +355,8 @@ namespace PhotoLabel.Wpf
 
                         // add the recently used colors
                         RecentlyUsedBackColors.Add(colorItem);
+
+                        OnPropertyChanged(nameof(BackColorOpacity));
 
                         break;
                     case "Brightness":
@@ -470,8 +509,34 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
+                _logService.Trace($@"Loading folder ""{selectedPath}""...");
+                var folder = _folderService.Open(selectedPath);
+
+                _logService.Trace($@"Checking if ""{selectedPath}"" has any subfolders...");
+                if (folder.SubFolders.Any())
+                {
+                    _logService.Trace("Creating view model...");
+                    var folderParameter = new ConstructorArgument("folder", folder);
+                    var openFolderViewModel = NinjectKernel.Get<OpenFolderViewModel>(folderParameter);
+
+                    _logService.Trace($@"Prompting for subfolders to include...");
+                    if (_navigationService.ShowDialog<OpenFolderWindow>(openFolderViewModel) != true)
+                    {
+                        _logService.Trace("User cancelled dialog.  Exiting...");
+                        return;
+                    }
+
+                    _logService.Trace("Updating subfolder selections...");
+                    foreach (var subFolderViewModel in openFolderViewModel.SubFolders)
+                    {
+                        folder.SubFolders.First(f => f.Path == subFolderViewModel.Path).IsSelected =
+                            subFolderViewModel.IsSelected;
+                    }
+                }
+
                 _logService.Trace($@"Calling view model method with directory ""{selectedPath}""...");
-                Open(selectedPath);
+                var folderViewModel = Mapper.Map<FolderViewModel>(folder);
+                OpenDirectory(folderViewModel);
             }
             finally
             {
@@ -481,7 +546,7 @@ namespace PhotoLabel.Wpf
 
         public ICommand OpenRecentlyUsedDirectoryCommand => _openRecentlyUsedDirectoryCommand ??
                                                             (_openRecentlyUsedDirectoryCommand =
-                                                                new CommandHandler<string>(OpenDirectory, true));
+                                                                new CommandHandler<FolderViewModel>(OpenDirectory, true));
 
         public string OutputPath
         {
@@ -564,7 +629,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ObservableCollection<RecentlyUsedDirectoryViewModel> RecentlyUsedDirectories { get; }
+        public ObservableCollection<FolderViewModel> RecentlyUsedFolders { get; }
 
         public ImageViewModel SelectedImageViewModel
         {
@@ -591,6 +656,7 @@ namespace PhotoLabel.Wpf
                     }
 
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(BackColorOpacity));
                     OnPropertyChanged(nameof(HasDateTaken));
                     OnPropertyChanged(nameof(HasStatus));
                     OnPropertyChanged(nameof(ImageFormat));
@@ -840,20 +906,6 @@ namespace PhotoLabel.Wpf
         }
 
 
-        private void Open(string directory)
-        {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($@"Opening directory ""{directory}""...");
-                OpenDirectory(directory);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-        }
-
         public ICommand OpenCommand => _openCommand ?? (_openCommand = new CommandHandler(Open, true));
 
         private void OpenLastUsedDirectory()
@@ -862,15 +914,16 @@ namespace PhotoLabel.Wpf
             try
             {
                 _logService.Trace("Getting most recently used directory...");
-                var mostRecentlyUsedDirectory = _recentlyUsedDirectoriesService.GetMostRecentlyUsedDirectory();
-                if (mostRecentlyUsedDirectory == null)
+                var mostRecentlyUsedFolder = _recentlyUsedDirectoriesService.GetMostRecentlyUsedDirectory();
+                if (mostRecentlyUsedFolder == null)
                 {
                     _logService.Trace("There is no most recently used directory.  Exiting...");
                     return;
                 }
 
-                _logService.Trace($@"Opening ""{mostRecentlyUsedDirectory}"" on background thread...");
-                OpenDirectory(mostRecentlyUsedDirectory);
+                _logService.Trace($@"Opening ""{mostRecentlyUsedFolder}"" on background thread...");
+                var folderViewModel = Mapper.Map<FolderViewModel>(mostRecentlyUsedFolder);
+                OpenDirectory(folderViewModel);
             }
             finally
             {
@@ -878,7 +931,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void OpenDirectory(string directory)
+        private void OpenDirectory(FolderViewModel folder)
         {
             var logService = NinjectKernel.Get<ILogService>();
 
@@ -887,13 +940,13 @@ namespace PhotoLabel.Wpf
             {
                 _logService.Trace("Creating view model for progress window...");
                 var progressViewModel = NinjectKernel.Get<ProgressViewModel>();
-                progressViewModel.Directory = directory;
+                progressViewModel.Directory = folder.Path;
 
-                _logService.Trace($@"Opening ""{directory}"" on background thread...");
+                _logService.Trace($@"Opening ""{folder.Path}"" on background thread...");
                 _openCancellationTokenSource?.Cancel();
                 _openCancellationTokenSource = new CancellationTokenSource();
                 new Thread(OpenDirectoryThread).Start(new object[]
-                    {directory, progressViewModel, _openCancellationTokenSource.Token});
+                    {folder, progressViewModel, _openCancellationTokenSource.Token});
 
                 _logService.Trace("Showing progress window...");
                 _navigationService.ShowDialog<ProgressWindow>(progressViewModel);
@@ -907,14 +960,14 @@ namespace PhotoLabel.Wpf
         private void OpenDirectoryThread(object state)
         {
             var stateArray = (object[]) state;
-            var filename = (string) stateArray[0];
+            var folderViewModel = (FolderViewModel) stateArray[0];
             var progressViewModel = (ProgressViewModel) stateArray[1];
             var cancellationToken = (CancellationToken) stateArray[2];
 
             // create dependencies
             var imageService = NinjectKernel.Get<IImageService>();
             var logService = NinjectKernel.Get<ILogService>();
-            var recentlyUsedDirectoriesService = NinjectKernel.Get<IRecentlyUsedDirectoriesService>();
+            var recentlyUsedDirectoriesService = NinjectKernel.Get<IRecentlyUsedFoldersService>();
 
             var stopWatch = Stopwatch.StartNew();
 
@@ -926,8 +979,12 @@ namespace PhotoLabel.Wpf
                 _taskScheduler.Clear();
 
                 if (cancellationToken.IsCancellationRequested) return;
-                logService.Trace($@"Finding image files in ""{filename}""...");
-                var imageFilenames = imageService.Find(filename);
+                logService.Trace($@"Finding image files in ""{folderViewModel.Path}""...");
+                var imageFilenames = (List<string>)imageService.Find(folderViewModel.Path);
+
+                if (cancellationToken.IsCancellationRequested) return;
+                logService.Trace("Searching subfolders for images...");
+                imageFilenames.AddRange(folderViewModel.SubFolders.Where(sf => sf.IsSelected).SelectMany(sf => imageService.Find(Path.Combine(folderViewModel.Path, sf.Path))));
 
                 // set the progress bar
                 if (cancellationToken.IsCancellationRequested) return;
@@ -953,14 +1010,15 @@ namespace PhotoLabel.Wpf
                 logService.Trace($"Adding {images.Count} images to list...");
                 UpdateImages(images);
 
-                logService.Trace($@"Adding ""{filename}"" to recently used directories...");
-                recentlyUsedDirectoriesService.Add(filename);
+                logService.Trace($@"Adding ""{folderViewModel.Path}"" to recently used directories...");
+                var folder = Mapper.Map<Folder>(folderViewModel);
+                recentlyUsedDirectoriesService.Add(folder);
 
                 if (cancellationToken.IsCancellationRequested) return;
-                logService.Trace($@"Checking if there are any images in ""{filename}""...");
+                logService.Trace($@"Checking if there are any images in ""{folderViewModel.Path}""...");
                 if (Images.Count == 0)
                 {
-                    logService.Trace($@"No images were found in ""{filename}"".  Exiting...");
+                    logService.Trace($@"No images were found in ""{folderViewModel.Path}"".  Exiting...");
                     return;
                 }
 
@@ -1286,7 +1344,7 @@ namespace PhotoLabel.Wpf
 
         private delegate void OnClearDelegate();
         private delegate void OnErrorDelegate(Exception error);
-        private delegate void OnNextDelegate(Directory directory);
+        private delegate void OnNextDelegate(Folder directory);
         private delegate void OnPropertyChangedDelegate(string propertyName);
         private delegate void UpdateImagesDelegate(IList<ImageViewModel> images);
         #endregion
@@ -1298,6 +1356,7 @@ namespace PhotoLabel.Wpf
         private readonly IConfigurationService _configurationService;
         private ICommand _deleteCommand;
         private ICommand _exitCommand;
+        private IFolderService _folderService;
         private readonly IImageService _imageService;
         private int _indexToRemove;
         private readonly ILogService _logService;
@@ -1307,9 +1366,10 @@ namespace PhotoLabel.Wpf
         private readonly IList<IObserver> _observers;
         private ICommand _openRecentlyUsedDirectoryCommand;
         private string _outputPath;
-        private readonly IRecentlyUsedDirectoriesService _recentlyUsedDirectoriesService;
+        private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
         private ImageViewModel _selectedImageViewModel;
         private int _selectedIndex;
+        private IOpacityService _opacityService;
         private CancellationTokenSource _openCancellationTokenSource;
         private ICommand _openCommand;
         private readonly SingleTaskScheduler _taskScheduler;
@@ -1381,7 +1441,7 @@ namespace PhotoLabel.Wpf
                 }
 
                 logService.Trace("Clearing list of recently used directories...");
-                RecentlyUsedDirectories.Clear();
+                RecentlyUsedFolders.Clear();
             }
             finally
             {
@@ -1403,6 +1463,8 @@ namespace PhotoLabel.Wpf
                     logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
                     Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
                         error);
+
+                    return;
                 }
 
                 logService.Trace("Logging error...");
@@ -1421,7 +1483,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public void OnNext(Directory directory)
+        public void OnNext(Folder directory)
         {
             var logService = NinjectKernel.Get<ILogService>();
 
@@ -1438,10 +1500,12 @@ namespace PhotoLabel.Wpf
                 }
 
                 logService.Trace($@"Copying ""{directory.Path}"" to view model...");
-                var viewModel = Mapper.Map<RecentlyUsedDirectoryViewModel>(directory);
+                var viewModel = Mapper.Map<FolderViewModel>(directory);
 
                 logService.Trace($@"Adding ""{directory.Path}"" to recently used directories...");
-                RecentlyUsedDirectories.Add(viewModel);
+                RecentlyUsedFolders.Add(viewModel);
+
+                OnPropertyChanged(nameof(HasRecentlyUsedDirectories));
             }
             finally
             {

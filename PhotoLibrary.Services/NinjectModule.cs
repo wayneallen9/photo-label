@@ -9,11 +9,13 @@ namespace PhotoLabel.Services
         {
             Bind<IDialogService>().To<DialogService>().InSingletonScope();
             Bind<IConfigurationService>().To<ConfigurationService>().InSingletonScope();
+            Bind<IFolderService>().To<FolderService>().InSingletonScope();
             Bind<IImageMetadataService>().To<ImageMetadataService>().InSingletonScope();
             Bind<IImageService>().To<ImageService>().InSingletonScope();
             Bind<IIndentationService>().To<IndentationService>().InThreadScope();
             Bind<ILogService>().To<LogService>().InTransientScope();
-            Bind<IRecentlyUsedDirectoriesService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
+            Bind<IOpacityService>().To<OpacityService>().InSingletonScope();
+            Bind<IRecentlyUsedFoldersService>().To<RecentlyUsedDirectoriesService>().InSingletonScope();
             Bind<ILineWrapService>().To<LineWrapService>().InSingletonScope();
             Bind<INavigationService>().To<NavigationService>().InSingletonScope();
             Bind<IWhereService>().To<WhereService>().InSingletonScope();
