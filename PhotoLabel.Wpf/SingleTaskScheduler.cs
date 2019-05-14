@@ -3,9 +3,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Shared.Attributes;
 
 namespace PhotoLabel.Wpf
 {
+    [Singleton]
     public class SingleTaskScheduler : TaskScheduler, IDisposable
     {
         #region variables

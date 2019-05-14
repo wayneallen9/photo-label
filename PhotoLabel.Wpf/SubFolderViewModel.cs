@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
-using PhotoLabel.DependencyInjection;
 using PhotoLabel.Services;
 using PhotoLabel.Wpf.Annotations;
 using PhotoLabel.Wpf.Properties;
+using Shared;
 
 namespace PhotoLabel.Wpf
 {
@@ -19,8 +15,8 @@ namespace PhotoLabel.Wpf
         public SubFolderViewModel()
         {
             // get dependencies
-            _dialogService = NinjectKernel.Get<IDialogService>();
-            _logService = NinjectKernel.Get<ILogService>();
+            _dialogger = Injector.Get<IDialogService>();
+            _logger = Injector.Get<ILogger>();
         }
 
         public bool IsSelected
@@ -28,28 +24,26 @@ namespace PhotoLabel.Wpf
             get => _isSelected;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(IsSelected)} has changed...");
-                    if (_isSelected == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(IsSelected)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(IsSelected)} has changed...");
+                        if (_isSelected == value)
+                        {
+                            logger.Trace($"Value of {nameof(IsSelected)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(IsSelected)} to {value}...");
+                        _isSelected = value;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(IsSelected)} to {value}...");
-                    _isSelected = value;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
 
             }
@@ -57,51 +51,42 @@ namespace PhotoLabel.Wpf
 
         protected void OnError(Exception error)
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
-                        error);
+                    logger.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logger.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
+                            error);
 
-                    return;
+                        return;
+                    }
+
+                    logger.Trace("Logging error...");
+                    logger.Error(error);
+
+                    logger.Trace($"Notifying user of error...");
+                    _dialogger.Error(Resources.ErrorText);
                 }
-
-                logService.Trace("Logging error...");
-                logService.Error(error);
-
-                logService.Trace($"Notifying user of error...");
-                _dialogService.Error(Resources.ErrorText);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
         [NotifyPropertyChangedInvocator]
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
+                logger.Trace("Checking if running on UI thread...");
                 if (Application.Current?.Dispatcher.CheckAccess() == false)
                 {
-                    logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    logger.Trace("Not running on UI thread.  Delegating to UI thread...");
                     Application.Current.Dispatcher.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged),
                         DispatcherPriority.ApplicationIdle,
                         propertyName);
@@ -109,12 +94,8 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
-                logService.Trace("Running on UI thread.  Executing...");
+                logger.Trace("Running on UI thread.  Executing...");
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            }
-            finally
-            {
-                logService.TraceExit();
             }
         }
 
@@ -123,28 +104,26 @@ namespace PhotoLabel.Wpf
             get => _path;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Path)} has changed...");
-                    if (_path == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Path)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Path)} has changed...");
+                        if (_path == value)
+                        {
+                            logger.Trace($"Value of {nameof(Path)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Path)} to {value}...");
+                        _path = value;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Path)} to {value}...");
-                    _path = value;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -156,9 +135,9 @@ namespace PhotoLabel.Wpf
 
         #region variables
 
-        private readonly IDialogService _dialogService;
+        private readonly IDialogService _dialogger;
         private bool _isSelected;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private string _path;
 
         #endregion

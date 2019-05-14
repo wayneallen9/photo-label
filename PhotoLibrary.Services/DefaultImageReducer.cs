@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
+using Shared;
 
 namespace PhotoLabel.Services
 {
@@ -10,37 +11,30 @@ namespace PhotoLabel.Services
             ImageFormat imageFormat,
             IConfigurationService configurationService,
             IImageService imageService,
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
             _imageFormat = imageFormat;
             _configurationService = configurationService;
             _imageService = imageService;
-            _logService = logService;
+            _logger = logger;
         }
 
         public Stream Reduce(Bitmap image)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Starting with current image size...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Starting with current image size...");
                 return Reduce(image, 100, 1, 100);
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private Stream Reduce(Bitmap image, long currentRatio, long minRatio, long maxRatio)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Reducing image quality...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Reducing image quality...");
                 using (var reducedQualityStream = _imageService.ReduceQuality(image, currentRatio)) { 
-                    _logService.Trace("Converting it to target format...");
+                    logger.Trace("Converting it to target format...");
                     var reducedQualityImage = (Bitmap)Image.FromStream(reducedQualityStream);
                     var memoryStream = new MemoryStream();
                     reducedQualityImage.Save(memoryStream, _imageFormat == ImageFormat.Bmp ? System.Drawing.Imaging.ImageFormat.Bmp : System.Drawing.Imaging.ImageFormat.Png);
@@ -82,10 +76,7 @@ namespace PhotoLabel.Services
 
                     return Reduce(image, currentRatio, minRatio, maxRatio);
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
@@ -94,7 +85,7 @@ namespace PhotoLabel.Services
         private readonly IConfigurationService _configurationService;
         private readonly ImageFormat _imageFormat;
         private readonly IImageService _imageService;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
 
         #endregion
     }

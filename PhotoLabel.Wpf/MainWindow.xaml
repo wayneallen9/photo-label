@@ -198,6 +198,7 @@
                                     <Button.Resources>
                                         <Style TargetType="{x:Type Button}">
                                             <Setter Property="Margin" Value="0,0,0,5"></Setter>
+                                            <Setter Property="Padding" Value="2"></Setter>
                                         </Style>
                                     </Button.Resources>
                                 </Button>

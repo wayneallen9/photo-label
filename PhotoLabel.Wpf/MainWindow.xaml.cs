@@ -1,8 +1,8 @@
-﻿using PhotoLabel.Services;
-using System;
+﻿using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using Shared;
 
 namespace PhotoLabel.Wpf
 {
@@ -14,42 +14,40 @@ namespace PhotoLabel.Wpf
         #region variables
 
         private CancellationTokenSource _loadPreviewCancellationTokenSource;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         #endregion
 
         public MainWindow(
-            ILogService logService)
+            ILogger logService)
         {
             // save dependencies
-            _logService = logService;
+            _logger = logService;
 
             InitializeComponent();
         }
 
         private void ListViewImages_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var listViewImages = (ListView) sender;
+            var listViewImages = (ListView)sender;
 
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if there are any selected images...");
-                if (e.AddedItems.Count == 0)
+                try
                 {
-                    _logService.Trace("There are no selected images.  Exiting...");
-                    return;
-                }
+                    logger.Trace("Checking if there are any selected images...");
+                    if (e.AddedItems.Count == 0)
+                    {
+                        logger.Trace("There are no selected images.  Exiting...");
+                        return;
+                    }
 
-                _logService.Trace("Ensuring that selected image is visible...");
-                listViewImages.ScrollIntoView(e.AddedItems[0]);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    logger.Trace("Ensuring that selected image is visible...");
+                    listViewImages.ScrollIntoView(e.AddedItems[0]);
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
@@ -57,46 +55,44 @@ namespace PhotoLabel.Wpf
         {
             var listViewImages = (ListView)sender;
 
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Cancelling any in progress preview loads...");
-                _loadPreviewCancellationTokenSource?.Cancel();
-                _loadPreviewCancellationTokenSource = new CancellationTokenSource();
-
-                _logService.Trace("Getting bounds of list view...");
-                var listViewBounds = new Rect(0, 0, listViewImages.ActualWidth, listViewImages.ActualHeight);
-
-                _logService.Trace("Finding all visible images...");
-                for (var p=listViewImages.Items.Count; p > 0;)
+                try
                 {
-                    // get the container for the item
-                    var item = listViewImages.Items[--p];
-                    var container = (ListViewItem) listViewImages.ItemContainerGenerator.ContainerFromItem(item);
+                    logger.Trace("Cancelling any in progress preview loads...");
+                    _loadPreviewCancellationTokenSource?.Cancel();
+                    _loadPreviewCancellationTokenSource = new CancellationTokenSource();
 
-                    // is the element visibly?
-                    if (!container.IsVisible) continue;
+                    logger.Trace("Getting bounds of list view...");
+                    var listViewBounds = new Rect(0, 0, listViewImages.ActualWidth, listViewImages.ActualHeight);
 
-                    // get the bounds of the item container
-                    var itemBounds = container.TransformToAncestor(listViewImages)
-                        .TransformBounds(new Rect(0, 0, container.ActualWidth, container.ActualHeight));
+                    logger.Trace("Finding all visible images...");
+                    for (var p = listViewImages.Items.Count; p > 0;)
+                    {
+                        // get the container for the item
+                        var item = listViewImages.Items[--p];
+                        var container = (ListViewItem)listViewImages.ItemContainerGenerator.ContainerFromItem(item);
 
-                    // is it outside the bounds?
-                    if (!listViewBounds.Contains(itemBounds.TopLeft) &&
-                        !listViewBounds.Contains(itemBounds.BottomRight)) continue;
+                        // is the element visibly?
+                        if (!container.IsVisible) continue;
 
-                    // load this image
-                    var imageViewModel = (ImageViewModel) container.DataContext;
-                    imageViewModel.LoadPreview(false, _loadPreviewCancellationTokenSource.Token);
+                        // get the bounds of the item container
+                        var itemBounds = container.TransformToAncestor(listViewImages)
+                            .TransformBounds(new Rect(0, 0, container.ActualWidth, container.ActualHeight));
+
+                        // is it outside the bounds?
+                        if (!listViewBounds.Contains(itemBounds.TopLeft) &&
+                            !listViewBounds.Contains(itemBounds.BottomRight)) continue;
+
+                        // load this image
+                        var imageViewModel = (ImageViewModel)container.DataContext;
+                        imageViewModel.LoadPreview(false, _loadPreviewCancellationTokenSource.Token);
+                    }
                 }
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                _logService.TraceExit();
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
@@ -104,26 +100,24 @@ namespace PhotoLabel.Wpf
         {
             var listViewImages = (ListView)sender;
 
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if there are any selected images...");
-                if (listViewImages.SelectedItem == null)
+                try
                 {
-                    _logService.Trace("There are no selected images.  Exiting...");
-                    return;
-                }
+                    logger.Trace("Checking if there are any selected images...");
+                    if (listViewImages.SelectedItem == null)
+                    {
+                        logger.Trace("There are no selected images.  Exiting...");
+                        return;
+                    }
 
-                _logService.Trace("Ensuring that selected image is visible...");
-                listViewImages.ScrollIntoView(listViewImages.SelectedItem);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    logger.Trace("Ensuring that selected image is visible...");
+                    listViewImages.ScrollIntoView(listViewImages.SelectedItem);
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
     }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Shared;
+using Shared.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
@@ -10,14 +12,15 @@ using Color = System.Windows.Media.Color;
 
 namespace PhotoLabel.Services
 {
+    [Singleton]
     public class ConfigurationService : IConfigurationService
     {
         public ConfigurationService(
-            ILogService logService,
+            ILogger logger,
             IXmlFileSerialiser xmlFileSerialiser)
         {
             // save dependency injections
-            _logService = logService;
+            _logger = logger;
             _xmlFileSerialiser = xmlFileSerialiser;
 
             // load the values from file
@@ -29,11 +32,21 @@ namespace PhotoLabel.Services
             get => _configurationModel.AppendDateTakenToCaption;
             set
             {
-                // update the value
-                _configurationModel.AppendDateTakenToCaption = value;
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(AppendDateTakenToCaption)} has changed...");
+                    if (_configurationModel.AppendDateTakenToCaption == value)
+                    {
+                        logger.Trace($"Value of {nameof(AppendDateTakenToCaption)} has not changed.  Exiting...");
+                        return;
+                    }
 
-                // save the change
-                Save();
+                    logger.Trace($"Setting new value of {nameof(AppendDateTakenToCaption)}...");
+                    _configurationModel.AppendDateTakenToCaption = value;
+
+                    logger.Trace($"Saving new value of {nameof(AppendDateTakenToCaption)}...");
+                    Save();
+                }
             }
         }
 
@@ -42,18 +55,19 @@ namespace PhotoLabel.Services
             get => _configurationModel.BackgroundColour ?? Colors.Transparent;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Setting new value of {nameof(BackgroundColour)}...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace($"Checking if value of {nameof(BackgroundColour)} has changed...");
+                    if (_configurationModel.BackgroundColour == value)
+                    {
+                        logger.Trace($"Value of {nameof(BackgroundColour)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($"Setting new value of {nameof(BackgroundColour)}...");
                     _configurationModel.BackgroundColour = value;
 
-                    _logService.Trace($"Persisting new value of {nameof(BackgroundColour)}...");
+                    logger.Trace($"Persisting new value of {nameof(BackgroundColour)}...");
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
                 }
             }
         }
@@ -63,11 +77,21 @@ namespace PhotoLabel.Services
             get => _configurationModel.CaptionAlignment;
             set
             {
-                // update the value
-                _configurationModel.CaptionAlignment = value;
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(CaptionAlignment)} has changed...");
+                    if (_configurationModel.CaptionAlignment == value)
+                    {
+                        logger.Trace($"Value of {nameof(CaptionAlignment)} has not changed.  Exiting...");
+                        return;
+                    }
 
-                // save the change
-                Save();
+                    // update the value
+                    _configurationModel.CaptionAlignment = value;
+
+                    // save the change
+                    Save();
+                }
             }
         }
 
@@ -76,12 +100,23 @@ namespace PhotoLabel.Services
             get => _configurationModel.CaptionSize ?? 12;
             set
             {
-                // save the new size
-                _configurationModel.CaptionSize = value;
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(CaptionSize)} has changed...");
+                    if (Math.Abs((_configurationModel.CaptionSize ?? 12) - value) < double.Epsilon)
+                    {
+                        logger.Trace($"Value of {nameof(CaptionSize)} has not changed.  Exiting...");
+                        return;
+                    }
 
-                Save();
+                    // save the new size
+                    _configurationModel.CaptionSize = value;
+
+                    Save();
+                }
             }
         }
+
         public Color Colour
         {
             get => _configurationModel.Colour ?? Colors.White;
@@ -139,10 +174,8 @@ namespace PhotoLabel.Services
             get => _configurationModel.FontType;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace("Checking new value is valid...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace("Checking new value is valid...");
                     if (value != "%" && value != "pts") throw new ArgumentOutOfRangeException(nameof(FontType));
 
                     // update the value
@@ -150,10 +183,6 @@ namespace PhotoLabel.Services
 
                     // persist the change
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
                 }
             }
         }
@@ -163,18 +192,12 @@ namespace PhotoLabel.Services
             get => _configurationModel.ImageFormat;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($@"Setting value of {nameof(ImageFormat)} to {value}...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace($@"Setting value of {nameof(ImageFormat)} to {value}...");
                     _configurationModel.ImageFormat = value;
 
-                    _logService.Trace("Saving change...");
+                    logger.Trace("Saving change...");
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
                 }
             }
         }
@@ -184,18 +207,12 @@ namespace PhotoLabel.Services
             get => _configurationModel.MaxImageSize;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Setting value of {nameof(MaxImageSize)} to {value}...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace($"Setting value of {nameof(MaxImageSize)} to {value}...");
                     _configurationModel.MaxImageSize = value;
 
-                    _logService.Trace("Saving change...");
+                    logger.Trace("Saving change...");
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
                 }
             }
         }
@@ -205,18 +222,13 @@ namespace PhotoLabel.Services
             get => _configurationModel.OutputPath;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Saving new value for {nameof(OutputPath)}...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace($"Saving new value for {nameof(OutputPath)}...");
                     _configurationModel.OutputPath = value;
 
-                    _logService.Trace("Persisting new value...");
+                    logger.Trace("Persisting new value...");
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                
                 }
             }
         }
@@ -226,18 +238,13 @@ namespace PhotoLabel.Services
             get => _configurationModel.WindowState;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Setting new value of {nameof(WindowState)} to {value}...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace($"Setting new value of {nameof(WindowState)} to {value}...");
                     _configurationModel.WindowState = value;
 
-                    _logService.Trace($"Persisting new value of {nameof(WindowState)}...");
+                    logger.Trace($"Persisting new value of {nameof(WindowState)}...");
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                
                 }
             }
         }
@@ -255,58 +262,47 @@ namespace PhotoLabel.Services
 
         private string GetFilename()
         {
-            _logService.TraceEnter();
-            try
-            {
-                // build the filename for the recently used files
+            using (var logger = _logger.Block()) {
+                logger.Trace("Building path to configuration file...");
                 return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Photo Label",
                     "Configuration.xml");
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private Models.Configuration Load()
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if configuration has already been loaded...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Checking if configuration has already been loaded...");
                 if (_configurationModel != null)
                 {
-                    _logService.Trace("Configuration has already been loaded.  Returning...");
+                    logger.Trace("Configuration has already been loaded.  Returning...");
                     return _configurationModel;
                 }
 
-                _logService.Trace("Getting path to configuration file...");
+                logger.Trace("Getting path to configuration file...");
                 var filename = GetFilename();
 
-                _logService.Trace($@"Checking if configuration file ""{filename}"" exists...");
+                logger.Trace($@"Checking if configuration file ""{filename}"" exists...");
                 if (!File.Exists(filename))
                 {
-                    _logService.Trace($@"Configuration file ""{filename}"" does not exist.  Creating configuration...");
+                    logger.Trace($@"Configuration file ""{filename}"" does not exist.  Creating configuration...");
                     return CreateConfigurationModel();
                 }
                 else
                 {
-                    try
-                    {
+                    try { 
                         return _xmlFileSerialiser.Deserialise<Models.Configuration>(filename);
                     }
                     catch (Exception ex)
                     {
                         // the configuration could not be loaded, default it
-                        _logService.Error(ex);
+                        logger.Error(ex);
 
                         return CreateConfigurationModel();
                     }
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
@@ -315,18 +311,13 @@ namespace PhotoLabel.Services
             get => _configurationModel.RecentlyUsedBackColors;
             set
             {
-                _logService.TraceEnter();
-                try
-                {
-                    _logService.Trace($"Setting new value of {nameof(RecentlyUsedBackColors)}...");
+                using (var logger = _logger.Block()) {
+                    logger.Trace($"Setting new value of {nameof(RecentlyUsedBackColors)}...");
                     _configurationModel.RecentlyUsedBackColors = value.ToList();
 
-                    _logService.Trace($"Persisting new value of {nameof(WindowState)}...");
+                    logger.Trace($"Persisting new value of {nameof(WindowState)}...");
                     Save();
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                
                 }
 
             }
@@ -334,26 +325,21 @@ namespace PhotoLabel.Services
 
         private void Save()
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Getting path to configuration file...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Getting path to configuration file...");
                 var filename = GetFilename();
 
-                _logService.Trace($@"Getting directory for ""{filename}""...");
+                logger.Trace($@"Getting directory for ""{filename}""...");
                 var directory = Path.GetDirectoryName(filename);
                 if (directory != null)
                 {
-                    _logService.Trace($"Ensuring that all parent directories exist for \"{filename}\"...");
+                    logger.Trace($"Ensuring that all parent directories exist for \"{filename}\"...");
                     Directory.CreateDirectory(directory);
                 }
 
-                _logService.Trace($"Saving configuration to \"{filename}\"...");
+                logger.Trace($"Saving configuration to \"{filename}\"...");
                 _xmlFileSerialiser.Serialise(_configurationModel, filename);
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
@@ -362,7 +348,7 @@ namespace PhotoLabel.Services
         #region variables
 
         private readonly Models.Configuration _configurationModel;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private readonly IXmlFileSerialiser _xmlFileSerialiser;
 
         #endregion

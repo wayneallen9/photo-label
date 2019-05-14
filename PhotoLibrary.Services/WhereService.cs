@@ -1,35 +1,32 @@
 ﻿using System.Diagnostics;
+using Shared;
+using Shared.Attributes;
 
 namespace PhotoLabel.Services
 {
+    [Singleton]
     public class WhereService : IWhereService
     {
         #region variables
 
         private readonly IConfigurationService _configurationService;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         #endregion
 
         public WhereService(
             IConfigurationService configurationService,
-            ILogService logService)
+            ILogger logger)
         {
             _configurationService = configurationService;
-            _logService = logService;
+            _logger = logger;
         }
 
         public void Open(float latitude, float longitude)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Opening location at {latitude}, {longitude}...");
+            using (var logger = _logger.Block()) {
+                logger.Trace($"Opening location at {latitude}, {longitude}...");
                 Process.Start(string.Format(_configurationService.WhereUrl, latitude, longitude));
 
-            }
-            finally
-            {
-                _logService.TraceEnter();
             }
         }
     }

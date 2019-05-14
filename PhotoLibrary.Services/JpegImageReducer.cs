@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Shared;
 
 namespace PhotoLabel.Services
 {
@@ -13,34 +14,27 @@ namespace PhotoLabel.Services
         public JpegImageReducer(
             IConfigurationService configurationService,
             IImageService imageService,
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
             _configurationService = configurationService;
             _imageService = imageService;
-            _logService = logService;
+            _logger = logger;
         }
 
         public Stream Reduce(Bitmap image)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Starting with 100% quality...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Starting with 100% quality...");
                 return Reduce(image, 100, 1, 100);
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
 
         }
 
         private Stream Reduce(Bitmap image, byte currentQuality, byte minQuality, int maxQuality)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // reduce the size of the image
                 var memoryStream = _imageService.ReduceQuality(image, currentQuality);
 
@@ -74,10 +68,7 @@ namespace PhotoLabel.Services
                 currentQuality = (byte)((maxQuality - currentQuality) / 2 + currentQuality);
 
                 return Reduce(image, currentQuality, minQuality, maxQuality);
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
@@ -85,7 +76,7 @@ namespace PhotoLabel.Services
 
         private readonly IConfigurationService _configurationService;
         private readonly IImageService _imageService;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
 
         #endregion
     }

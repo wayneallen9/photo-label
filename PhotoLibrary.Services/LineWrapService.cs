@@ -3,19 +3,23 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Shared;
+using Shared.Attributes;
+
 namespace PhotoLabel.Services
 {
+    [Singleton]
     public class LineWrapService : ILineWrapService
     {
         #region variables
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         #endregion
 
         public LineWrapService(
-            ILogService logService)
+            ILogger logger)
         {
             // save dependency injections
-            _logService = logService;
+            _logger = logger;
         }
 
         public List<string> WrapToFitFromBottom(Graphics graphics, Size imageSize, string source, Font font)
@@ -23,9 +27,7 @@ namespace PhotoLabel.Services
             var lineNumber = 0;
             var lines = new List<string>(new[] { source });
 
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 while (lineNumber > -1)
                 {
                     while (graphics.MeasureString(lines[lineNumber], font).Width > imageSize.Width)
@@ -57,10 +59,7 @@ namespace PhotoLabel.Services
                 }
 
                 return lines.SelectMany(s => s.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).Select(s1 => s1.Trim())).ToList();
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
@@ -69,13 +68,11 @@ namespace PhotoLabel.Services
             var lineNumber = 0;
             var lines = new List<string>(new[] { source });
 
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if a caption has been specified...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Checking if a caption has been specified...");
                 if (string.IsNullOrEmpty(source))
                 {
-                    _logService.Trace("No caption has been specified.  Exiting...");
+                    logger.Trace("No caption has been specified.  Exiting...");
                     return new List<string>();
                 }
 
@@ -103,10 +100,7 @@ namespace PhotoLabel.Services
                 }
 
                 return lines.SelectMany(s => s.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).Select(s1 => s1.Trim())).ToList();
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
     }

@@ -1,5 +1,5 @@
-﻿using PhotoLabel.DependencyInjection;
-using PhotoLabel.Services;
+﻿using PhotoLabel.Services;
+using Shared;
 using System;
 using System.Windows;
 using System.Windows.Threading;
@@ -16,11 +16,15 @@ namespace PhotoLabel.Wpf
         {
             base.OnStartup(e);
 
+            // create the dependency injections
+            Injector.Bind(GetType(), typeof(ConfigurationService));
+            Injector.Bind<SingleTaskScheduler>();
+
             // create the main window
-            var mainWindow = NinjectKernel.Get<MainWindow>();
+            var mainWindow = Injector.Get<MainWindow>();
 
             // assign the view model to the window
-            var mainWindowViewModel = NinjectKernel.Get<MainWindowViewModel>();
+            var mainWindowViewModel = Injector.Get<MainWindowViewModel>();
             mainWindow.DataContext = mainWindowViewModel;
             
             // show the window
@@ -30,28 +34,28 @@ namespace PhotoLabel.Wpf
         private void Application_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
+            var logService = Injector.Get<ILogger>();
 
-            logService.TraceEnter();
-            try
+            using (var logger = logService.Block())
             {
-                logService.Error(e.Exception);
+                try
+                {
+                    logger.Error(e.Exception);
 
-                MessageBox.Show(
-                    "An unexpected error was encountered completing an operation.  The error details can be found in the application log.",
-                    "Unexpected Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                // flag that the exception has been handled
-                e.Handled = true;
-
-                logService.TraceExit();
+                    MessageBox.Show(
+                        "An unexpected error was encountered completing an operation.  The error details can be found in the application log.",
+                        "Unexpected Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    // flag that the exception has been handled
+                    e.Handled = true;
+                }
             }
         }
     }

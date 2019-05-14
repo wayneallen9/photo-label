@@ -1,23 +1,24 @@
 ﻿using PhotoLabel.Services.Models;
 using System.Collections.Generic;
 using System.IO;
+using Shared;
+using Shared.Attributes;
 
 namespace PhotoLabel.Services
 {
+    [Singleton]
     public class FolderService : IFolderService
     {
         public FolderService(
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
-            _logService = logService;
+            _logger = logger;
         }
 
         private string GetCaption(string path)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // was a directory provided?
                 if (string.IsNullOrWhiteSpace(path)) return string.Empty;
 
@@ -29,27 +30,22 @@ namespace PhotoLabel.Services
                 var branch = path.Substring(path.LastIndexOf(Path.DirectorySeparatorChar));
 
                 return $"{root}...{branch}";
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
 
         public Folder Open(string path)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($@"Checking if ""{path}"" exists...");
+            using (var logger = _logger.Block()) {
+                logger.Trace($@"Checking if ""{path}"" exists...");
                 if (!Directory.Exists(path))
                 {
-                    _logService.Trace($@"""{path}"" does not exist.  Throwing exception...");
+                    logger.Trace($@"""{path}"" does not exist.  Throwing exception...");
                     throw new DirectoryNotFoundException();
                 }
 
-                _logService.Trace($@"Creating path for ""{path}""...");
+                logger.Trace($@"Creating path for ""{path}""...");
                 var folder = new Folder
                 {
                     Caption = GetCaption(path),
@@ -57,12 +53,12 @@ namespace PhotoLabel.Services
                     SubFolders = new List<SubFolder>()
                 };
 
-                _logService.Trace($@"Getting subfolders of ""{path}""...");
+                logger.Trace($@"Getting subfolders of ""{path}""...");
                 var subfolders = Directory.EnumerateDirectories(path);
 
                 foreach (var subfolder in subfolders)
                 {
-                    _logService.Trace($@"Adding ""{subfolder}"" to list of subfolders...");
+                    logger.Trace($@"Adding ""{subfolder}"" to list of subfolders...");
                     folder.SubFolders.Add(new SubFolder
                     {
                         Path = subfolder.Substring(path.Length + 1)
@@ -70,16 +66,13 @@ namespace PhotoLabel.Services
                 }
 
                 return folder;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         #region variables
 
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         #endregion
     }
 }

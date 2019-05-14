@@ -9,7 +9,7 @@ Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "PhotoLabel.Setup", "PhotoLa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.Wpf", "PhotoLabel.Wpf\PhotoLabel.Wpf.csproj", "{59208F8D-F47E-4013-867D-284FB08CFE44}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhotoLabel.DependencyInjection", "PhotoLabel.DependencyInjection\PhotoLabel.DependencyInjection.csproj", "{5E530134-84B5-43B6-B035-3DC7EB7B12AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{A0B5EC3E-7925-498A-9AD0-0BE090EF12A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,10 +27,10 @@ Global
 		{59208F8D-F47E-4013-867D-284FB08CFE44}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59208F8D-F47E-4013-867D-284FB08CFE44}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{59208F8D-F47E-4013-867D-284FB08CFE44}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5E530134-84B5-43B6-B035-3DC7EB7B12AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5E530134-84B5-43B6-B035-3DC7EB7B12AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5E530134-84B5-43B6-B035-3DC7EB7B12AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5E530134-84B5-43B6-B035-3DC7EB7B12AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0B5EC3E-7925-498A-9AD0-0BE090EF12A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0B5EC3E-7925-498A-9AD0-0BE090EF12A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0B5EC3E-7925-498A-9AD0-0BE090EF12A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0B5EC3E-7925-498A-9AD0-0BE090EF12A3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

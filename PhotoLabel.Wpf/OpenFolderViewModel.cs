@@ -1,15 +1,14 @@
-﻿using System;
-using PhotoLabel.DependencyInjection;
-using PhotoLabel.Services;
+﻿using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
-using System.Collections.Generic;
+using PhotoLabel.Wpf.Properties;
+using Shared;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using PhotoLabel.Wpf.Properties;
 
 namespace PhotoLabel.Wpf
 {
@@ -18,11 +17,11 @@ namespace PhotoLabel.Wpf
         public OpenFolderViewModel(
             Folder folder,
             IDialogService dialogService,
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
             _dialogService = dialogService;
-            _logService = logService;
+            _logger = logger;
 
             // initialise variables
             _includeSubFolders = true;
@@ -31,16 +30,15 @@ namespace PhotoLabel.Wpf
 
         private ObservableCollection<SubFolderViewModel> CreateSubFolders(Folder folder)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Creating observable collection...");
+                logger.Trace("Creating observable collection...");
                 var observableCollection = new ObservableCollection<SubFolderViewModel>();
 
-                _logService.Trace($"Creating {folder.SubFolders.Count} subfolders...");
+                logger.Trace($"Creating {folder.SubFolders.Count} subfolders...");
                 foreach (var subfolder in folder.SubFolders)
                 {
-                    var subFolderViewModel = NinjectKernel.Get<SubFolderViewModel>();
+                    var subFolderViewModel = Injector.Get<SubFolderViewModel>();
                     subFolderViewModel.Path = subfolder.Path;
                     subFolderViewModel.IsSelected = true;
 
@@ -49,27 +47,21 @@ namespace PhotoLabel.Wpf
 
                 return observableCollection;
             }
-            finally
-            {
-                _logService.TraceExit();
-            }
         }
 
         private void Deselect()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($"Deselecting {SubFolders.Count} subfolders...");
-                foreach (var subfolder in SubFolders) subfolder.IsSelected = false;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace($"Deselecting {SubFolders.Count} subfolders...");
+                    foreach (var subfolder in SubFolders) subfolder.IsSelected = false;
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -80,52 +72,48 @@ namespace PhotoLabel.Wpf
             get => _includeSubFolders;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(IncludeSubFolders)} has changed...");
-                    if (_includeSubFolders == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(IncludeSubFolders)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(IncludeSubFolders)} has changed...");
+                        if (_includeSubFolders == value)
+                        {
+                            logger.Trace($"Value of {nameof(IncludeSubFolders)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(IncludeSubFolders)} to {value}...");
+                        _includeSubFolders = value;
+
+                        OnPropertyChanged();
+                        (_deselectCommand as ICommandHandler)?.Notify();
+                        (_selectCommand as ICommandHandler)?.Notify();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(IncludeSubFolders)} to {value}...");
-                    _includeSubFolders = value;
-
-                    OnPropertyChanged();
-                    (_deselectCommand as ICommandHandler)?.Notify();
-                    (_selectCommand as ICommandHandler)?.Notify();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
 
         private void Ok(Window window)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Setting the dialog result...");
-                window.DialogResult = true;
+                try
+                {
+                    logger.Trace("Setting the dialog result...");
+                    window.DialogResult = true;
 
-                _logService.Trace("Closing window...");
-                window.Close();
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    logger.Trace("Closing window...");
+                    window.Close();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -134,45 +122,36 @@ namespace PhotoLabel.Wpf
 
         protected void OnError(Exception error)
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
-                        error);
+                    logService.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
+                            error);
 
-                    return;
+                        return;
+                    }
+
+                    logService.Trace("Logging error...");
+                    logService.Error(error);
+
+                    logService.Trace("Notifying user of error...");
+                    _dialogService.Error(Resources.ErrorText);
                 }
-
-                logService.Trace("Logging error...");
-                logService.Error(error);
-
-                logService.Trace($"Notifying user of error...");
-                _dialogService.Error(Resources.ErrorText);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
                 logService.Trace("Checking if running on UI thread...");
                 if (Application.Current?.Dispatcher.CheckAccess() == false)
@@ -188,27 +167,21 @@ namespace PhotoLabel.Wpf
                 logService.Trace("Running on UI thread.  Executing...");
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
-            finally
-            {
-                logService.TraceExit();
-            }
         }
 
         private void Select()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($"Selecting {SubFolders.Count} subfolders...");
-                foreach (var subfolder in SubFolders) subfolder.IsSelected = true;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace($"Selecting {SubFolders.Count} subfolders...");
+                    foreach (var subfolder in SubFolders) subfolder.IsSelected = true;
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -216,26 +189,24 @@ namespace PhotoLabel.Wpf
 
         private bool SelectEnabled()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if user can select subfolders...");
-                return IncludeSubFolders;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-                return false;
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace("Checking if user can select subfolders...");
+                    return IncludeSubFolders;
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                    return false;
+                }
             }
         }
 
         public ObservableCollection<SubFolderViewModel> SubFolders { get; }
 
-        public string Title => $"{Properties.Resources.ApplicationName} - [Open]";
+        public string Title => $"{Resources.ApplicationName} - [Open]";
 
         #region delegates
         private delegate void OnErrorDelegate(Exception error);
@@ -247,7 +218,7 @@ namespace PhotoLabel.Wpf
         private ICommand _deselectCommand;
         private readonly IDialogService _dialogService;
         private bool _includeSubFolders;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private ICommand _okCommand;
         private ICommand _selectCommand;
 

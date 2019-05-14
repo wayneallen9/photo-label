@@ -1,70 +1,58 @@
 ﻿using System.Windows;
 using System.Windows.Forms;
+using Shared;
+using Shared.Attributes;
 
 namespace PhotoLabel.Services
 {
+    [Singleton]
     public class DialogService : IDialogService
     {
         #region variables
 
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         #endregion
 
         public DialogService(
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
-            _logService = logService;
+            _logger = logger;
         }
 
         public string Browse(string description, string defaultFolder)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 using (var folderBrowserDialog = new FolderBrowserDialog
                 {
                     Description = description,
                     SelectedPath = defaultFolder
                 })
                 {
-                    _logService.Trace("Prompting user for folder...");
+                    logger.Trace("Prompting user for folder...");
                     return folderBrowserDialog.ShowDialog() != DialogResult.OK
                         ? null
                         : folderBrowserDialog.SelectedPath;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public bool Confirm(string text, string caption)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Displaying confirmation message to user...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Displaying confirmation message to user...");
                 return System.Windows.MessageBox.Show(text, caption, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public void Error(string text)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Displaying error message to user...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Displaying error message to user...");
                 System.Windows.MessageBox.Show(text, @"An Unexpected Error Occurred", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
     }

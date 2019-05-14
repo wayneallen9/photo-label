@@ -1,7 +1,6 @@
-﻿using System;
+﻿using Shared;
+using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -11,28 +10,30 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Media.Imaging;
+using Shared.Attributes;
 
 namespace PhotoLabel.Services
 {
+    [Singleton]  
     public class ImageService : IImageService
     {
         #region variables
 
         private readonly IConfigurationService _configurationService;
         private readonly ILineWrapService _lineWrapService;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private readonly string _shortDateFormat;
         #endregion
 
         public ImageService(
             IConfigurationService configurationService,
             ILineWrapService lineWrapService,
-            ILogService logService)
+            ILogger logger)
         {
             // save the dependency injections
             _configurationService = configurationService;
             _lineWrapService = lineWrapService;
-            _logService = logService;
+            _logger = logger;
 
             // create the format for the date
             _shortDateFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("yyyy", "yy");
@@ -40,15 +41,13 @@ namespace PhotoLabel.Services
 
         public Bitmap Brightness(Image source, int brightness)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 var brightnessAmount = brightness / 100.0f;
 
-                _logService.Trace($"Creating image {source.Width}px x {source.Height}px...");
+                logger.Trace($"Creating image {source.Width}px x {source.Height}px...");
                 var image = new Bitmap(source.Width, source.Height, source.PixelFormat);
 
-                _logService.Trace("Creating matrix to adjust colour...");
+                logger.Trace("Creating matrix to adjust colour...");
                 var adjustArray = new[]
                 {
                     new[] { 1.0f, 0, 0, 0, 0},
@@ -58,15 +57,15 @@ namespace PhotoLabel.Services
                     new [] { brightnessAmount, brightnessAmount, brightnessAmount, 0, 1}
                 };
 
-                _logService.Trace("Creating the image attributes...");
+                logger.Trace("Creating the image attributes...");
                 var imageAttributes = new ImageAttributes();
                 imageAttributes.ClearColorMatrix();
                 imageAttributes.SetColorMatrix(new ColorMatrix(adjustArray), ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
 
-                _logService.Trace("Copying source image onto copy...");
+                logger.Trace("Copying source image onto copy...");
                 using (var imageGraphics = Graphics.FromImage(image))
                 {
-                    _logService.Trace("Setting up graphics manager...");
+                    logger.Trace("Setting up graphics manager...");
                     imageGraphics.SmoothingMode = SmoothingMode.HighQuality;
                     imageGraphics.CompositingQuality = CompositingQuality.HighQuality;
                     imageGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
@@ -75,57 +74,41 @@ namespace PhotoLabel.Services
                 }
 
                 return image;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public Bitmap Get(string filename, int width, int height)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Getting \"{filename}\"...");
+            using (var logger = _logger.Block()) {
+                logger.Trace($"Getting \"{filename}\"...");
                 using (var image = (Bitmap)Image.FromFile(filename))
                 {
                     return Resize(image, width, height);
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private ImageCodecInfo GetEncoder(System.Drawing.Imaging.ImageFormat imageFormat)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Getting image decoders...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Getting image decoders...");
                 var codecs = ImageCodecInfo.GetImageDecoders();
 
-                _logService.Trace($"Searching {codecs.Length} codecs for a match...");
+                logger.Trace($"Searching {codecs.Length} codecs for a match...");
                 return codecs.FirstOrDefault(c => c.FormatID == imageFormat.Guid);
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public Models.ExifData GetExifData(string filename)
         {
-            var stopWatch = Stopwatch.StartNew();
-
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // create the object to return
                 var exifData = new Models.ExifData();
 
+                logger.Trace($@"Opening ""{filename}""...");
                 using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
                     var bitmapSource = BitmapFrame.Create(fs, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
@@ -150,24 +133,16 @@ namespace PhotoLabel.Services
                 }
 
                 return exifData;
-            }
-            finally
-            {
-                _logService.TraceExit(stopWatch);
+            
             }
         }
 
         public string GetFilename(string outputDirectory, string imageFilename, ImageFormat imageFormat)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Getting output file name...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Getting output file name...");
                 return $"{Path.Combine(outputDirectory, Path.GetFileName(imageFilename))}.{imageFormat.ToString().ToLower()}";
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
@@ -175,9 +150,7 @@ namespace PhotoLabel.Services
         {
             var lastSize = 0F;
 
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 for (var i = 1F; ; i += 0.5F)
                 {
                     // create a test font
@@ -197,94 +170,80 @@ namespace PhotoLabel.Services
                 }
 
                 return lastSize;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private float? GetLatitude(BitmapMetadata bitmapMetadata)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if file has latitude information...");
-                if (!(bitmapMetadata.GetQuery("System.GPS.Latitude.Proxy") is string latitudeRef))
+            using (var logger = _logger.Block()) {
+                try
                 {
-                    _logService.Trace("File does not have latitude information.  Exiting...");
-                    return null;
-                }
+                    logger.Trace("Checking if file has latitude information...");
+                    if (!(bitmapMetadata.GetQuery("System.GPS.Latitude.Proxy") is string latitudeRef))
+                    {
+                        logger.Trace("File does not have latitude information.  Exiting...");
+                        return null;
+                    }
 
-                _logService.Trace($"Parsing latitude information \"{latitudeRef}\"...");
-                var latitudeMatch = Regex.Match(latitudeRef, @"^(\d+),([0123456789.]+)([SN])");
-                if (!latitudeMatch.Success)
+                    logger.Trace($"Parsing latitude information \"{latitudeRef}\"...");
+                    var latitudeMatch = Regex.Match(latitudeRef, @"^(\d+),([0123456789.]+)([SN])");
+                    if (!latitudeMatch.Success)
+                    {
+                        logger.Trace($"Unable to parse \"{latitudeRef}\".  Exiting...");
+                        return null;
+                    }
+
+                    logger.Trace("Converting to a float...");
+                    var latitudeDecimal = float.Parse(latitudeMatch.Groups[1].Value) +
+                                          float.Parse(latitudeMatch.Groups[2].Value) / 60;
+                    if (latitudeMatch.Groups[3].Value == "S") latitudeDecimal *= -1;
+
+                    return latitudeDecimal;
+                }
+                catch (NotSupportedException)
                 {
-                    _logService.Trace($"Unable to parse \"{latitudeRef}\".  Exiting...");
+                    logger.Trace("Unable to query for latitude.  Returning...");
                     return null;
+
                 }
-
-                _logService.Trace("Converting to a float...");
-                var latitudeDecimal = float.Parse(latitudeMatch.Groups[1].Value) +
-                                      float.Parse(latitudeMatch.Groups[2].Value) / 60;
-                if (latitudeMatch.Groups[3].Value == "S") latitudeDecimal *= -1;
-
-                return latitudeDecimal;
-            }
-            catch (NotSupportedException)
-            {
-                _logService.Trace("Unable to query for latitude.  Returning...");
-                return null;
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
         private float? GetLongitude(BitmapMetadata bitmapMetadata)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if file has longitude information...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Checking if file has longitude information...");
                 if (!(bitmapMetadata.GetQuery("System.GPS.Longitude.Proxy") is string longitudeRef))
                 {
-                    _logService.Trace("File does not have longitude information.  Exiting...");
+                    logger.Trace("File does not have longitude information.  Exiting...");
                     return null;
                 }
 
-                _logService.Trace($"Parsing longitude information \"{longitudeRef}\"...");
+                logger.Trace($"Parsing longitude information \"{longitudeRef}\"...");
                 var longitudeMatch = Regex.Match(longitudeRef, @"^(\d+),([0123456789.]+)([EW])");
                 if (!longitudeMatch.Success)
                 {
-                    _logService.Trace($"Unable to parse \"{longitudeRef}\".  Exiting...");
+                    logger.Trace($"Unable to parse \"{longitudeRef}\".  Exiting...");
                     return null;
                 }
 
-                _logService.Trace("Converting to a float...");
+                logger.Trace("Converting to a float...");
                 var longitudeDecimal = float.Parse(longitudeMatch.Groups[1].Value) + float.Parse(longitudeMatch.Groups[2].Value) / 60;
                 if (longitudeMatch.Groups[3].Value == "W") longitudeDecimal *= -1;
 
                 return longitudeDecimal;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public Bitmap Caption(Bitmap original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
         {
-            var stopwatch = Stopwatch.StartNew();
-
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Checking if there is a caption to render...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Checking if there is a caption to render...");
                 if (string.IsNullOrWhiteSpace(caption))
                 {
-                    _logService.Trace("There is not caption to render.  Returning...");
+                    logger.Trace("There is not caption to render.  Returning...");
                     return original;
                 }
 
@@ -293,10 +252,10 @@ namespace PhotoLabel.Services
                 var fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
 
                 if (cancellationToken.IsCancellationRequested) return null;
-                _logService.Trace("Getting graphics manager for new image...");
+                logger.Trace("Getting graphics manager for new image...");
                 using (var graphics = Graphics.FromImage(original))
                 {
-                    _logService.Trace("Setting up graphics manager...");
+                    logger.Trace("Setting up graphics manager...");
                     graphics.SmoothingMode = SmoothingMode.HighQuality;
                     graphics.CompositingQuality = CompositingQuality.HighQuality;
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
@@ -321,11 +280,11 @@ namespace PhotoLabel.Services
                     }
 
                     if (cancellationToken.IsCancellationRequested) return null;
-                    _logService.Trace("Creating font...");
+                    logger.Trace("Creating font...");
                     using (var font = new Font(fontName, fontSizeInPoints, fontStyle))
                     {
                         if (cancellationToken.IsCancellationRequested) return null;
-                        _logService.Trace("Determining location for caption...");
+                        logger.Trace("Determining location for caption...");
                         switch (captionAlignment)
                         {
                             case CaptionAlignments.BottomCentre:
@@ -383,20 +342,15 @@ namespace PhotoLabel.Services
                 }
 
                 return original;
-            }
-            finally
-            {
-                _logService.TraceExit(stopwatch);
+            
             }
         }
 
         private void CaptionBottomCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the bottom
-                _logService.Trace($"Wrapping caption to fit on image {imageSize.Width}px wide...");
+                logger.Trace($"Wrapping caption to fit on image {imageSize.Width}px wide...");
                 var lines = _lineWrapService.WrapToFitFromBottom(graphics, imageSize, caption, font);
 
                 // draw each line from the bottom
@@ -422,20 +376,15 @@ namespace PhotoLabel.Services
                     // draw the caption
                     graphics.DrawString(line, font, brush, location);
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionBottomLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // get the lines
-                _logService.Trace($"Wrapping caption to fit on image {imageSize.Width}px wide...");
+                logger.Trace($"Wrapping caption to fit on image {imageSize.Width}px wide...");
                 var lines = _lineWrapService.WrapToFitFromBottom(graphics, imageSize, caption, font);
 
                 // draw each line from the bottom
@@ -461,20 +410,15 @@ namespace PhotoLabel.Services
                     // draw the caption
                     graphics.DrawString(line, font, brush, location);
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionBottomRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // get the lines
-                _logService.Trace($"Wrapping caption to fit on image {imageSize.Width}px wide...");
+                logger.Trace($"Wrapping caption to fit on image {imageSize.Width}px wide...");
                 var lines = _lineWrapService.WrapToFitFromBottom(graphics, imageSize, caption, font);
 
                 // draw each line from the bottom
@@ -500,24 +444,19 @@ namespace PhotoLabel.Services
                     // draw the caption
                     graphics.DrawString(line, font, brush, location);
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionMiddleCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the top
-                _logService.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
+                logger.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // calculate the total line height
-                _logService.Trace("Calculating total height for caption...");
+                logger.Trace("Calculating total height for caption...");
                 var totalLineHeight = lines.Sum(l => graphics.MeasureString(l, font).Height);
 
                 // work out the starting position
@@ -544,24 +483,19 @@ namespace PhotoLabel.Services
 
                     y += lineSize.Height;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionMiddleLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the top
-                _logService.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
+                logger.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // calculate the total line height
-                _logService.Trace("Calculating total height for caption...");
+                logger.Trace("Calculating total height for caption...");
                 var totalLineHeight = lines.Sum(l => graphics.MeasureString(l, font).Height);
 
                 // work out the starting position
@@ -587,24 +521,19 @@ namespace PhotoLabel.Services
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionMiddleRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the top
-                _logService.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
+                logger.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // calculate the total line height
-                _logService.Trace("Calculating total height for caption...");
+                logger.Trace("Calculating total height for caption...");
                 var totalLineHeight = lines.Sum(l => graphics.MeasureString(l, font).Height);
 
                 // work out the starting position
@@ -630,20 +559,15 @@ namespace PhotoLabel.Services
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionTopCentre(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the top
-                _logService.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
+                logger.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // work out the starting position
@@ -669,20 +593,15 @@ namespace PhotoLabel.Services
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionTopLeft(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the top
-                _logService.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
+                logger.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // work out the starting position
@@ -709,20 +628,15 @@ namespace PhotoLabel.Services
                     y += lineSize.Height;
                 }
 
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         private void CaptionTopRight(Graphics graphics, Size imageSize, string caption, Font font, Brush brush, Color backgroundColour)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 // load the lines from the top
-                _logService.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
+                logger.Trace($"Splitting caption \"{caption}\" into lines that fit on image...");
                 var lines = _lineWrapService.WrapToFitFromTop(graphics, imageSize, caption, font);
 
                 // work out the starting position
@@ -748,87 +662,72 @@ namespace PhotoLabel.Services
                     graphics.DrawString(line, font, brush, location);
                     y += lineSize.Height;
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public Bitmap Overlay(Bitmap image, Image overlay, int x, int y)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Getting graphics manager for new image...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Getting graphics manager for new image...");
                 using (var graphics = Graphics.FromImage(image))
                 {
-                    _logService.Trace("Setting up graphics manager...");
+                    logger.Trace("Setting up graphics manager...");
                     graphics.SmoothingMode = SmoothingMode.HighQuality;
                     graphics.CompositingQuality = CompositingQuality.HighQuality;
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
 
-                    _logService.Trace("Drawing overlay...");
+                    logger.Trace("Drawing overlay...");
                     graphics.DrawImage(overlay, new Point(x, y));
                 }
 
                 return image;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public Stream ReduceQuality(Bitmap image, long quality)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Getting JPEG encoder...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Getting JPEG encoder...");
                 var jpegEncoder = GetEncoder(System.Drawing.Imaging.ImageFormat.Jpeg) ??
                                   throw new InvalidOperationException("Cannot find Jpeg image decoder codec");
 
-                _logService.Trace("Creating encoder quality parameter...");
+                logger.Trace("Creating encoder quality parameter...");
                 var qualityEncoder = System.Drawing.Imaging.Encoder.Quality;
                 var encoderParameters = new EncoderParameters(1)
                 {
                     Param = {[0] = new EncoderParameter(qualityEncoder, quality)}
                 };
 
-                _logService.Trace("Creating stream to return...");
+                logger.Trace("Creating stream to return...");
                 var memoryStream = new MemoryStream();
 
-                _logService.Trace($"Reducing image quality to {quality}...");
+                logger.Trace($"Reducing image quality to {quality}...");
                 image.Save(memoryStream, jpegEncoder, encoderParameters);
 
-                _logService.Trace($"Resetting memory position to 0 of {memoryStream.Length}");
+                logger.Trace($"Resetting memory position to 0 of {memoryStream.Length}");
                 memoryStream.Position = 0;
 
                 return memoryStream;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public Bitmap Resize(Bitmap image, int width, int height)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace($"Resizing to fit {width}px x{height}px canvas...");
+            using (var logger = _logger.Block()) {
+                logger.Trace($"Resizing to fit {width}px x{height}px canvas...");
                 var canvas = new Bitmap(width, height);
 
-                _logService.Trace("Calculating size of resized image...");
+                logger.Trace("Calculating size of resized image...");
                 var aspectRatio = Math.Min(width / (float)image.Width, height / (float)image.Height);
                 var newWidth = image.Width * aspectRatio;
                 var newHeight = image.Height * aspectRatio;
                 var newX = (width - newWidth) / 2;
                 var newY = (height - newHeight) / 2;
 
-                _logService.Trace("Drawing resized image...");
+                logger.Trace("Drawing resized image...");
                 using (var graphics = Graphics.FromImage(canvas))
                 {
                     // initialise the pen
@@ -844,18 +743,13 @@ namespace PhotoLabel.Services
                 }
 
                 return canvas;
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public List<string> Find(string directory)
         {
-            _logService.TraceEnter();
-            try
-            {
+            using (var logger = _logger.Block()) {
                 return Directory.EnumerateFiles(directory, "*.*", SearchOption.TopDirectoryOnly)
                     .Where(s =>
                         (
@@ -869,19 +763,14 @@ namespace PhotoLabel.Services
                         (File.GetAttributes(s) & FileAttributes.Hidden) == 0)
                     .OrderBy(File.GetCreationTime)
                     .ToList();
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
 
         public void Save(Bitmap image, string filename, ImageFormat imageFormat)
         {
-            _logService.TraceEnter();
-            try
-            {
-                _logService.Trace("Getting format to save...");
+            using (var logger = _logger.Block()) {
+                logger.Trace("Getting format to save...");
                 System.Drawing.Imaging.ImageFormat imagingImageFormat;
                 switch (imageFormat)
                 {
@@ -899,30 +788,27 @@ namespace PhotoLabel.Services
                         break;
                 }
 
-                _logService.Trace($@"Creating ""{filename}""...");
+                logger.Trace($@"Creating ""{filename}""...");
                 using (var fileStream = new FileStream(filename, FileMode.Create, FileAccess.Write))
                 {
-                    _logService.Trace("Checking if there is a size limitation...");
+                    logger.Trace("Checking if there is a size limitation...");
                     if (_configurationService.MaxImageSize != null)
                     {
-                        _logService.Trace("Reducing image to fit size limitation...");
+                        logger.Trace("Reducing image to fit size limitation...");
                         var imageReducer = ImageReducerFactory.Create(imageFormat);
                         using (var imageStream = imageReducer.Reduce(image))
                         {
-                            _logService.Trace("Saving reduced image to disk...");
+                            logger.Trace("Saving reduced image to disk...");
                             imageStream.CopyTo(fileStream);
                         }
                     }
                     else
                     {
-                        _logService.Trace($@"Saving image to ""{filename}""...");
+                        logger.Trace($@"Saving image to ""{filename}""...");
                         image.Save(fileStream, imagingImageFormat);
                     }
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
+            
             }
         }
     }

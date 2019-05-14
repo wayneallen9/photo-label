@@ -1,6 +1,6 @@
-﻿using PhotoLabel.DependencyInjection;
-using PhotoLabel.Services;
+﻿using PhotoLabel.Services;
 using PhotoLabel.Wpf.Properties;
+using Shared;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -13,11 +13,11 @@ namespace PhotoLabel.Wpf
     {
         public ProgressViewModel(
             IDialogService dialogService,
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
             _dialogService = dialogService;
-            _logService = logService;
+            _logger = logger;
 
             // initialise variables
             _maximum = 100;
@@ -40,28 +40,26 @@ namespace PhotoLabel.Wpf
             get => _directory;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Directory)} has changed...");
-                    if (_directory == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Directory)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Directory)} has changed...");
+                        if (_directory == value)
+                        {
+                            logger.Trace($"Value of {nameof(Directory)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(Directory)} to ""{value}""...");
+                        _directory = value;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(Directory)} to ""{value}""...");
-                    _directory = value;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -71,76 +69,65 @@ namespace PhotoLabel.Wpf
             get => _maximum;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Maximum)} has changed...");
-                    if (_maximum == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Maximum)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Maximum)} has changed...");
+                        if (_maximum == value)
+                        {
+                            logger.Trace($"Value of {nameof(Maximum)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Maximum)} to {value}...");
+                        _maximum = value;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Maximum)} to {value}...");
-                    _maximum = value;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
 
         private void OnError(Exception error)
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
-                        error);
+                    logger.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logger.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input,
+                            error);
+                    }
+
+                    logger.Trace("Logging error...");
+                    logger.Error(error);
+
+                    logger.Trace($"Notifying user of error...");
+                    _dialogService.Error(Resources.ErrorText);
                 }
-
-                logService.Trace("Logging error...");
-                logService.Error(error);
-
-                logService.Trace($"Notifying user of error...");
-                _dialogService.Error(Resources.ErrorText);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
+                logger.Trace("Checking if running on UI thread...");
                 if (Application.Current?.Dispatcher.CheckAccess() == false)
                 {
-                    logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    logger.Trace("Not running on UI thread.  Delegating to UI thread...");
                     Application.Current.Dispatcher.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged),
                         DispatcherPriority.ApplicationIdle,
                         propertyName);
@@ -148,14 +135,9 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
-                logService.Trace("Running on UI thread.  Executing...");
+                logger.Trace("Running on UI thread.  Executing...");
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
-            finally
-            {
-                logService.TraceExit();
-            }
-
         }
 
         public int Value
@@ -163,28 +145,26 @@ namespace PhotoLabel.Wpf
             get => _value;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Value)} has changed...");
-                    if (_value == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Value)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Value)} has changed...");
+                        if (_value == value)
+                        {
+                            logger.Trace($"Value of {nameof(Value)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Value)} to {value}...");
+                        _value = value;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Value)} to {value}...");
-                    _value = value;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -199,7 +179,7 @@ namespace PhotoLabel.Wpf
 
         private bool _close;
         private readonly IDialogService _dialogService;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private int _maximum;
         private string _directory;
         private int _value;

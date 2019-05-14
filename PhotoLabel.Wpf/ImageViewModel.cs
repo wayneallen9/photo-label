@@ -1,11 +1,10 @@
-﻿using PhotoLabel.DependencyInjection;
-using PhotoLabel.Services;
+﻿using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
 using PhotoLabel.Wpf.Extensions;
 using PhotoLabel.Wpf.Properties;
+using Shared;
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -31,12 +30,12 @@ namespace PhotoLabel.Wpf
             Filename = filename;
 
             // get dependencies
-            _configurationService = NinjectKernel.Get<IConfigurationService>();
-            _dialogService = NinjectKernel.Get<IDialogService>();
-            _imageService = NinjectKernel.Get<IImageService>();
-            _opacityService = NinjectKernel.Get<IOpacityService>();
-            _taskScheduler = NinjectKernel.Get<SingleTaskScheduler>();
-            _logService = NinjectKernel.Get<ILogService>();
+            _configurationService = Injector.Get<IConfigurationService>();
+            _dialogService = Injector.Get<IDialogService>();
+            _imageService = Injector.Get<IImageService>();
+            _opacityService = Injector.Get<IOpacityService>();
+            _taskScheduler = Injector.Get<SingleTaskScheduler>();
+            _logger = Injector.Get<ILogger>();
 
             // initialise properties
             _fontType = "%";
@@ -58,38 +57,36 @@ namespace PhotoLabel.Wpf
             get => _appendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(AppendDateTakenToCaption)} has changed...");
-                    if (_appendDateTakenToCaption == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(AppendDateTakenToCaption)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(AppendDateTakenToCaption)} has changed...");
+                        if (_appendDateTakenToCaption == value)
+                        {
+                            logger.Trace($"Value of {nameof(AppendDateTakenToCaption)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(AppendDateTakenToCaption)} to {value}...");
+                        _appendDateTakenToCaption = value;
+
+                        logger.Trace(@"Saving value as default...");
+                        _configurationService.AppendDateTakenToCaption = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isAppendDateTakenToCaptionEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(AppendDateTakenToCaption)} to {value}...");
-                    _appendDateTakenToCaption = value;
-
-                    _logService.Trace(@"Saving value as default...");
-                    _configurationService.AppendDateTakenToCaption = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isAppendDateTakenToCaptionEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -99,39 +96,37 @@ namespace PhotoLabel.Wpf
             get => _backColor ?? _configurationService.BackgroundColour;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(BackColor)} has changed...");
-                    if (_backColor == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(BackColor)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(BackColor)} has changed...");
+                        if (_backColor == value)
+                        {
+                            logger.Trace($"Value of {nameof(BackColor)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(BackColor)} to ""{value}""...");
+                        _backColor = value;
+
+                        logger.Trace(@"Saving back color as default...");
+                        _configurationService.BackgroundColour = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isBackColorEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(BackColorOpacity));
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(BackColor)} to ""{value}""...");
-                    _backColor = value;
-
-                    _logService.Trace(@"Saving back color as default...");
-                    _configurationService.BackgroundColour = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isBackColorEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(BackColorOpacity));
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -141,39 +136,37 @@ namespace PhotoLabel.Wpf
             get => _opacityService.GetOpacity(BackColor);
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Getting new background color...");
-                    var backColor = _opacityService.SetOpacity(BackColor, value);
-
-                    _logService.Trace("Checking if background opacity has changed...");
-                    if (BackColor == backColor)
+                    try
                     {
-                        _logService.Trace("Background opacity has not changed.  Exiting...");
-                        return;
+                        logger.Trace("Getting new background color...");
+                        var backColor = _opacityService.SetOpacity(BackColor, value);
+
+                        logger.Trace("Checking if background opacity has changed...");
+                        if (BackColor == backColor)
+                        {
+                            logger.Trace("Background opacity has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting background opacity...");
+                        _backColor = backColor;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isBackColorEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(BackColor));
                     }
-
-                    _logService.Trace("Setting background opacity...");
-                    _backColor = backColor;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isBackColorEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(BackColor));
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -183,35 +176,33 @@ namespace PhotoLabel.Wpf
             get => _brightness ?? 0;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Brightness)} has changed...");
-                    if (_brightness == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Brightness)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Brightness)} has changed...");
+                        if (_brightness == value)
+                        {
+                            logger.Trace($"Value of {nameof(Brightness)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Brightness)} to {value}...");
+                        _brightness = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isBrightnessEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Brightness)} to {value}...");
-                    _brightness = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isBrightnessEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -221,37 +212,33 @@ namespace PhotoLabel.Wpf
             get => _caption;
             set
             {
-                var stopwatch = Stopwatch.StartNew();
-
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Caption)} has changed...");
-                    if (_caption == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Caption)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Caption)} has changed...");
+                        if (_caption == value)
+                        {
+                            logger.Trace($"Value of {nameof(Caption)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(Caption)} to ""{value}""...");
+                        _caption = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isCaptionEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(Caption)} to ""{value}""...");
-                    _caption = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isCaptionEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit(stopwatch);
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -261,41 +248,43 @@ namespace PhotoLabel.Wpf
             get => _captionAlignment ?? _configurationService.CaptionAlignment;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(CaptionAlignment)} has changed...");
-                    if (_captionAlignment == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(CaptionAlignment)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(CaptionAlignment)} has changed...");
+                        if (_captionAlignment == value)
+                        {
+                            logger.Trace($"Value of {nameof(CaptionAlignment)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(CaptionAlignment)} to {value}...");
+                        _captionAlignment = value;
+
+                        logger.Trace(@"Saving caption alignment as default...");
+                        _configurationService.CaptionAlignment = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isCaptionAlignmentEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged(nameof(IsBottomCentreAlignment));
+                        OnPropertyChanged(nameof(IsBottomLeftAlignment));
+                        OnPropertyChanged(nameof(IsBottomRightAlignment));
+                        OnPropertyChanged(nameof(IsMiddleLeftAlignment));
+                        OnPropertyChanged(nameof(IsMiddleCentreAlignment));
+                        OnPropertyChanged(nameof(IsMiddleRightAlignment));
+                        OnPropertyChanged(nameof(IsTopCentreAlignment));
+                        OnPropertyChanged(nameof(IsTopLeftAlignment));
+                        OnPropertyChanged(nameof(IsTopRightAlignment));
                     }
-
-                    _logService.Trace($"Setting value of {nameof(CaptionAlignment)} to {value}...");
-                    _captionAlignment = value;
-
-                    _logService.Trace(@"Saving caption alignment as default...");
-                    _configurationService.CaptionAlignment = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isCaptionAlignmentEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged(nameof(IsBottomCentreAlignment));
-                    OnPropertyChanged(nameof(IsBottomLeftAlignment));
-                    OnPropertyChanged(nameof(IsBottomRightAlignment));
-                    OnPropertyChanged(nameof(IsMiddleLeftAlignment));
-                    OnPropertyChanged(nameof(IsMiddleCentreAlignment));
-                    OnPropertyChanged(nameof(IsMiddleRightAlignment));
-                    OnPropertyChanged(nameof(IsTopCentreAlignment));
-                    OnPropertyChanged(nameof(IsTopLeftAlignment));
-                    OnPropertyChanged(nameof(IsTopRightAlignment));
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -304,114 +293,109 @@ namespace PhotoLabel.Wpf
 
         public void Delete()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Deleting metadata for ""{Filename}"" on a background thread...");
-                Task.Factory.StartNew(DeleteThread, new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace($@"Deleting metadata for ""{Filename}"" on a background thread...");
+                    Task.Factory.StartNew(DeleteThread, new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void DeleteThread()
-        { 
+        {
             // create dependencies
-            var imageService = NinjectKernel.Get<IImageService>();
-            var imageMetadataService = NinjectKernel.Get<IImageMetadataService>();
-            var logService = NinjectKernel.Get<ILogService>();
+            var imageService = Injector.Get<IImageService>();
+            var imageMetadataService = Injector.Get<IImageMetadataService>();
 
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace($@"Checking if metadata exists for ""{Filename}""...");
-                var metadata = imageMetadataService.Load(Filename);
-
-                if (metadata == null)
+                try
                 {
-                    logService.Trace($@"""{Filename}"" does not have any metadata.  Exiting...");
-                    return;
-                }
+                    logService.Trace($@"Checking if metadata exists for ""{Filename}""...");
+                    var metadata = imageMetadataService.Load(Filename);
 
-                logService.Trace($@"Checking if ""{Filename}"" has been saved...");
-                if (!string.IsNullOrWhiteSpace(metadata.OutputFilename))
+                    if (metadata == null)
+                    {
+                        logService.Trace($@"""{Filename}"" does not have any metadata.  Exiting...");
+                        return;
+                    }
+
+                    logService.Trace($@"Checking if ""{Filename}"" has been saved...");
+                    if (!string.IsNullOrWhiteSpace(metadata.OutputFilename))
+                    {
+                        logService.Trace($@"Deleting ""{metadata.OutputFilename}""...");
+                        try
+                        {
+                            File.Delete(metadata.OutputFilename);
+                        }
+                        catch (Exception)
+                        {
+                            // ignored
+                        }
+                    }
+
+                    logService.Trace($@"Deleting metadata for ""{Filename}""...");
+                    imageMetadataService.Delete(Filename);
+
+                    logService.Trace($@"Resetting properties of ""{Filename}"" to defaults...");
+                    _backColor = null;
+                    OnPropertyChanged(nameof(BackColor));
+                    _captionAlignment = null;
+                    OnPropertyChanged(nameof(CaptionAlignment));
+                    _fontBold = null;
+                    OnPropertyChanged(nameof(FontBold));
+                    _fontFamily = null;
+                    OnPropertyChanged(nameof(FontFamily));
+                    _fontSize = null;
+                    OnPropertyChanged(nameof(FontSize));
+                    _fontType = null;
+                    OnPropertyChanged(nameof(FontType));
+                    _foreColor = null;
+                    OnPropertyChanged(nameof(ForeColor));
+                    _imageFormat = null;
+                    OnPropertyChanged(nameof(ImageFormat));
+                    _rotation = null;
+
+                    logService.Trace($@"Flagging that ""{Filename}"" does not have metadata...");
+                    HasMetadata = false;
+
+                    logService.Trace($@"Metadata does not exist for ""{Filename}"".  Loading Exif data...");
+                    var exifData = imageService.GetExifData(Filename);
+
+                    if (exifData != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(exifData.Title))
+                        {
+                            logService.Trace($@"Setting caption of ""{Filename}"" to ""{exifData.Title}""...");
+                            _caption = exifData.Title;
+                        }
+                        else
+                        {
+                            logService.Trace(
+                                $@"Setting caption of ""{Filename}"" to ""{Path.GetFileNameWithoutExtension(Filename)}""...");
+                            _caption = Path.GetFileNameWithoutExtension(Filename);
+                        }
+
+                        OnPropertyChanged(nameof(Caption));
+                    }
+
+                    logService.Trace($@"Flagging that ""{Filename}"" has not been edited...");
+                    IsEdited = false;
+                    IsSaved = false;
+
+                    logService.Trace($@"Reloading image of ""{Filename}""...");
+                    LoadImage();
+                }
+                catch (Exception ex)
                 {
-                    logService.Trace($@"Deleting ""{metadata.OutputFilename}""...");
-                    try
-                    {
-                        File.Delete(metadata.OutputFilename);
-                    }
-                    catch (Exception)
-                    {
-                        // ignored
-                    }
+                    OnError(ex);
                 }
-
-                logService.Trace($@"Deleting metadata for ""{Filename}""...");
-                imageMetadataService.Delete(Filename);
-
-                logService.Trace($@"Resetting properties of ""{Filename}"" to defaults...");
-                _backColor = null;
-                OnPropertyChanged(nameof(BackColor));
-                _captionAlignment = null;
-                OnPropertyChanged(nameof(CaptionAlignment));
-                _fontBold = null;
-                OnPropertyChanged(nameof(FontBold));
-                _fontFamily = null;
-                OnPropertyChanged(nameof(FontFamily));
-                _fontSize = null;
-                OnPropertyChanged(nameof(FontSize));
-                _fontType = null;
-                OnPropertyChanged(nameof(FontType));
-                _foreColor = null;
-                OnPropertyChanged(nameof(ForeColor));
-                _imageFormat = null;
-                OnPropertyChanged(nameof(ImageFormat));
-                _rotation = null;
-
-                logService.Trace($@"Flagging that ""{Filename}"" does not have metadata...");
-                HasMetadata = false;
-
-                logService.Trace($@"Metadata does not exist for ""{Filename}"".  Loading Exif data...");
-                var exifData = imageService.GetExifData(Filename);
-
-                if (exifData != null)
-                {
-                    if (!string.IsNullOrWhiteSpace(exifData.Title))
-                    {
-                        logService.Trace($@"Setting caption of ""{Filename}"" to ""{exifData.Title}""...");
-                        _caption = exifData.Title;
-                    }
-                    else
-                    {
-                        logService.Trace(
-                            $@"Setting caption of ""{Filename}"" to ""{Path.GetFileNameWithoutExtension(Filename)}""...");
-                        _caption = Path.GetFileNameWithoutExtension(Filename);
-                    }
-
-                    OnPropertyChanged(nameof(Caption));
-                }
-
-                logService.Trace($@"Flagging that ""{Filename}"" has not been edited...");
-                IsEdited = false;
-                IsSaved = false;
-
-                logService.Trace($@"Reloading image of ""{Filename}""...");
-                LoadImage();
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit();
             }
         }
 
@@ -419,43 +403,38 @@ namespace PhotoLabel.Wpf
 
         private BitmapSource GetOpeningBitmapSource()
         {
-            // create dependencies
-            var loggingService = NinjectKernel.Get<ILogService>();
-
-            loggingService.TraceEnter();
-            try
+            using (var loggingService = _logger.Block())
             {
-                loggingService.Trace("Checking if opening bitmap source has been created...");
-                if (_openingBitmapSource != null)
+                try
                 {
-                    loggingService.Trace("Opening bitmap source has already been created.  Returning...");
+                    loggingService.Trace("Checking if opening bitmap source has been created...");
+                    if (_openingBitmapSource != null)
+                    {
+                        loggingService.Trace("Opening bitmap source has already been created.  Returning...");
+                        return _openingBitmapSource;
+                    }
+
+                    loggingService.Trace("Checking if running on UI thread...");
+                    if (Application.Current.CheckAccess() == false)
+                    {
+                        loggingService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                        return (BitmapSource)Application.Current.Dispatcher.Invoke(
+                            new CreateOpeningBitmapSourceDelegate(GetOpeningBitmapSource),
+                            DispatcherPriority.ApplicationIdle);
+                    }
+
+                    loggingService.Trace("Creating opening bitmap source...");
+                    _openingBitmapSource = Imaging.CreateBitmapSourceFromHBitmap(Resources.opening.GetHbitmap(),
+                        IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+
                     return _openingBitmapSource;
                 }
-
-                loggingService.Trace("Checking if running on UI thread...");
-                if (Application.Current.CheckAccess() == false)
+                catch (Exception ex)
                 {
-                    loggingService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    return (BitmapSource)Application.Current.Dispatcher.Invoke(
-                        new CreateOpeningBitmapSourceDelegate(GetOpeningBitmapSource),
-                        DispatcherPriority.ApplicationIdle);
+                    OnError(ex);
+
+                    return null;
                 }
-
-                loggingService.Trace("Creating opening bitmap source...");
-                _openingBitmapSource = Imaging.CreateBitmapSourceFromHBitmap(Resources.opening.GetHbitmap(),
-                    IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-
-                return _openingBitmapSource;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-
-                return null;
-            }
-            finally
-            {
-                loggingService.TraceExit();
             }
         }
 
@@ -464,32 +443,30 @@ namespace PhotoLabel.Wpf
             get => _imageFormat ?? _configurationService.ImageFormat;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(ImageFormat)} has changed...");
-                    if (_imageFormat == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(ImageFormat)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(ImageFormat)} has changed...");
+                        if (_imageFormat == value)
+                        {
+                            logger.Trace($"Value of {nameof(ImageFormat)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(ImageFormat)} to ""{value}""...");
+                        _imageFormat = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isImageFormatEdited = true;
+                        IsEdited = true;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(ImageFormat)} to ""{value}""...");
-                    _imageFormat = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isImageFormatEdited = true;
-                    IsEdited = true;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -499,38 +476,36 @@ namespace PhotoLabel.Wpf
             get => _fontBold ?? _configurationService.FontBold;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(FontBold)} has changed...");
-                    if (_fontBold == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(FontBold)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(FontBold)} has changed...");
+                        if (_fontBold == value)
+                        {
+                            logger.Trace($"Value of {nameof(FontBold)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(FontBold)} to ""{value}""...");
+                        _fontBold = value;
+
+                        logger.Trace(@"Saving font bold as default...");
+                        _configurationService.FontBold = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isFontBoldEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(FontBold)} to ""{value}""...");
-                    _fontBold = value;
-
-                    _logService.Trace(@"Saving font bold as default...");
-                    _configurationService.FontBold = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isFontBoldEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -540,38 +515,36 @@ namespace PhotoLabel.Wpf
             get => _fontFamily ?? new FontFamily(_configurationService.FontName);
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(FontFamily)} has changed...");
-                    if (Equals(_fontFamily, value))
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(FontFamily)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(FontFamily)} has changed...");
+                        if (Equals(_fontFamily, value))
+                        {
+                            logger.Trace($"Value of {nameof(FontFamily)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(FontFamily)} to ""{value.Source}""...");
+                        _fontFamily = value;
+
+                        logger.Trace($@"Saving ""{value}"" as default font...");
+                        _configurationService.FontName = value.Source;
+
+                        logger.Trace($@"Flagging that ""{FontFamily}"" has been edited...");
+                        _isFontFamilyEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(FontFamily)} to ""{value.Source}""...");
-                    _fontFamily = value;
-
-                    _logService.Trace($@"Saving ""{value}"" as default font...");
-                    _configurationService.FontName = value.Source;
-
-                    _logService.Trace($@"Flagging that ""{FontFamily}"" has been edited...");
-                    _isFontFamilyEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -581,41 +554,39 @@ namespace PhotoLabel.Wpf
             get => _fontSize ?? _configurationService.FontSize;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if value is greater than 0...");
-                    if (value <= 0f) throw new ArgumentOutOfRangeException();
-
-                    _logService.Trace($"Checking if value of {nameof(FontSize)} has changed...");
-                    if (Math.Abs(FontSize - value) < Tolerance)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(FontSize)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace("Checking if value is greater than 0...");
+                        if (value <= 0f) throw new ArgumentOutOfRangeException();
+
+                        logger.Trace($"Checking if value of {nameof(FontSize)} has changed...");
+                        if (Math.Abs(FontSize - value) < Tolerance)
+                        {
+                            logger.Trace($"Value of {nameof(FontSize)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(FontSize)} to {value}...");
+                        _fontSize = value;
+
+                        logger.Trace($@"Saving font size {value} as default...");
+                        _configurationService.FontSize = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isFontSizeEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(FontSize)} to {value}...");
-                    _fontSize = value;
-
-                    _logService.Trace($@"Saving font size {value} as default...");
-                    _configurationService.FontSize = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isFontSizeEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -625,40 +596,38 @@ namespace PhotoLabel.Wpf
             get => _fontType ?? _configurationService.FontType;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    if (value != "%" && value != "pts") throw new ArgumentOutOfRangeException(nameof(FontType));
-
-                    _logService.Trace($"Checking if value of {nameof(FontType)} has changed...");
-                    if (_fontType == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(FontType)} has not changed.  Exiting...");
-                        return;
+                        if (value != "%" && value != "pts") throw new ArgumentOutOfRangeException(nameof(FontType));
+
+                        logger.Trace($"Checking if value of {nameof(FontType)} has changed...");
+                        if (_fontType == value)
+                        {
+                            logger.Trace($"Value of {nameof(FontType)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(FontType)} to ""{value}""...");
+                        _fontType = value;
+
+                        logger.Trace($@"Saving font type ""{value}"" as default...");
+                        _configurationService.FontType = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isFontTypeEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(FontType)} to ""{value}""...");
-                    _fontType = value;
-
-                    _logService.Trace($@"Saving font type ""{value}"" as default...");
-                    _configurationService.FontType = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isFontTypeEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -668,70 +637,63 @@ namespace PhotoLabel.Wpf
             get => _foreColor ?? _configurationService.Colour;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(ForeColor)} has changed...");
-                    if (_foreColor == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(ForeColor)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(ForeColor)} has changed...");
+                        if (_foreColor == value)
+                        {
+                            logger.Trace($"Value of {nameof(ForeColor)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(ForeColor)} to ""{value}""...");
+                        _foreColor = value;
+
+                        logger.Trace(@"Saving as default fore color...");
+                        _configurationService.Colour = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isForeColorEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($@"Setting value of {nameof(ForeColor)} to ""{value}""...");
-                    _foreColor = value;
-
-                    _logService.Trace(@"Saving as default fore color...");
-                    _configurationService.Colour = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isForeColorEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
 
         public Bitmap LoadOriginalImage()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Wait for any background load to complete...");
+                logger.Trace("Wait for any background load to complete...");
                 _originalImageManualResetEvent.WaitOne(30000);
 
                 lock (_originalImageLock)
                 {
-                    _logService.Trace("Checking if this is the first call...");
+                    logger.Trace("Checking if this is the first call...");
                     if (_originalImage == null)
                     {
-                        _logService.Trace("This is the first call.  Loading original image from disk...");
+                        logger.Trace("This is the first call.  Loading original image from disk...");
                         _originalImageManualResetEvent.Reset();
                         new Thread(LoadOriginalThread).Start(new CancellationToken());
 
-                        _logService.Trace("Waiting for background load to complete...");
+                        logger.Trace("Waiting for background load to complete...");
                         _originalImageManualResetEvent.WaitOne(30000);
                     }
 
-                    _logService.Trace("Returning a copy of the original image...");
+                    logger.Trace("Returning a copy of the original image...");
                     return new Bitmap(_originalImage);
                 }
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
@@ -742,29 +704,31 @@ namespace PhotoLabel.Wpf
             get => _hasMetadata;
             private set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(HasMetadata)} has changed...");
-                    if (_hasMetadata == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(HasMetadata)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(HasMetadata)} has changed...");
+                        if (_hasMetadata == value)
+                        {
+                            logger.Trace($"Value of {nameof(HasMetadata)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(HasMetadata)} to {value}...");
+                        _hasMetadata = value;
+
+                        logger.Trace($@"Reloading preview image for ""{Filename}""...");
+                        _loadPreviewCancellationTokenSource?.Cancel();
+                        _loadPreviewCancellationTokenSource = new CancellationTokenSource();
+                        LoadPreview(true, _loadPreviewCancellationTokenSource.Token);
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(HasMetadata)} to {value}...");
-                    _hasMetadata = value;
-
-                    _logService.Trace($@"Reloading preview image for ""{Filename}""...");
-                    _loadPreviewCancellationTokenSource?.Cancel();
-                    _loadPreviewCancellationTokenSource = new CancellationTokenSource();
-                    LoadPreview(true, _loadPreviewCancellationTokenSource.Token);
-
-                    OnPropertyChanged();
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
 
             }
@@ -777,28 +741,26 @@ namespace PhotoLabel.Wpf
             get => _imageStretch;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(ImageStretch)} has changed...");
-                    if (_imageStretch == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(ImageStretch)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(ImageStretch)} has changed...");
+                        if (_imageStretch == value)
+                        {
+                            logger.Trace($"Value of {nameof(ImageStretch)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(ImageStretch)} to {value}...");
+                        _imageStretch = value;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(ImageStretch)} to {value}...");
-                    _imageStretch = value;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -808,29 +770,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.BottomCentre;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if Bottom Centre alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Bottom Centre alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if Bottom Centre alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Bottom Centre alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to Bottom Centre...");
+                        CaptionAlignment = CaptionAlignments.BottomCentre;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to Bottom Centre...");
-                    CaptionAlignment = CaptionAlignments.BottomCentre;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -840,29 +800,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.BottomLeft;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if Bottom Left alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Bottom Left alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if Bottom Left alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Bottom Left alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to Bottom Left...");
+                        CaptionAlignment = CaptionAlignments.BottomLeft;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to Bottom Left...");
-                    CaptionAlignment = CaptionAlignments.BottomLeft;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -872,29 +830,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.BottomRight;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if Bottom right alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Bottom right alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if Bottom right alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Bottom right alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to Bottom right...");
+                        CaptionAlignment = CaptionAlignments.BottomRight;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to Bottom right...");
-                    CaptionAlignment = CaptionAlignments.BottomRight;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -904,30 +860,32 @@ namespace PhotoLabel.Wpf
             get => _isEdited;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(IsEdited)} has changed...");
-                    if (_isEdited == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(IsEdited)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(IsEdited)} has changed...");
+                        if (_isEdited == value)
+                        {
+                            logger.Trace($"Value of {nameof(IsEdited)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(IsEdited)} to {value}...");
+                        _isEdited = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" is not saved...");
+                        _isSaved = false;
+
+                        logger.Trace($@"Reloading preview image for ""{Filename}""...");
+                        LoadPreview(true, new CancellationToken());
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(IsEdited)} to {value}...");
-                    _isEdited = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" is not saved...");
-                    _isSaved = false;
-
-                    _logService.Trace($@"Reloading preview image for ""{Filename}""...");
-                    LoadPreview(true, new CancellationToken());
-
-                    OnPropertyChanged();
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -937,29 +895,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.MiddleCentre;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if Middle Centre alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Middle Centre alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if Middle Centre alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Middle Centre alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to Middle Centre...");
+                        CaptionAlignment = CaptionAlignments.MiddleCentre;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to Middle Centre...");
-                    CaptionAlignment = CaptionAlignments.MiddleCentre;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -969,29 +925,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.MiddleLeft;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if Middle left alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Middle left alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if Middle left alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Middle left alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to Middle left...");
+                        CaptionAlignment = CaptionAlignments.MiddleLeft;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to Middle left...");
-                    CaptionAlignment = CaptionAlignments.MiddleLeft;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -1001,29 +955,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.MiddleRight;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if Middle Right alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Middle Right alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if Middle Right alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Middle Right alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to Middle Right...");
+                        CaptionAlignment = CaptionAlignments.MiddleRight;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to Middle Right...");
-                    CaptionAlignment = CaptionAlignments.MiddleRight;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -1033,25 +985,27 @@ namespace PhotoLabel.Wpf
             get => _isSaved;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(IsSaved)} has changed...");
-                    if (_isSaved == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(IsSaved)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(IsSaved)} has changed...");
+                        if (_isSaved == value)
+                        {
+                            logger.Trace($"Value of {nameof(IsSaved)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(IsSaved)} to {value}...");
+                        _isSaved = value;
+
+                        logger.Trace($@"Reloading preview image for ""{Filename}""...");
+                        LoadPreview(true, new CancellationToken());
                     }
-
-                    _logService.Trace($"Setting value of {nameof(IsSaved)} to {value}...");
-                    _isSaved = value;
-
-                    _logService.Trace($@"Reloading preview image for ""{Filename}""...");
-                    LoadPreview(true, new CancellationToken());
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -1061,29 +1015,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.TopCentre;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if top centre alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Top centre alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if top centre alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Top centre alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to top centre...");
+                        CaptionAlignment = CaptionAlignments.TopCentre;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to top centre...");
-                    CaptionAlignment = CaptionAlignments.TopCentre;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -1093,29 +1045,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.TopLeft;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if top left alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Top left alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if top left alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Top left alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to top left...");
+                        CaptionAlignment = CaptionAlignments.TopLeft;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to top left...");
-                    CaptionAlignment = CaptionAlignments.TopLeft;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -1125,29 +1075,27 @@ namespace PhotoLabel.Wpf
             get => CaptionAlignment == CaptionAlignments.TopRight;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace("Checking if top right alignment is required...");
-                    if (!value)
+                    try
                     {
-                        _logService.Trace("Top right alignment is not required.  Exiting...");
-                        return;
+                        logger.Trace("Checking if top right alignment is required...");
+                        if (!value)
+                        {
+                            logger.Trace("Top right alignment is not required.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace("Setting caption alignment to top right...");
+                        CaptionAlignment = CaptionAlignments.TopRight;
+
+                        logger.Trace("Flagging that image has been edited...");
+                        IsEdited = true;
                     }
-
-                    _logService.Trace("Setting caption alignment to top right...");
-                    CaptionAlignment = CaptionAlignments.TopRight;
-
-                    _logService.Trace("Flagging that image has been edited...");
-                    IsEdited = true;
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -1160,73 +1108,69 @@ namespace PhotoLabel.Wpf
 
         public void RotateLeft()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Setting new rotation for ""{Filename}""...");
-                switch (Rotation)
+                try
                 {
-                    case Rotations.Zero:
-                        Rotation = Rotations.TwoSeventy;
+                    logger.Trace($@"Setting new rotation for ""{Filename}""...");
+                    switch (Rotation)
+                    {
+                        case Rotations.Zero:
+                            Rotation = Rotations.TwoSeventy;
 
-                        break;
-                    case Rotations.Ninety:
-                        Rotation = Rotations.Zero;
+                            break;
+                        case Rotations.Ninety:
+                            Rotation = Rotations.Zero;
 
-                        break;
-                    case Rotations.OneEighty:
-                        Rotation = Rotations.Ninety;
+                            break;
+                        case Rotations.OneEighty:
+                            Rotation = Rotations.Ninety;
 
-                        break;
-                    default:
-                        Rotation = Rotations.OneEighty;
+                            break;
+                        default:
+                            Rotation = Rotations.OneEighty;
 
-                        break;
+                            break;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         public void RotateRight()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Rotating to right...");
-                switch (Rotation)
+                try
                 {
-                    case Rotations.Ninety:
-                        Rotation = Rotations.OneEighty;
+                    logger.Trace("Rotating to right...");
+                    switch (Rotation)
+                    {
+                        case Rotations.Ninety:
+                            Rotation = Rotations.OneEighty;
 
-                        break;
-                    case Rotations.OneEighty:
-                        Rotation = Rotations.TwoSeventy;
+                            break;
+                        case Rotations.OneEighty:
+                            Rotation = Rotations.TwoSeventy;
 
-                        break;
-                    case Rotations.TwoSeventy:
-                        Rotation = Rotations.Zero;
+                            break;
+                        case Rotations.TwoSeventy:
+                            Rotation = Rotations.Zero;
 
-                        break;
-                    default:
-                        Rotation = Rotations.Ninety;
+                            break;
+                        default:
+                            Rotation = Rotations.Ninety;
 
-                        break;
+                            break;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -1235,39 +1179,41 @@ namespace PhotoLabel.Wpf
             get => _rotation ?? Rotations.Zero;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Rotation)} has changed...");
-                    if (_rotation == value)
+                    try
                     {
-                        _logService.Trace($@"Value of {nameof(Rotation)} has not changed.  Exiting...");
+                        logger.Trace($"Checking if value of {nameof(Rotation)} has changed...");
+                        if (_rotation == value)
+                        {
+                            logger.Trace($@"Value of {nameof(Rotation)} has not changed.  Exiting...");
 
-                        return;
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Rotation)}...");
+                        _rotation = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isRotationEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Rotation)}...");
-                    _rotation = value;
-
-                    _logService.Trace($@"Flagging that ""{Filename}"" has been edited...");
-                    _isRotationEdited = true;
-                    IsEdited = true;
-
-                    _logService.Trace($@"Loading image for ""{Filename}""...");
-                    LoadImage();
-
-                    OnPropertyChanged();
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
 
         private void LoadImageThread(object state)
         {
-            var cancellationToken = (CancellationToken) state;
+            var cancellationToken = (CancellationToken)state;
 
             LoadImageThread(cancellationToken);
         }
@@ -1275,140 +1221,125 @@ namespace PhotoLabel.Wpf
         private void LoadImageThread(CancellationToken cancellationToken)
         {
             // create dependencies
-            var imageService = NinjectKernel.Get<IImageService>();
-            var logService = NinjectKernel.Get<ILogService>();
+            var imageService = Injector.Get<IImageService>();
 
-            // initialise variables
-            var stopwatch = Stopwatch.StartNew();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                if (cancellationToken.IsCancellationRequested) return;
-                using (var originalImage = LoadOriginalImage())
+                try
                 {
                     if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
-                    LoadMetadataThread(cancellationToken);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Rotating ""{Filename}""...");
-                    switch (Rotation)
+                    using (var originalImage = LoadOriginalImage())
                     {
-                        case Rotations.Ninety:
-                            originalImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
-
-                            break;
-                        case Rotations.OneEighty:
-                            originalImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
-
-                            break;
-                        case Rotations.TwoSeventy:
-                            originalImage.RotateFlip(RotateFlipType.Rotate270FlipNone);
-
-                            break;
-                    }
-
-                    // duplicate the image
-                    using (var duplicateImage = new Bitmap(originalImage))
-                    {
-                        // get the variables
-                        var brightness = Brightness;
+                        if (cancellationToken.IsCancellationRequested) return;
+                        logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
+                        LoadMetadataThread(cancellationToken);
 
                         if (cancellationToken.IsCancellationRequested) return;
-                        logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
-                        var brightenedImage =
-                            brightness == 0 ? duplicateImage : imageService.Brightness(duplicateImage, brightness);
-                        try
+                        logService.Trace($@"Rotating ""{Filename}""...");
+                        switch (Rotation)
                         {
-                            if (cancellationToken.IsCancellationRequested) return;
-                            logService.Trace("Building caption...");
-                            var captionBuilder = new StringBuilder(Caption);
-                            if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
-                            {
-                                if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
-                                captionBuilder.Append(DateTaken);
-                            }
+                            case Rotations.Ninety:
+                                originalImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
 
-                            if (cancellationToken.IsCancellationRequested) return;
-                            var brush = new SolidBrush(ForeColor.ToDrawingColor());
-                            logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
-                            var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
-                                CaptionAlignment, FontFamily.Source, FontSize, FontType,
-                                FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
+                                break;
+                            case Rotations.OneEighty:
+                                originalImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
 
-                            if (cancellationToken.IsCancellationRequested) return;
-                            UpdateImage(captionedImage);
+                                break;
+                            case Rotations.TwoSeventy:
+                                originalImage.RotateFlip(RotateFlipType.Rotate270FlipNone);
+
+                                break;
                         }
-                        finally
+
+                        // duplicate the image
+                        using (var duplicateImage = new Bitmap(originalImage))
                         {
-                            if (brightness != 0) brightenedImage?.Dispose();
+                            // get the variables
+                            var brightness = Brightness;
+
+                            if (cancellationToken.IsCancellationRequested) return;
+                            logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
+                            var brightenedImage =
+                                brightness == 0 ? duplicateImage : imageService.Brightness(duplicateImage, brightness);
+                            try
+                            {
+                                if (cancellationToken.IsCancellationRequested) return;
+                                logService.Trace("Building caption...");
+                                var captionBuilder = new StringBuilder(Caption);
+                                if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
+                                {
+                                    if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
+                                    captionBuilder.Append(DateTaken);
+                                }
+
+                                if (cancellationToken.IsCancellationRequested) return;
+                                var brush = new SolidBrush(ForeColor.ToDrawingColor());
+                                logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
+                                var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
+                                    CaptionAlignment, FontFamily.Source, FontSize, FontType,
+                                    FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
+
+                                if (cancellationToken.IsCancellationRequested) return;
+                                UpdateImage(captionedImage);
+                            }
+                            finally
+                            {
+                                if (brightness != 0) brightenedImage?.Dispose();
+                            }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit(stopwatch);
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void LoadImage()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Loading image without cancellation functionality...");
+                logger.Trace("Loading image without cancellation functionality...");
                 LoadImage(new CancellationToken());
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
         public void LoadImage(CancellationToken cancellationToken)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Registering cancellation handlers...");
-                cancellationToken.Register(LoadImageCancel);
+                try
+                {
+                    logger.Trace("Registering cancellation handlers...");
+                    cancellationToken.Register(LoadImageCancel);
 
-                if (cancellationToken.IsCancellationRequested) return;
-                _loadImageCancellationTokenSource?.Cancel();
-                _loadImageCancellationTokenSource = new CancellationTokenSource();
-                new Thread(LoadImageThread).Start(_loadImageCancellationTokenSource.Token);
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    if (cancellationToken.IsCancellationRequested) return;
+                    _loadImageCancellationTokenSource?.Cancel();
+                    _loadImageCancellationTokenSource = new CancellationTokenSource();
+                    new Thread(LoadImageThread).Start(_loadImageCancellationTokenSource.Token);
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void LoadImageCancel()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Cancelling load of image of ""{Filename}""...");
-                _loadImageCancellationTokenSource?.Cancel();
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace($@"Cancelling load of image of ""{Filename}""...");
+                    _loadImageCancellationTokenSource?.Cancel();
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
@@ -1416,33 +1347,27 @@ namespace PhotoLabel.Wpf
         {
             var cancellationToken = (CancellationToken)state;
 
-            // create dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            // initialise variables
-            var stopwatch = Stopwatch.StartNew();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                if (cancellationToken.IsCancellationRequested) return;
-                logService.Trace($@"Loading original image for ""{Filename}"" from disk...");
-                using (var fileStream = new FileStream(Filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                try
                 {
                     if (cancellationToken.IsCancellationRequested) return;
-                    _originalImage = System.Drawing.Image.FromStream(fileStream);
+                    logService.Trace($@"Loading original image for ""{Filename}"" from disk...");
+                    using (var fileStream = new FileStream(Filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        if (cancellationToken.IsCancellationRequested) return;
+                        _originalImage = System.Drawing.Image.FromStream(fileStream);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.Trace($@"Flagging that original image has been loaded for ""{Filename}""...");
-                _originalImageManualResetEvent.Set();
-
-                logService.TraceExit(stopwatch);
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    logService.Trace($@"Flagging that original image has been loaded for ""{Filename}""...");
+                    _originalImageManualResetEvent.Set();
+                }
             }
         }
 
@@ -1451,255 +1376,234 @@ namespace PhotoLabel.Wpf
             var cancellationToken = (CancellationToken)state;
 
             // get dependencies
-            var imageMetadataService = NinjectKernel.Get<IImageMetadataService>();
-            var imageService = NinjectKernel.Get<IImageService>();
-            var logService = NinjectKernel.Get<ILogService>();
+            var imageMetadataService = Injector.Get<IImageMetadataService>();
+            var imageService = Injector.Get<IImageService>();
 
-            // get timer
-            var stopWatch = Stopwatch.StartNew();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                lock (_metadataLock)
+                try
                 {
-                    if (cancellationToken.IsCancellationRequested) return;
-                    if (_isMetadataChecked)
+                    lock (_metadataLock)
                     {
-                        logService.Trace($@"Metadata is already loaded for ""{Filename}"".  Exiting...");
-                        return;
-                    }
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Loading metadata for ""{Filename}""...");
-                    var metadata = imageMetadataService.Load(Filename);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Flagging that metadata has been checked for ""{Filename}""...");
-                    _isMetadataChecked = true;
-
-                    if (metadata == null)
-                    {
-                        logService.Trace($@"Metadata does not exist for ""{Filename}"".  Loading Exif data...");
-                        var exifData = imageService.GetExifData(Filename);
-
-                        if (exifData == null)
+                        if (cancellationToken.IsCancellationRequested) return;
+                        if (_isMetadataChecked)
                         {
-                            logService.Trace($@"Exif data does not exist for ""{Filename}"".  Exiting...");
-
+                            logService.Trace($@"Metadata is already loaded for ""{Filename}"".  Exiting...");
                             return;
                         }
 
-                        logService.Trace($@"Updating ""{Filename}"" from Exif data...");
-                        UpdateExifData(exifData);
-                    }
-                    else
-                    {
                         if (cancellationToken.IsCancellationRequested) return;
-                        logService.Trace(@"Loading properties from metadata...");
-                        UpdateMetadata(metadata);
+                        logService.Trace($@"Loading metadata for ""{Filename}""...");
+                        var metadata = imageMetadataService.Load(Filename);
 
-                        logService.Trace($@"Flagging that ""{Filename}"" has metadata...");
-                        HasMetadata = true;
+                        if (cancellationToken.IsCancellationRequested) return;
+                        logService.Trace($@"Flagging that metadata has been checked for ""{Filename}""...");
+                        _isMetadataChecked = true;
+
+                        if (metadata == null)
+                        {
+                            logService.Trace($@"Metadata does not exist for ""{Filename}"".  Loading Exif data...");
+                            var exifData = imageService.GetExifData(Filename);
+
+                            if (exifData == null)
+                            {
+                                logService.Trace($@"Exif data does not exist for ""{Filename}"".  Exiting...");
+
+                                return;
+                            }
+
+                            logService.Trace($@"Updating ""{Filename}"" from Exif data...");
+                            UpdateExifData(exifData);
+                        }
+                        else
+                        {
+                            if (cancellationToken.IsCancellationRequested) return;
+                            logService.Trace(@"Loading properties from metadata...");
+                            UpdateMetadata(metadata);
+
+                            logService.Trace($@"Flagging that ""{Filename}"" has metadata...");
+                            HasMetadata = true;
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.Trace("Signalling that load has been completed...");
-                _metadataManualResetEvent.Set();
-
-                logService.TraceExit(stopWatch);
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    logService.Trace("Signalling that load has been completed...");
+                    _metadataManualResetEvent.Set();
+                }
             }
         }
 
         public void LoadPreview(bool refresh, CancellationToken cancellationToken)
         {
-            var logService = NinjectKernel.Get<ILogService>();
-            var stopWatch = Stopwatch.StartNew();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if preview must be refreshed...");
-                if (!refresh && _previewWrapper != null)
+                try
                 {
-                    logService.Trace("Preview does not need to be refreshed.  Exiting...");
-                    return;
+                    logService.Trace("Checking if preview must be refreshed...");
+                    if (!refresh && _previewWrapper != null)
+                    {
+                        logService.Trace("Preview does not need to be refreshed.  Exiting...");
+                        return;
+                    }
+
+                    logService.Trace("Registering cancellation requests...");
+                    cancellationToken.Register(LoadPreviewCancel);
+
+                    logService.Trace("Cancelling any in progress load...");
+                    _loadPreviewCancellationTokenSource?.Cancel();
+                    _loadPreviewCancellationTokenSource = new CancellationTokenSource();
+
+                    logService.Trace($@"Loading preview of ""{Filename}"" on background thread...");
+                    Task.Factory.StartNew(LoadPreviewThread, _loadPreviewCancellationTokenSource.Token,
+                        _loadPreviewCancellationTokenSource.Token, TaskCreationOptions.None, _taskScheduler);
                 }
-
-                logService.Trace("Registering cancellation requests...");
-                cancellationToken.Register(LoadPreviewCancel);
-
-                logService.Trace("Cancelling any in progress load...");
-                _loadPreviewCancellationTokenSource?.Cancel();
-                _loadPreviewCancellationTokenSource = new CancellationTokenSource();
-
-                logService.Trace($@"Loading preview of ""{Filename}"" on background thread...");
-                Task.Factory.StartNew(LoadPreviewThread, _loadPreviewCancellationTokenSource.Token,
-                    _loadPreviewCancellationTokenSource.Token, TaskCreationOptions.None, _taskScheduler);
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit(stopWatch);
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void LoadPreviewCancel()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Cancelling in progress load of preview of ""{Filename}""...");
-                _loadPreviewCancellationTokenSource?.Cancel();
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace($@"Cancelling in progress load of preview of ""{Filename}""...");
+                    _loadPreviewCancellationTokenSource?.Cancel();
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
         private void LoadPreviewThread(object state)
         {
-            var cancellationToken = (CancellationToken) state;
+            var cancellationToken = (CancellationToken)state;
 
             LoadPreviewThread(cancellationToken);
         }
 
-        private void LoadPreviewThread(CancellationToken cancellationToken) {
+        private void LoadPreviewThread(CancellationToken cancellationToken)
+        {
             // get dependencies
-            var imageService = NinjectKernel.Get<IImageService>();
-            var logService = NinjectKernel.Get<ILogService>();
+            var imageService = Injector.Get<IImageService>();
 
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                if (cancellationToken.IsCancellationRequested) return;
-                logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
-                if (!_isMetadataChecked)
-                {
-                    logService.Trace($@"Loading metadata for ""{Filename}"" on background thread...");
-                    _metadataManualResetEvent.Reset();
-                    new Thread(LoadMetadataThread).Start(cancellationToken);
-                }
-
-                if (cancellationToken.IsCancellationRequested) return;
-                logService.Trace($@"Loading preview image for ""{Filename}""...");
-                using (var preview = imageService.Get(Filename, PreviewWidth, PreviewHeight))
+                try
                 {
                     if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace("Waiting for metadata to load...");
-                    _metadataManualResetEvent.WaitOne(30000);
-
-                    logService.Trace($@"Checking if ""{Filename}"" has been saved...");
-                    if (IsSaved)
+                    logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
+                    if (!_isMetadataChecked)
                     {
-                        logService.Trace($@"Adding saved icon to ""{Filename}"" preview...");
-                        imageService.Overlay(preview, Resources.saved,
-                            PreviewWidth - Resources.saved.Width - 8, 4);
-                    }
-                    else if (IsEdited)
-                    {
-                        logService.Trace($@"Adding edited icon to ""{Filename}"" preview...");
-                        imageService.Overlay(preview, Resources.edited,
-                            PreviewWidth - Resources.edited.Width - 8, 4);
-                    }
-                    else if (HasMetadata)
-                    {
-                        logService.Trace($@"Adding metadata icon to ""{Filename}"" preview...");
-                        imageService.Overlay(preview, Resources.metadata,
-                            PreviewWidth - Resources.metadata.Width - 8, 4);
+                        logService.Trace($@"Loading metadata for ""{Filename}"" on background thread...");
+                        _metadataManualResetEvent.Reset();
+                        new Thread(LoadMetadataThread).Start(cancellationToken);
                     }
 
                     if (cancellationToken.IsCancellationRequested) return;
-                    UpdatePreview(preview);
+                    logService.Trace($@"Loading preview image for ""{Filename}""...");
+                    using (var preview = imageService.Get(Filename, PreviewWidth, PreviewHeight))
+                    {
+                        if (cancellationToken.IsCancellationRequested) return;
+                        logService.Trace("Waiting for metadata to load...");
+                        _metadataManualResetEvent.WaitOne(30000);
+
+                        logService.Trace($@"Checking if ""{Filename}"" has been saved...");
+                        if (IsSaved)
+                        {
+                            logService.Trace($@"Adding saved icon to ""{Filename}"" preview...");
+                            imageService.Overlay(preview, Resources.saved,
+                                PreviewWidth - Resources.saved.Width - 8, 4);
+                        }
+                        else if (IsEdited)
+                        {
+                            logService.Trace($@"Adding edited icon to ""{Filename}"" preview...");
+                            imageService.Overlay(preview, Resources.edited,
+                                PreviewWidth - Resources.edited.Width - 8, 4);
+                        }
+                        else if (HasMetadata)
+                        {
+                            logService.Trace($@"Adding metadata icon to ""{Filename}"" preview...");
+                            imageService.Overlay(preview, Resources.metadata,
+                                PreviewWidth - Resources.metadata.Width - 8, 4);
+                        }
+
+                        if (cancellationToken.IsCancellationRequested) return;
+                        UpdatePreview(preview);
+                    }
                 }
-            }
-            catch (ThreadAbortException)
-            {
-                // ignored
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (ThreadAbortException)
+                {
+                    // ignored
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void OnError(Exception ex)
         {
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input, ex);
+                    logService.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), DispatcherPriority.Input, ex);
 
-                    return;
+                        return;
+                    }
+
+                    logService.Trace("Logging error...");
+                    logService.Error(ex);
+
+                    logService.Trace($"Notifying user of error...");
+                    _dialogService.Error(Resources.ErrorText);
                 }
-
-                logService.Trace("Logging error...");
-                logService.Error(ex);
-
-                logService.Trace($"Notifying user of error...");
-                _dialogService.Error(Resources.ErrorText);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Application.Current.Dispatcher.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged), DispatcherPriority.ApplicationIdle,
-                        propertyName);
+                    logService.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logService.Trace("Not running on UI thread.  Delegating to UI thread...");
+                        Application.Current.Dispatcher.Invoke(new OnPropertyChangedDelegate(OnPropertyChanged), DispatcherPriority.ApplicationIdle,
+                            propertyName);
 
-                    return;
+                        return;
+                    }
+
+                    logService.Trace("Running event handlers...");
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
                 }
-
-                logService.Trace("Running event handlers...");
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -1707,45 +1611,43 @@ namespace PhotoLabel.Wpf
         {
             if (outputPath == null) throw new ArgumentNullException(nameof(outputPath));
 
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Resetting save signal for ""{Filename}""...");
-                _saveFinishManualResetEvent.Reset();
-
-                _logService.Trace(@"Creating save request...");
-                var metadata = new Metadata
+                try
                 {
-                    AppendDateTakenToCaption = AppendDateTakenToCaption,
-                    Brightness = Brightness,
-                    Caption = Caption,
-                    CaptionAlignment = CaptionAlignment,
-                    DateTaken = DateTaken,
-                    FontFamily = FontFamily.Source,
-                    FontSize = FontSize,
-                    FontType = FontType,
-                    FontBold = FontBold,
-                    Colour = ForeColor.ToDrawingColor().ToArgb(),
-                    BackgroundColour = BackColor.ToDrawingColor().ToArgb(),
-                    ImageFormat = ImageFormat,
-                    Latitude = Latitude,
-                    Longitude = Longitude,
-                    OutputFilename = _imageService.GetFilename(outputPath, Filename, ImageFormat),
-                    Rotation = Rotation
-                };
+                    logger.Trace($@"Resetting save signal for ""{Filename}""...");
+                    _saveFinishManualResetEvent.Reset();
 
-                _logService.Trace($@"Saving to ""{metadata.OutputFilename}"" on background thread...");
-                Task.Factory.StartNew(SaveThread,
-                    new object[] {LoadOriginalImage(), metadata, _saveFinishManualResetEvent},
-                    new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    logger.Trace(@"Creating save request...");
+                    var metadata = new Metadata
+                    {
+                        AppendDateTakenToCaption = AppendDateTakenToCaption,
+                        Brightness = Brightness,
+                        Caption = Caption,
+                        CaptionAlignment = CaptionAlignment,
+                        DateTaken = DateTaken,
+                        FontFamily = FontFamily.Source,
+                        FontSize = FontSize,
+                        FontType = FontType,
+                        FontBold = FontBold,
+                        Colour = ForeColor.ToDrawingColor().ToArgb(),
+                        BackgroundColour = BackColor.ToDrawingColor().ToArgb(),
+                        ImageFormat = ImageFormat,
+                        Latitude = Latitude,
+                        Longitude = Longitude,
+                        OutputFilename = _imageService.GetFilename(outputPath, Filename, ImageFormat),
+                        Rotation = Rotation
+                    };
+
+                    logger.Trace($@"Saving to ""{metadata.OutputFilename}"" on background thread...");
+                    Task.Factory.StartNew(SaveThread,
+                        new object[] { LoadOriginalImage(), metadata, _saveFinishManualResetEvent },
+                        new CancellationToken(), TaskCreationOptions.None, _taskScheduler);
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -1757,80 +1659,78 @@ namespace PhotoLabel.Wpf
             var saveManualResetEvent = (ManualResetEvent)stateArray[2];
 
             // get dependencies
-            var imageMetadataService = NinjectKernel.Get<IImageMetadataService>();
-            var imageService = NinjectKernel.Get<IImageService>();
-            var logService = NinjectKernel.Get<ILogService>();
+            var imageMetadataService = Injector.Get<IImageMetadataService>();
+            var imageService = Injector.Get<IImageService>();
 
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                using (originalImage)
+                try
                 {
-                    logService.Trace("Building caption...");
-                    var captionBuilder = new StringBuilder(metadata.Caption);
-                    if (metadata.AppendDateTakenToCaption.HasValue && metadata.AppendDateTakenToCaption.Value &&
-                        !string.IsNullOrWhiteSpace(metadata.DateTaken))
+                    using (originalImage)
                     {
-                        if (!string.IsNullOrWhiteSpace(metadata.Caption)) captionBuilder.Append(" - ");
-                        captionBuilder.Append(metadata.DateTaken);
+                        logService.Trace("Building caption...");
+                        var captionBuilder = new StringBuilder(metadata.Caption);
+                        if (metadata.AppendDateTakenToCaption.HasValue && metadata.AppendDateTakenToCaption.Value &&
+                            !string.IsNullOrWhiteSpace(metadata.DateTaken))
+                        {
+                            if (!string.IsNullOrWhiteSpace(metadata.Caption)) captionBuilder.Append(" - ");
+                            captionBuilder.Append(metadata.DateTaken);
+                        }
+
+                        logService.Trace($@"Captioning ""{Filename}"" with ""{captionBuilder}""...");
+                        var backgroundColour = System.Drawing.Color.FromArgb(metadata.BackgroundColour ?? 0);
+                        var brush = new SolidBrush(System.Drawing.Color.FromArgb(metadata.Colour ?? 0));
+                        var captionedImage = imageService.Caption(originalImage, captionBuilder.ToString(),
+                            metadata.CaptionAlignment ?? CaptionAlignments.BottomRight, metadata.FontFamily,
+                            metadata.FontSize ?? 10, metadata.FontType,
+                            metadata.FontBold ?? false, brush, backgroundColour, new CancellationToken());
+                        try
+                        {
+                            logService.Trace("Saving captioned image...");
+                            imageService.Save(captionedImage, metadata.OutputFilename,
+                                metadata.ImageFormat ?? ImageFormat.Jpeg);
+                        }
+                        finally
+                        {
+                            captionedImage.Dispose();
+                        }
                     }
 
-                    logService.Trace($@"Captioning ""{Filename}"" with ""{captionBuilder}""...");
-                    var backgroundColour = System.Drawing.Color.FromArgb(metadata.BackgroundColour ?? 0);
-                    var brush = new SolidBrush(System.Drawing.Color.FromArgb(metadata.Colour ?? 0));
-                    var captionedImage = imageService.Caption(originalImage, captionBuilder.ToString(),
-                        metadata.CaptionAlignment ?? CaptionAlignments.BottomRight, metadata.FontFamily,
-                        metadata.FontSize ?? 10, metadata.FontType,
-                        metadata.FontBold ?? false, brush, backgroundColour, new CancellationToken());
-                    try
-                    {
-                        logService.Trace("Saving captioned image...");
-                        imageService.Save(captionedImage, metadata.OutputFilename, metadata.ImageFormat ?? ImageFormat.Jpeg);
-                    }
-                    finally
-                    {
-                        captionedImage.Dispose();
-                    }
+                    logService.Trace("Saving image metadata...");
+                    imageMetadataService.Save(metadata, Filename);
+
+                    logService.Trace("Flagging that image has metadata...");
+                    HasMetadata = true;
+
+                    logService.Trace("Flagging that image has been saved...");
+                    IsEdited = false;
+                    IsSaved = true;
                 }
-
-                logService.Trace("Saving image metadata...");
-                imageMetadataService.Save(metadata, Filename);
-
-                logService.Trace("Flagging that image has metadata...");
-                HasMetadata = true;
-
-                logService.Trace("Flagging that image has been saved...");
-                IsEdited = false;
-                IsSaved = true;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                // set the signal to continue any waiting threads
-                saveManualResetEvent.Set();
-
-                logService.TraceExit();
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally
+                {
+                    // set the signal to continue any waiting threads
+                    saveManualResetEvent.Set();
+                }
             }
         }
 
         private void SetCaption(string parameter)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Setting caption for ""{Filename}"" to ""{parameter}""...");
-                Caption = parameter.Replace("__", "_");
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                try
+                {
+                    logger.Trace($@"Setting caption for ""{Filename}"" to ""{parameter}""...");
+                    Caption = parameter.Replace("__", "_");
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -1839,293 +1739,269 @@ namespace PhotoLabel.Wpf
 
         public void UnloadImage()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace($@"Disposing of original image for ""{Filename}""...");
-                _originalImage?.Dispose();
-                _originalImage = null;
+                try
+                {
+                    logger.Trace($@"Disposing of original image for ""{Filename}""...");
+                    _originalImage?.Dispose();
+                    _originalImage = null;
 
-                _logService.Trace($@"Disposing of caption image for ""{Filename}""...");
-                _imageWrapper?.Dispose();
+                    logger.Trace($@"Disposing of caption image for ""{Filename}""...");
+                    _imageWrapper?.Dispose();
 
-                _logService.Trace($@"Defaulting to opening image for ""{Filename}""...");
-                _imageWrapper = null;
-                _imageStretch = Stretch.None;
+                    logger.Trace($@"Defaulting to opening image for ""{Filename}""...");
+                    _imageWrapper = null;
+                    _imageStretch = Stretch.None;
 
-                OnPropertyChanged(nameof(Image));
-                OnPropertyChanged(nameof(ImageStretch));
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    OnPropertyChanged(nameof(Image));
+                    OnPropertyChanged(nameof(ImageStretch));
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void UpdateExifData(ExifData exifData)
         {
-            // create dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new UpdateExifDataDelegate(UpdateExifData),
-                        DispatcherPriority.Background, exifData);
-
-                    return;
-                }
-
-                logService.Trace("Updating properties from Exif data...");
-                if (!_isCaptionEdited)
-                {
-                    if (!string.IsNullOrWhiteSpace(exifData.Title))
+                    logService.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
                     {
-                        logService.Trace($@"Setting caption of ""{Filename}"" to ""{exifData.Title}""...");
-                        _caption = exifData.Title;
-                    }
-                    else
-                    {
-                        logService.Trace(
-                            $@"Setting caption of ""{Filename}"" to ""{Path.GetFileNameWithoutExtension(Filename)}""...");
-                        _caption = Path.GetFileNameWithoutExtension(Filename);
+                        logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new UpdateExifDataDelegate(UpdateExifData),
+                            DispatcherPriority.Background, exifData);
+
+                        return;
                     }
 
-                    OnPropertyChanged(nameof(Caption));
+                    logService.Trace("Updating properties from Exif data...");
+                    if (!_isCaptionEdited)
+                    {
+                        if (!string.IsNullOrWhiteSpace(exifData.Title))
+                        {
+                            logService.Trace($@"Setting caption of ""{Filename}"" to ""{exifData.Title}""...");
+                            _caption = exifData.Title;
+                        }
+                        else
+                        {
+                            logService.Trace(
+                                $@"Setting caption of ""{Filename}"" to ""{Path.GetFileNameWithoutExtension(Filename)}""...");
+                            _caption = Path.GetFileNameWithoutExtension(Filename);
+                        }
+
+                        OnPropertyChanged(nameof(Caption));
+                    }
+
+                    DateTaken = exifData.DateTaken;
+                    OnPropertyChanged(nameof(DateTaken));
+                    OnPropertyChanged(nameof(HasDateTaken));
+
+                    Latitude = exifData.Latitude;
+                    OnPropertyChanged(nameof(Latitude));
+
+                    Longitude = exifData.Longitude;
+                    OnPropertyChanged(nameof(Longitude));
                 }
-
-                DateTaken = exifData.DateTaken;
-                OnPropertyChanged(nameof(DateTaken));
-                OnPropertyChanged(nameof(HasDateTaken));
-
-                Latitude = exifData.Latitude;
-                OnPropertyChanged(nameof(Latitude));
-
-                Longitude = exifData.Longitude;
-                OnPropertyChanged(nameof(Longitude));
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void UpdateImage(Bitmap image)
         {
-            // create dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new UpdateImageDelegate(UpdateImage),
-                        DispatcherPriority.Background, image);
+                    logService.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new UpdateImageDelegate(UpdateImage),
+                            DispatcherPriority.Background, image);
 
-                    return;
+                        return;
+                    }
+
+                    logService.Trace("Creating image source on UI thread...");
+                    _imageWrapper = new BitmapWrapper(image);
+                    _imageStretch = Stretch.Uniform;
+
+                    logService.Trace("Notifying updates...");
+                    OnPropertyChanged(nameof(Image));
+                    OnPropertyChanged(nameof(ImageStretch));
                 }
-
-                logService.Trace("Creating image source on UI thread...");
-                _imageWrapper = new BitmapWrapper(image);
-                _imageStretch = Stretch.Uniform;
-
-                logService.Trace("Notifying updates...");
-                OnPropertyChanged(nameof(Image));
-                OnPropertyChanged(nameof(ImageStretch));
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit();
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
         private void UpdateMetadata(Metadata metadata)
         {
-            var logService = NinjectKernel.Get<ILogService>();
-
-            var stopwatch = Stopwatch.StartNew();
-
-            logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                logService.Trace("Updating properties from metadata...");
-                if (!_isAppendDateTakenToCaptionEdited && metadata.AppendDateTakenToCaption.HasValue)
+                try
                 {
-                    logService.Trace(
-                        $@"Setting {nameof(AppendDateTakenToCaption)} to {metadata.AppendDateTakenToCaption.Value}...");
-                    _appendDateTakenToCaption = metadata.AppendDateTakenToCaption.Value;
+                    logger.Trace("Updating properties from metadata...");
+                    if (!_isAppendDateTakenToCaptionEdited && metadata.AppendDateTakenToCaption.HasValue)
+                    {
+                        logger.Trace(
+                            $@"Setting {nameof(AppendDateTakenToCaption)} to {metadata.AppendDateTakenToCaption.Value}...");
+                        _appendDateTakenToCaption = metadata.AppendDateTakenToCaption.Value;
 
-                    OnPropertyChanged(nameof(AppendDateTakenToCaption));
+                        OnPropertyChanged(nameof(AppendDateTakenToCaption));
+                    }
+
+                    if (!_isBackColorEdited && metadata.BackgroundColour.HasValue)
+                    {
+                        logger.Trace($@"Setting backcolor for ""{Filename}"" from metadata...");
+                        _backColor = System.Drawing.Color.FromArgb(metadata.BackgroundColour.Value).ToWindowsMediaColor();
+
+                        OnPropertyChanged(nameof(BackColor));
+                        OnPropertyChanged(nameof(BackColorOpacity));
+                    }
+
+                    if (!_isBrightnessEdited)
+                    {
+                        logger.Trace($@"Setting brightness for ""{Filename}"" from metadata...");
+                        _brightness = metadata.Brightness;
+
+                        OnPropertyChanged(nameof(Brightness));
+                    }
+
+                    if (!_isCaptionEdited)
+                    {
+                        logger.Trace($@"Setting caption for ""{Filename}"" to ""{metadata.Caption}""...");
+                        _caption = metadata.Caption;
+
+                        OnPropertyChanged(nameof(Caption));
+                    }
+
+                    if (!_isCaptionAlignmentEdited && metadata.CaptionAlignment.HasValue)
+                    {
+                        logger.Trace($@"Setting caption alignment for ""{Filename}"" from metadata...");
+                        _captionAlignment = metadata.CaptionAlignment.Value;
+
+                        OnPropertyChanged(nameof(IsBottomCentreAlignment));
+                        OnPropertyChanged(nameof(IsBottomLeftAlignment));
+                        OnPropertyChanged(nameof(IsBottomRightAlignment));
+                        OnPropertyChanged(nameof(IsMiddleLeftAlignment));
+                        OnPropertyChanged(nameof(IsMiddleCentreAlignment));
+                        OnPropertyChanged(nameof(IsMiddleRightAlignment));
+                        OnPropertyChanged(nameof(IsTopCentreAlignment));
+                        OnPropertyChanged(nameof(IsTopLeftAlignment));
+                        OnPropertyChanged(nameof(IsTopRightAlignment));
+                    }
+
+                    DateTaken = metadata.DateTaken;
+                    OnPropertyChanged(nameof(DateTaken));
+
+                    if (!_isFontBoldEdited && metadata.FontBold.HasValue)
+                    {
+                        logger.Trace($@"Setting font bold for ""{Filename}"" from metadata...");
+                        _fontBold = metadata.FontBold.Value;
+
+                        OnPropertyChanged(nameof(FontBold));
+                    }
+
+                    if (!_isFontFamilyEdited && !string.IsNullOrWhiteSpace(metadata.FontFamily))
+                    {
+                        logger.Trace($@"Setting font name for ""{Filename}"" to ""{metadata.FontFamily}""...");
+                        _fontFamily = new FontFamily(metadata.FontFamily);
+
+                        OnPropertyChanged(nameof(FontFamily));
+                    }
+
+                    if (!_isFontSizeEdited && metadata.FontSize.HasValue)
+                    {
+                        logger.Trace($@"Setting font size for ""{Filename}"" to {metadata.FontSize.Value}...");
+                        _fontSize = metadata.FontSize.Value;
+
+                        OnPropertyChanged(nameof(FontSize));
+                    }
+
+                    if (!_isFontTypeEdited && !string.IsNullOrWhiteSpace(metadata.FontType))
+                    {
+                        logger.Trace($@"Setting font type for ""{Filename}"" to ""{metadata.FontType}""...");
+                        _fontType = metadata.FontType;
+
+                        OnPropertyChanged(nameof(FontType));
+                    }
+
+                    if (!_isForeColorEdited && metadata.Colour.HasValue)
+                    {
+                        logger.Trace($@"Setting fore colour for ""{Filename}"" from metadata...");
+                        _foreColor = System.Drawing.Color.FromArgb(metadata.Colour.Value).ToWindowsMediaColor();
+
+                        OnPropertyChanged(nameof(ForeColor));
+                    }
+
+                    if (!_isImageFormatEdited && metadata.ImageFormat.HasValue)
+                    {
+                        logger.Trace($@"Setting image format for ""{Filename}"" to ""{metadata.ImageFormat.Value}...");
+                        _imageFormat = metadata.ImageFormat.Value;
+
+                        OnPropertyChanged(nameof(ImageFormat));
+                    }
+
+                    Latitude = metadata.Latitude;
+                    OnPropertyChanged(nameof(Latitude));
+
+                    Longitude = metadata.Longitude;
+                    OnPropertyChanged(nameof(Longitude));
+
+                    if (!_isRotationEdited && metadata.Rotation.HasValue)
+                    {
+                        logger.Trace($@"Setting rotation for ""{Filename}"" from metadata...");
+                        _rotation = metadata.Rotation.Value;
+                    }
                 }
-
-                if (!_isBackColorEdited && metadata.BackgroundColour.HasValue)
+                catch (Exception ex)
                 {
-                    logService.Trace($@"Setting backcolor for ""{Filename}"" from metadata...");
-                    _backColor = System.Drawing.Color.FromArgb(metadata.BackgroundColour.Value).ToWindowsMediaColor();
-
-                    OnPropertyChanged(nameof(BackColor));
-                    OnPropertyChanged(nameof(BackColorOpacity));
+                    OnError(ex);
                 }
-
-                if (!_isBrightnessEdited)
-                {
-                    _logService.Trace($@"Setting brightness for ""{Filename}"" from metadata...");
-                    _brightness = metadata.Brightness;
-
-                    OnPropertyChanged(nameof(Brightness));
-                }
-
-                if (!_isCaptionEdited)
-                {
-                    logService.Trace($@"Setting caption for ""{Filename}"" to ""{metadata.Caption}""...");
-                    _caption = metadata.Caption;
-
-                    OnPropertyChanged(nameof(Caption));
-                }
-
-                if (!_isCaptionAlignmentEdited && metadata.CaptionAlignment.HasValue)
-                {
-                    logService.Trace($@"Setting caption alignment for ""{Filename}"" from metadata...");
-                    _captionAlignment = metadata.CaptionAlignment.Value;
-
-                    OnPropertyChanged(nameof(IsBottomCentreAlignment));
-                    OnPropertyChanged(nameof(IsBottomLeftAlignment));
-                    OnPropertyChanged(nameof(IsBottomRightAlignment));
-                    OnPropertyChanged(nameof(IsMiddleLeftAlignment));
-                    OnPropertyChanged(nameof(IsMiddleCentreAlignment));
-                    OnPropertyChanged(nameof(IsMiddleRightAlignment));
-                    OnPropertyChanged(nameof(IsTopCentreAlignment));
-                    OnPropertyChanged(nameof(IsTopLeftAlignment));
-                    OnPropertyChanged(nameof(IsTopRightAlignment));
-                }
-
-                DateTaken = metadata.DateTaken;
-                OnPropertyChanged(nameof(DateTaken));
-
-                if (!_isFontBoldEdited && metadata.FontBold.HasValue)
-                {
-                    logService.Trace($@"Setting font bold for ""{Filename}"" from metadata...");
-                    _fontBold = metadata.FontBold.Value;
-
-                    OnPropertyChanged(nameof(FontBold));
-                }
-
-                if (!_isFontFamilyEdited && !string.IsNullOrWhiteSpace(metadata.FontFamily))
-                {
-                    logService.Trace($@"Setting font name for ""{Filename}"" to ""{metadata.FontFamily}""...");
-                    _fontFamily = new FontFamily(metadata.FontFamily);
-
-                    OnPropertyChanged(nameof(FontFamily));
-                }
-
-                if (!_isFontSizeEdited && metadata.FontSize.HasValue)
-                {
-                    logService.Trace($@"Setting font size for ""{Filename}"" to {metadata.FontSize.Value}...");
-                    _fontSize = metadata.FontSize.Value;
-
-                    OnPropertyChanged(nameof(FontSize));
-                }
-
-                if (!_isFontTypeEdited && !string.IsNullOrWhiteSpace(metadata.FontType))
-                {
-                    logService.Trace($@"Setting font type for ""{Filename}"" to ""{metadata.FontType}""...");
-                    _fontType = metadata.FontType;
-
-                    OnPropertyChanged(nameof(FontType));
-                }
-
-                if (!_isForeColorEdited && metadata.Colour.HasValue)
-                {
-                    logService.Trace($@"Setting fore colour for ""{Filename}"" from metadata...");
-                    _foreColor = System.Drawing.Color.FromArgb(metadata.Colour.Value).ToWindowsMediaColor();
-
-                    OnPropertyChanged(nameof(ForeColor));
-                }
-
-                if (!_isImageFormatEdited && metadata.ImageFormat.HasValue)
-                {
-                    logService.Trace($@"Setting image format for ""{Filename}"" to ""{metadata.ImageFormat.Value}...");
-                    _imageFormat = metadata.ImageFormat.Value;
-
-                    OnPropertyChanged(nameof(ImageFormat));
-                }
-
-                Latitude = metadata.Latitude;
-                OnPropertyChanged(nameof(Latitude));
-
-                Longitude = metadata.Longitude;
-                OnPropertyChanged(nameof(Longitude));
-
-                if (!_isRotationEdited && metadata.Rotation.HasValue)
-                {
-                    logService.Trace($@"Setting rotation for ""{Filename}"" from metadata...");
-                    _rotation = metadata.Rotation.Value;
-                }
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit(stopwatch);
             }
         }
 
         private void UpdatePreview(Bitmap image)
         {
-            var logService = NinjectKernel.Get<ILogService>();
-
-            var stopwatch = Stopwatch.StartNew();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
-                logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new UpdatePreviewDelegate(UpdatePreview),
-                        DispatcherPriority.ApplicationIdle, image);
+                    logService.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new UpdatePreviewDelegate(UpdatePreview),
+                            DispatcherPriority.ApplicationIdle, image);
 
-                    return;
+                        return;
+                    }
+
+                    logService.Trace($@"Setting new preview for ""{Filename}""...");
+                    _previewWrapper = new BitmapWrapper(image);
+
+                    OnPropertyChanged(nameof(Preview));
                 }
-
-                logService.Trace($@"Setting new preview for ""{Filename}""...");
-                _previewWrapper = new BitmapWrapper(image);
-
-                OnPropertyChanged(nameof(Preview));
-            }
-            catch (ThreadAbortException)
-            {
-                // ignored
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                logService.TraceExit(stopwatch);
+                catch (ThreadAbortException)
+                {
+                    // ignored
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -2186,7 +2062,7 @@ namespace PhotoLabel.Wpf
         private bool _isFontSizeEdited;
         private bool _isFontTypeEdited;
         private bool _isSaved;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private CancellationTokenSource _loadImageCancellationTokenSource;
         private CancellationTokenSource _loadPreviewCancellationTokenSource;
         private readonly object _metadataLock;

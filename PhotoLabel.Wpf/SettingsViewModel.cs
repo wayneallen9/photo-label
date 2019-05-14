@@ -1,7 +1,7 @@
-﻿using PhotoLabel.DependencyInjection;
-using PhotoLabel.Services;
+﻿using PhotoLabel.Services;
 using PhotoLabel.Wpf.Annotations;
 using PhotoLabel.Wpf.Properties;
+using Shared;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -16,12 +16,12 @@ namespace PhotoLabel.Wpf
         public SettingsViewModel(
             IConfigurationService configurationService,
             IDialogService dialogService,
-            ILogService logService)
+            ILogger logger)
         {
             // save dependencies
             _configurationService = configurationService;
             _dialogService = dialogService;
-            _logService = logService;
+            _logger = logger;
 
             // get the maximum file size
             GetMaximumFileSize();
@@ -29,46 +29,41 @@ namespace PhotoLabel.Wpf
 
         private void Apply()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Saving maximum file size...");
-                SetMaximumFileSize();
+                try
+                {
+                    logger.Trace("Saving maximum file size...");
+                    SetMaximumFileSize();
 
-                _logService.Trace("Flagging that updates have been saved...");
-                IsEdited = false;
+                    logger.Trace("Flagging that updates have been saved...");
+                    IsEdited = false;
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
-            }
-
         }
 
         public ICommand ApplyCommand => _applyCommand ?? (_applyCommand = new CommandHandler(Apply, SaveEnabled));
 
         private void Close(Window window)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Flagging that close is forced...");
-                _forceClose = true;
+                try
+                {
+                    logger.Trace("Flagging that close is forced...");
+                    _forceClose = true;
 
-                _logService.Trace("Closing window...");
-                window.Close();
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    logger.Trace("Closing window...");
+                    window.Close();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -76,30 +71,25 @@ namespace PhotoLabel.Wpf
 
         public void Closing(object sender, CancelEventArgs e)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if close is forced...");
+                logger.Trace("Checking if close is forced...");
                 if (_forceClose)
                 {
-                    _logService.Trace("Close is forced.  Exiting...");
+                    logger.Trace("Close is forced.  Exiting...");
                     return;
                 }
 
-                _logService.Trace("Checking if there are unsaved changes...");
+                logger.Trace("Checking if there are unsaved changes...");
                 if (!IsEdited)
                 {
-                    _logService.Trace("There are no unsaved changes.  Exiting...");
+                    logger.Trace("There are no unsaved changes.  Exiting...");
                     return;
                 }
 
-                _logService.Trace("Prompting for confirmation...");
+                logger.Trace("Prompting for confirmation...");
                 e.Cancel = !_dialogService.Confirm("You have unsaved changes.  Do you wish to exit?",
                     "Unsaved Changes");
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
@@ -108,17 +98,16 @@ namespace PhotoLabel.Wpf
             get => _isEdited;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(IsEdited)} has changed...");
+                    logger.Trace($"Checking if value of {nameof(IsEdited)} has changed...");
                     if (_isEdited == value)
                     {
-                        _logService.Trace($"Value of {nameof(IsEdited)} has not changed.  Exiting...");
+                        logger.Trace($"Value of {nameof(IsEdited)} has not changed.  Exiting...");
                         return;
                     }
 
-                    _logService.Trace($"Setting value of {nameof(IsEdited)} to {value}...");
+                    logger.Trace($"Setting value of {nameof(IsEdited)} to {value}...");
                     _isEdited = value;
 
                     OnPropertyChanged();
@@ -127,34 +116,28 @@ namespace PhotoLabel.Wpf
                     (_applyCommand as ICommandHandler)?.Notify();
                     (_okCommand as ICommandHandler)?.Notify();
                 }
-                finally
-                {
-                    _logService.TraceExit();
-                }
             }
         }
 
         private void Ok(Window window)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Saving maximum file size...");
-                SetMaximumFileSize();
+                try
+                {
+                    logger.Trace("Saving maximum file size...");
+                    SetMaximumFileSize();
 
-                _logService.Trace("Flagging that close is forced...");
-                _forceClose = true;
+                    logger.Trace("Flagging that close is forced...");
+                    _forceClose = true;
 
-                _logService.Trace("Closing window...");
-                window.Close();
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    logger.Trace("Closing window...");
+                    window.Close();
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
             }
         }
 
@@ -162,51 +145,47 @@ namespace PhotoLabel.Wpf
 
         private bool SaveEnabled()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if edits have been made...");
-                return _isEdited;
-            }
-            catch (Exception ex)
-            {
-                OnError(ex);
+                try
+                {
+                    logger.Trace("Checking if edits have been made...");
+                    return _isEdited;
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
 
-                return false;
-            }
-            finally
-            {
-                _logService.TraceExit();
+                    return false;
+                }
             }
         }
 
         private void OnError(Exception ex)
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if running on UI thread...");
-                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                try
                 {
-                    _logService.Trace("Not running on UI thread.  Dispatching to UI thread...");
-                    Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), ex);
+                    logger.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logger.Trace("Not running on UI thread.  Dispatching to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new OnErrorDelegate(OnError), ex);
 
-                    return;
+                        return;
+                    }
+
+                    // log the error
+                    logger.Error(ex);
+
+                    // let the user know
+                    _dialogService.Error(Resources.ErrorText);
                 }
-
-                // log the error
-                _logService.Error(ex);
-
-                // let the user know
-                _dialogService.Error(Resources.ErrorText);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                _logService.TraceEnter();
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
         }
 
@@ -215,27 +194,22 @@ namespace PhotoLabel.Wpf
             get => _maximumFileSizeEnabled;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(MaximumFileSizeEnabled)} has changed...");
+                    logger.Trace($"Checking if value of {nameof(MaximumFileSizeEnabled)} has changed...");
                     if (_maximumFileSizeEnabled == value)
                     {
-                        _logService.Trace($"Value of {nameof(MaximumFileSizeEnabled)} has not changed.  Exiting...");
+                        logger.Trace($"Value of {nameof(MaximumFileSizeEnabled)} has not changed.  Exiting...");
                         return;
                     }
 
-                    _logService.Trace($"Setting value of {nameof(MaximumFileSizeEnabled)} to {value}...");
+                    logger.Trace($"Setting value of {nameof(MaximumFileSizeEnabled)} to {value}...");
                     _maximumFileSizeEnabled = value;
 
-                    _logService.Trace("Flagging that model has been edited...");
+                    logger.Trace("Flagging that model has been edited...");
                     IsEdited = true;
 
                     OnPropertyChanged();
-                }
-                finally
-                {
-                    _logService.TraceExit();
                 }
             }
         }
@@ -243,11 +217,7 @@ namespace PhotoLabel.Wpf
         [NotifyPropertyChangedInvocator]
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            // get dependencies
-            var logService = NinjectKernel.Get<ILogService>();
-
-            logService.TraceEnter();
-            try
+            using (var logService = _logger.Block())
             {
                 logService.Trace("Checking if running on UI thread...");
                 if (Application.Current?.Dispatcher.CheckAccess() == false)
@@ -263,10 +233,6 @@ namespace PhotoLabel.Wpf
                 logService.Trace("Running on UI thread.  Executing...");
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
-            finally
-            {
-                logService.TraceExit();
-            }
         }
 
         public int Quantity
@@ -274,44 +240,41 @@ namespace PhotoLabel.Wpf
             get => _quantity;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Quantity)} has changed...");
-                    if (_quantity == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Quantity)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Quantity)} has changed...");
+                        if (_quantity == value)
+                        {
+                            logger.Trace($"Value of {nameof(Quantity)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Quantity)} to {value}...");
+                        _quantity = value;
+
+                        logger.Trace("Flagging that model has been edited...");
+                        IsEdited = true;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Quantity)} to {value}...");
-                    _quantity = value;
-
-                    _logService.Trace("Flagging that model has been edited...");
-                    IsEdited = true;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
 
         private void GetMaximumFileSize()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if a maximum file size has been set...");
+                logger.Trace("Checking if a maximum file size has been set...");
                 if (_configurationService.MaxImageSize == null)
                 {
-                    _logService.Trace("No maximum file size has been set...");
+                    logger.Trace("No maximum file size has been set...");
                     _quantity = 1;
                     _maximumFileSizeEnabled = false;
                     _type = QuantityType.Kb;
@@ -319,10 +282,10 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
-                _logService.Trace("Maximum file size has been set...");
+                logger.Trace("Maximum file size has been set...");
                 _maximumFileSizeEnabled = true;
 
-                _logService.Trace($"Reducing {_configurationService.MaxImageSize} to smallest quantity...");
+                logger.Trace($"Reducing {_configurationService.MaxImageSize} to smallest quantity...");
                 if (_configurationService.MaxImageSize < 1048576)
                 {
                     _quantity = (int)_configurationService.MaxImageSize.Value;
@@ -330,72 +293,61 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
-                _logService.Trace("Megabytes have been selected...");
+                logger.Trace("Megabytes have been selected...");
                 _quantity = (int)_configurationService.MaxImageSize.Value / 1048576;
                 _type = QuantityType.Mb;
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
         private void SetMaximumFileSize()
         {
-            _logService.TraceEnter();
-            try
+            using (var logger = _logger.Block())
             {
-                _logService.Trace("Checking if maximum file size is set...");
+                logger.Trace("Checking if maximum file size is set...");
                 if (_maximumFileSizeEnabled)
                 {
-                    _logService.Trace("Setting maximum file size...");
+                    logger.Trace("Setting maximum file size...");
                     var multiplier = (_type == QuantityType.Kb) ? 1024 : 1048576;
-                    _configurationService.MaxImageSize = (ulong) (_quantity * multiplier);
+                    _configurationService.MaxImageSize = (ulong)(_quantity * multiplier);
 
                     return;
                 }
 
-                _logService.Trace("Clearing maximum file size...");
+                logger.Trace("Clearing maximum file size...");
                 _configurationService.MaxImageSize = null;
-            }
-            finally
-            {
-                _logService.TraceExit();
             }
         }
 
-        public string Title => $"Photo Label - [Settings{(IsEdited?"*":"")}]";
+        public string Title => $"Photo Label - [Settings{(IsEdited ? "*" : "")}]";
 
         public QuantityType Type
         {
             get => _type;
             set
             {
-                _logService.TraceEnter();
-                try
+                using (var logger = _logger.Block())
                 {
-                    _logService.Trace($"Checking if value of {nameof(Type)} has changed...");
-                    if (_type == value)
+                    try
                     {
-                        _logService.Trace($"Value of {nameof(Type)} has not changed.  Exiting...");
-                        return;
+                        logger.Trace($"Checking if value of {nameof(Type)} has changed...");
+                        if (_type == value)
+                        {
+                            logger.Trace($"Value of {nameof(Type)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($"Setting value of {nameof(Type)}...");
+                        _type = value;
+
+                        logger.Trace("Flagging that model has been edited...");
+                        IsEdited = true;
+
+                        OnPropertyChanged();
                     }
-
-                    _logService.Trace($"Setting value of {nameof(Type)}...");
-                    _type = value;
-
-                    _logService.Trace("Flagging that model has been edited...");
-                    IsEdited = true;
-
-                    OnPropertyChanged();
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    _logService.TraceExit();
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
                 }
             }
         }
@@ -423,7 +375,7 @@ namespace PhotoLabel.Wpf
         private readonly IDialogService _dialogService;
         private bool _forceClose;
         private bool _isEdited;
-        private readonly ILogService _logService;
+        private readonly ILogger _logger;
         private ICommand _okCommand;
         private bool _maximumFileSizeEnabled;
         private int _quantity;

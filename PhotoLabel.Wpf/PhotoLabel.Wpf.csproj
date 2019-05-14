@@ -97,7 +97,6 @@
     <Compile Include="IObservable.cs" />
     <Compile Include="IObserver.cs" />
     <Compile Include="Mapper.cs" />
-    <Compile Include="NinjectModule.cs" />
     <Compile Include="OpenFolderViewModel.cs" />
     <Compile Include="OpenFolderWindow.xaml.cs">
       <DependentUpon>OpenFolderWindow.xaml</DependentUpon>
@@ -177,13 +176,13 @@
     <Resource Include="Resources\open.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PhotoLabel.DependencyInjection\PhotoLabel.DependencyInjection.csproj">
-      <Project>{5e530134-84b5-43b6-b035-3dc7eb7b12ab}</Project>
-      <Name>PhotoLabel.DependencyInjection</Name>
-    </ProjectReference>
     <ProjectReference Include="..\PhotoLibrary.Services\PhotoLabel.Services.csproj">
       <Project>{9071c57f-7b49-4c31-899b-666910064a61}</Project>
       <Name>PhotoLabel.Services</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Shared\Shared.csproj">
+      <Project>{a0b5ec3e-7925-498a-9ad0-0be090ef12a3}</Project>
+      <Name>Shared</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

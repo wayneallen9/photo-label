@@ -1,5 +1,5 @@
 ﻿using Ninject.Parameters;
-using PhotoLabel.DependencyInjection;
+using Shared;
 
 namespace PhotoLabel.Services
 {
@@ -10,11 +10,11 @@ namespace PhotoLabel.Services
             switch (imageFormat)
             {
                 case ImageFormat.Jpeg:
-                    return NinjectKernel.Get<JpegImageReducer>();
+                    return Injector.Get<JpegImageReducer>();
                 default:
                     var constructorArgument = new ConstructorArgument("imageFormat", imageFormat);
 
-                    return NinjectKernel.Get<DefaultImageReducer>(constructorArgument);
+                    return Injector.Get<DefaultImageReducer>(constructorArgument);
             }
         }
     }
