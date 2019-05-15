@@ -27,11 +27,12 @@ namespace PhotoLabel.Wpf
         public ImageViewModel(string filename)
         {
             // save dependencies
-            Filename = filename;
+            _filename = filename;
 
             // get dependencies
             _configurationService = Injector.Get<IConfigurationService>();
             _dialogService = Injector.Get<IDialogService>();
+            _imageMetadataService = Injector.Get<IImageMetadataService>();
             _imageService = Injector.Get<IImageService>();
             _opacityService = Injector.Get<IOpacityService>();
             _taskScheduler = Injector.Get<SingleTaskScheduler>();
@@ -399,7 +400,45 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public string Filename { get; }
+        public string Filename
+        {
+            get=> _filename;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    try
+                    {
+                        logger.Trace($"Checking if value of {nameof(Filename)} has changed...");
+                        if (_filename == value)
+                        {
+                            logger.Trace($"Value of {nameof(Filename)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        // save the original filename
+                        var originalFilename = _filename;
+
+                        logger.Trace($@"Setting value of {nameof(Filename)} to ""{value}""...");
+                        _filename = value;
+
+                        logger.Trace($@"Checking if ""{originalFilename}"" has metadata...");
+                        _metadataManualResetEvent.WaitOne(30000);
+                        if (_hasMetadata)
+                        {
+                            logger.Trace($@"Renaming metadata file for ""{originalFilename}""...");
+                            _imageMetadataService.Rename(originalFilename, value);
+                        }
+
+                        OnPropertyChanged();
+                    }
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
+                }
+            }
+        }
 
         private BitmapSource GetOpeningBitmapSource()
         {
@@ -678,17 +717,20 @@ namespace PhotoLabel.Wpf
                 logger.Trace("Wait for any background load to complete...");
                 _originalImageManualResetEvent.WaitOne(30000);
 
+                logger.Trace("Checking if the original image has already been cached...");
                 lock (_originalImageLock)
                 {
-                    logger.Trace("Checking if this is the first call...");
-                    if (_originalImage == null)
+                    if (_originalImage != null)
                     {
-                        logger.Trace("This is the first call.  Loading original image from disk...");
-                        _originalImageManualResetEvent.Reset();
-                        new Thread(LoadOriginalThread).Start(new CancellationToken());
+                        logger.Trace(
+                            "Original image has already been cached.  Returning a copy of the original image...");
+                        return new Bitmap(_originalImage);
+                    }
 
-                        logger.Trace("Waiting for background load to complete...");
-                        _originalImageManualResetEvent.WaitOne(30000);
+                    logger.Trace("Loading original image from disk...");
+                    using (var fileStream = new FileStream(Filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        _originalImage = System.Drawing.Image.FromStream(fileStream);
                     }
 
                     logger.Trace("Returning a copy of the original image...");
@@ -1297,6 +1339,58 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public void LoadExifData(CancellationToken cancellationToken)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace($@"Loading Exif data for ""{Filename}"" on background thread...");
+                Task.Factory.StartNew(LoadExifDataThread, new object[] {Filename, cancellationToken}, cancellationToken, TaskCreationOptions.None, _taskScheduler);
+            }
+        }
+
+        private void LoadExifDataThread(object state)
+        {
+            var stateArray = (object[])state;
+            var filename = (string) stateArray[0];
+            var cancellationToken = (CancellationToken) stateArray[1];
+
+            using (var logger = _logger.Block())
+            {
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+                    logger.Trace($@"Retrieving Exif data for ""{filename}""...");
+                    var exifData = _imageService.GetExifData(filename);
+
+                    if (exifData == null)
+                    {
+                        logger.Trace($@"No Exif data found for ""{filename}"".  Exiting...");
+                        return;
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    logger.Trace($@"Updating Exif data for ""{filename}""...");
+                    UpdateExifData(exifData);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    logger.Trace($@"Checking if ""{filename}"" has been cached...");
+                    if (_imageWrapper == null)
+                    {
+                        logger.Trace($@"""{filename}"" has not been cached.  Exiting...");
+                        return;
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) return;
+                    logger.Trace($@"Reloading image for ""{filename}""...");
+                    LoadImageThread(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
+        }
+
         private void LoadImage()
         {
             using (var logger = _logger.Block())
@@ -1355,6 +1449,8 @@ namespace PhotoLabel.Wpf
                     logService.Trace($@"Loading original image for ""{Filename}"" from disk...");
                     using (var fileStream = new FileStream(Filename, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
+                        // there is no need to lock the original image because it is locked on the thread that spawned this thread until this
+                        // thread finishes
                         if (cancellationToken.IsCancellationRequested) return;
                         _originalImage = System.Drawing.Image.FromStream(fileStream);
                     }
@@ -1743,9 +1839,12 @@ namespace PhotoLabel.Wpf
             {
                 try
                 {
-                    logger.Trace($@"Disposing of original image for ""{Filename}""...");
-                    _originalImage?.Dispose();
-                    _originalImage = null;
+                    lock (_originalImageLock)
+                    {
+                        logger.Trace($@"Disposing of original image for ""{Filename}""...");
+                        _originalImage?.Dispose();
+                        _originalImage = null;
+                    }
 
                     logger.Trace($@"Disposing of caption image for ""{Filename}""...");
                     _imageWrapper?.Dispose();
@@ -1832,6 +1931,7 @@ namespace PhotoLabel.Wpf
                     }
 
                     logService.Trace("Creating image source on UI thread...");
+                    _imageWrapper?.Dispose();
                     _imageWrapper = new BitmapWrapper(image);
                     _imageStretch = Stretch.Uniform;
 
@@ -2041,15 +2141,17 @@ namespace PhotoLabel.Wpf
         private readonly IConfigurationService _configurationService;
         private readonly IDialogService _dialogService;
         private bool _disposedValue;
-        private ImageFormat? _imageFormat;
+        private string _filename;
         private bool? _fontBold;
         private FontFamily _fontFamily;
         private float? _fontSize;
         private string _fontType;
         private Color? _foreColor;
         private bool _hasMetadata;
+        private ImageFormat? _imageFormat;
+        private readonly IImageMetadataService _imageMetadataService;
+        private readonly IImageService _imageService;
         private BitmapWrapper _imageWrapper;
-        private IImageService _imageService;
         private Stretch _imageStretch;
         private bool _isAppendDateTakenToCaptionEdited;
         private bool _isBackColorEdited;

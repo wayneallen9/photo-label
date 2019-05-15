@@ -8,6 +8,7 @@ namespace Shared
         bool Add(string path);
         bool Add(string path, string filterPattern);
         void Clear();
+        void Dispose();
         IDisposable Subscribe(IFolderWatcherObserver observer);
     }
 }

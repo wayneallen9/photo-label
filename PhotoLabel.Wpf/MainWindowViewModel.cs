@@ -10,6 +10,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows;
@@ -28,11 +29,32 @@ namespace PhotoLabel.Wpf
     public class MainWindowViewModel : IDisposable, IFolderWatcherObserver, INotifyPropertyChanged, IObserver,
         IRecentlyUsedDirectoriesObserver
     {
+        #region constants
+        private const string ImageFilenameRegex = @"\.(bmp|gif|jpeg|jpg|png|tif|tiff)$";
+        private const double MinimumCaptionSize = 8d;
+
+        #endregion
+
+        #region delegates
+
+        private delegate void OnChangedDelegate(string path);
+        private delegate void OnClearDelegate();
+        private delegate void OnCreatedDelegate(string path);
+        private delegate void OnDeletedDelegate(string path);
+        private delegate void OnErrorDelegate(Exception error);
+        private delegate void OnNextDelegate(Folder directory);
+        private delegate void OnPropertyChangedDelegate(string propertyName);
+
+        private delegate void OnRenamedDelegate(string oldPath, string newPath);
+        private delegate void UpdateImagesDelegate(IList<ImageViewModel> images);
+        #endregion
+
         public MainWindowViewModel(
             IDialogService dialogService,
             IConfigurationService configurationService,
             IFolderService folderService,
             IFolderWatcher folderWatcher,
+            IImageMetadataService imageMetadataService,
             IImageService imageService,
             ILogger logService,
             INavigationService navigationService,
@@ -46,6 +68,7 @@ namespace PhotoLabel.Wpf
             _configurationService = configurationService;
             _folderService = folderService;
             _folderWatcher = folderWatcher;
+            _imageMetadataService = imageMetadataService;
             _imageService = imageService;
             _logger = logService;
             _opacityService = opacityService;
@@ -65,6 +88,9 @@ namespace PhotoLabel.Wpf
             _recentlyUsedDirectoriesCancellationTokenSource = new CancellationTokenSource();
             recentlyUsedDirectoriesService.Subscribe(this);
             recentlyUsedDirectoriesService.Load(_recentlyUsedDirectoriesCancellationTokenSource.Token);
+
+            // subscribe to observables
+            _folderWatcher.Subscribe(this);
 
             // automatically open the last used directory
             OpenLastUsedDirectory();
@@ -164,6 +190,7 @@ namespace PhotoLabel.Wpf
                     }
 
                     logger.Trace("Cancelling all background tasks...");
+                    _folderWatcher.Clear();
                     _openCancellationTokenSource?.Cancel();
                     _recentlyUsedDirectoriesCancellationTokenSource?.Cancel();
 
@@ -881,7 +908,7 @@ namespace PhotoLabel.Wpf
                 logger.Trace($@"Opening ""{folder.Path}"" on background thread...");
                 _openCancellationTokenSource?.Cancel();
                 _openCancellationTokenSource = new CancellationTokenSource();
-                new Thread(OpenDirectoryThread).Start(new object[]
+                new Thread(OpenFolderThread).Start(new object[]
                     {folder, progressViewModel, _openCancellationTokenSource.Token});
 
                 logger.Trace("Showing progress window...");
@@ -889,7 +916,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void OpenDirectoryThread(object state)
+        private void OpenFolderThread(object state)
         {
             var stateArray = (object[])state;
             var folderViewModel = (FolderViewModel)stateArray[0];
@@ -898,7 +925,7 @@ namespace PhotoLabel.Wpf
 
             // create dependencies
             var imageService = Injector.Get<IImageService>();
-            var recentlyUsedDirectoriesService = Injector.Get<IRecentlyUsedFoldersService>();
+            var recentlyUsedFoldersService = Injector.Get<IRecentlyUsedFoldersService>();
 
             using (var logger = _logger.Block())
             {
@@ -942,9 +969,16 @@ namespace PhotoLabel.Wpf
                     logger.Trace($"Adding {images.Count} images to list...");
                     UpdateImages(images);
 
+                    if (cancellationToken.IsCancellationRequested) return;
+                    logger.Trace($@"Watching ""{folderViewModel.Path}"" for file changes...");
+                    _folderWatcher.Clear();
+                    _folderWatcher.Add(folderViewModel.Path, ImageFilenameRegex);
+                    foreach (var subFolder in folderViewModel.SubFolders.Where(s => s.IsSelected))
+                        _folderWatcher.Add(Path.Combine(folderViewModel.Path, subFolder.Path), ImageFilenameRegex);
+
                     logger.Trace($@"Adding ""{folderViewModel.Path}"" to recently used directories...");
                     var folder = Mapper.Map<Folder>(folderViewModel);
-                    recentlyUsedDirectoriesService.Add(folder);
+                    recentlyUsedFoldersService.Add(folder);
 
                     if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace($@"Checking if there are any images in ""{folderViewModel.Path}""...");
@@ -1243,20 +1277,6 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        #region constants
-
-        private const double MinimumCaptionSize = 8d;
-
-        #endregion
-
-        #region delegates
-
-        private delegate void OnClearDelegate();
-        private delegate void OnErrorDelegate(Exception error);
-        private delegate void OnNextDelegate(Folder directory);
-        private delegate void OnPropertyChangedDelegate(string propertyName);
-        private delegate void UpdateImagesDelegate(IList<ImageViewModel> images);
-        #endregion
 
         #region variables
 
@@ -1267,6 +1287,7 @@ namespace PhotoLabel.Wpf
         private ICommand _exitCommand;
         private readonly IFolderService _folderService;
         private readonly IFolderWatcher _folderWatcher;
+        private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
         private int _indexToRemove;
         private readonly ILogger _logger;
@@ -1330,9 +1351,133 @@ namespace PhotoLabel.Wpf
 
         #region IFolderWatcherObserver
 
+        public void OnChanged(string path)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace("Checking if running on UI thread...");
+                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                {
+                    logger.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Application.Current?.Dispatcher.Invoke(new OnChangedDelegate(OnChanged), path);
+
+                    return;
+                }
+
+                logger.Trace($@"Finding ""{path}"" in list of images...");
+                var image = Images.FirstOrDefault(i => i.Filename == path);
+                if (image == null)
+                {
+                    logger.Trace($@"""{path}"" not in list of images.  Exiting...");
+                    return;
+                }
+
+                logger.Trace($@"Reloading preview of ""{path}""...");
+                image.LoadPreview(true, _openCancellationTokenSource.Token);
+
+                logger.Trace($@"Reloading Exif data for ""{path}""...");
+                image.LoadExifData(_openCancellationTokenSource.Token);
+            }
+        }
+
         public void OnCreated(string path)
         {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace("Checking if running on UI thread...");
+                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                {
+                    logger.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Application.Current?.Dispatcher.Invoke(new OnCreatedDelegate(OnCreated), path);
 
+                    return;
+                }
+
+                logger.Trace($@"Adding ""{path}"" to the list of images...");
+                Images.Add(new ImageViewModel(path));
+            }
+        }
+
+        public void OnDeleted(string path)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace("Checking if running on UI thread...");
+                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                {
+                    logger.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    Application.Current?.Dispatcher.Invoke(new OnDeletedDelegate(OnDeleted), path);
+
+                    return;
+                }
+
+                logger.Trace($@"Finding ""{path}"" in list of images...");
+                var image = Images.FirstOrDefault(i => i.Filename == path);
+                if (image == null)
+                {
+                    logger.Trace($@"""{path}"" not in list of images.  Exiting...");
+                    return;
+                }
+
+                logger.Trace("Saving currently selected position...");
+                var selectedIndex = SelectedIndex;
+
+                logger.Trace($@"Deleting metadata for ""{path}""...");
+                _imageMetadataService.Delete(path);
+
+                logger.Trace($@"Removing ""{path}"" from the list of images...");
+                Images.Remove(image);
+
+                logger.Trace($"Checking if there are still images left...");
+                if (!Images.Any())
+                {
+                    logger.Trace("There are no images left.  Exiting...");
+                    return;
+                }
+
+                logger.Trace("Selecting the next image...");
+                if (Images.Count > selectedIndex)
+                {
+                    SelectedIndex = selectedIndex;
+                }
+                else
+                {
+                    SelectedIndex = Images.Count - 1;
+                }
+            }
+        }
+
+        public void OnRenamed(string oldPath, string newPath)
+        {
+            using (var logger = _logger.Block())
+            {
+                try
+                {
+                    logger.Trace("Checking if running on UI thread...");
+                    if (Application.Current?.Dispatcher.CheckAccess() == false)
+                    {
+                        logger.Trace("Not running on UI thread.  Delegating to UI thread...");
+                        Application.Current?.Dispatcher.Invoke(new OnRenamedDelegate(OnRenamed), oldPath, newPath);
+
+                        return;
+                    }
+
+                    logger.Trace($@"Finding ""{oldPath}"" in list of images...");
+                    var image = Images.FirstOrDefault(i => i.Filename == oldPath);
+                    if (image == null)
+                    {
+                        logger.Trace($@"""{oldPath}"" not in list of images.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($@"Changing filename of ""{oldPath}"" to ""{newPath}""...");
+                    image.Filename = newPath;
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
         }
         #endregion
 

@@ -74,6 +74,21 @@ namespace PhotoLabel.Services
             }
         }
 
+        public void Rename(string oldFilename, string newFilename)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace($@"Getting metadata filename for ""{oldFilename}""...");
+                var oldMetadataFilename = GetMetadataFilename(oldFilename);
+
+                logger.Trace($@"Getting metadata filename for ""{newFilename}""...");
+                var newMetadataFilename = GetMetadataFilename(newFilename);
+
+                logger.Trace($@"Renaming ""{oldMetadataFilename}"" to ""{newMetadataFilename}""...");
+                File.Move(oldMetadataFilename, newMetadataFilename);
+            }
+        }
+
         public void Save(Models.Metadata metadata, string filename)
         {
             using (var logger = _logger.Block()) {

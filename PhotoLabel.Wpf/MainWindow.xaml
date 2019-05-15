@@ -419,7 +419,7 @@
                     <Slider />
                 </DockPanel>
                 <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Center" ShowsPreview="True" VerticalAlignment="Stretch" Width="2"></GridSplitter>
-                <ListView Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex,Mode=OneWayToSource}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged" Style="{StaticResource ListViewPreview}">
+                <ListView Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.ScrollChanged="ListViewImages_OnScrollChanged"  ItemsSource="{Binding Images}" Name="ListViewImages" Padding="0" SelectedIndex="{Binding Path=SelectedIndex}" SelectedItem="{Binding Path=SelectedImageViewModel}" SelectionChanged="ListViewImages_OnSelectionChanged" SelectionMode="Single" SizeChanged="ListViewImages_OnSizeChanged" Style="{StaticResource ListViewPreview}">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel />

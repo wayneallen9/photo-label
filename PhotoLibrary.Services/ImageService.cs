@@ -17,6 +17,12 @@ namespace PhotoLabel.Services
     [Singleton]  
     public class ImageService : IImageService
     {
+        #region constants
+
+        private const string LockedPattern =
+            @"^The process cannot access the file '.+' because it is being used by another process\.$";
+        #endregion
+
         #region variables
 
         private readonly IConfigurationService _configurationService;
@@ -81,12 +87,30 @@ namespace PhotoLabel.Services
         public Bitmap Get(string filename, int width, int height)
         {
             using (var logger = _logger.Block()) {
-                logger.Trace($"Getting \"{filename}\"...");
-                using (var image = (Bitmap)Image.FromFile(filename))
+                while (true)
                 {
-                    return Resize(image, width, height);
+                    try
+                    {
+                        logger.Trace($@"Opening ""{filename}""...");
+                        using (var fileStream =
+                            new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            logger.Trace($"Getting \"{filename}\"...");
+                            using (var image = (Bitmap) Image.FromStream(fileStream))
+                            {
+                                return Resize(image, width, height);
+                            }
+                        }
+                    }
+                    catch (IOException ex)
+                    {
+                        if (!Regex.IsMatch(ex.Message, LockedPattern))
+                            throw;
+
+                        // the file may still be locked - pause and then try again
+                        Thread.Sleep(500);
+                    }
                 }
-            
             }
         }
 
@@ -105,35 +129,51 @@ namespace PhotoLabel.Services
         public Models.ExifData GetExifData(string filename)
         {
             using (var logger = _logger.Block()) {
-                // create the object to return
-                var exifData = new Models.ExifData();
-
-                logger.Trace($@"Opening ""{filename}""...");
-                using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                while (true)
                 {
-                    var bitmapSource = BitmapFrame.Create(fs, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
-                    if (!(bitmapSource.Metadata is BitmapMetadata bitmapMetadata)) return exifData;
-
-                    // try and parse the date
-                    exifData.DateTaken = !DateTime.TryParse(bitmapMetadata.DateTaken, out var dateTaken) ? bitmapMetadata.DateTaken : dateTaken.Date.ToString(_shortDateFormat);
-
-                    // is there a latitude on the image
-                    exifData.Latitude = GetLatitude(bitmapMetadata);
-                    if (exifData.Latitude.HasValue) exifData.Longitude = GetLongitude(bitmapMetadata);
-
                     try
                     {
-                        // is there a title on the image?
-                        exifData.Title = bitmapMetadata.Title;
+                        // create the object to return
+                        var exifData = new Models.ExifData();
+
+                        logger.Trace($@"Opening ""{filename}""...");
+                        using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            var bitmapSource = BitmapFrame.Create(fs, BitmapCreateOptions.DelayCreation,
+                                BitmapCacheOption.None);
+                            if (!(bitmapSource.Metadata is BitmapMetadata bitmapMetadata)) return exifData;
+
+                            // try and parse the date
+                            exifData.DateTaken = !DateTime.TryParse(bitmapMetadata.DateTaken, out var dateTaken)
+                                ? bitmapMetadata.DateTaken
+                                : dateTaken.Date.ToString(_shortDateFormat);
+
+                            // is there a latitude on the image
+                            exifData.Latitude = GetLatitude(bitmapMetadata);
+                            if (exifData.Latitude.HasValue) exifData.Longitude = GetLongitude(bitmapMetadata);
+
+                            try
+                            {
+                                // is there a title on the image?
+                                exifData.Title = bitmapMetadata.Title;
+                            }
+                            catch (NotSupportedException)
+                            {
+                                // ignore this exception
+                            }
+                        }
+
+                        return exifData;
                     }
-                    catch (NotSupportedException)
+                    catch (IOException ex)
                     {
-                        // ignore this exception
+                        // check that this is a locked message
+                        if (!Regex.IsMatch(ex.Message, LockedPattern, RegexOptions.IgnoreCase)) throw;
+
+                        // give the file time to be released
+                        Thread.Sleep(500);
                     }
                 }
-
-                return exifData;
-            
             }
         }
 

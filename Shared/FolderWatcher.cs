@@ -60,13 +60,34 @@ namespace Shared
 
                 logger.Trace("Creating file system watcher...");
                 var watch = new Watch(path, filterPattern);
+                watch.Changed += Changed;
                 watch.Created += Created;
+                watch.Deleted += Deleted;
                 watch.Error += Error;
+                watch.Renamed += Renamed;
 
                 logger.Trace($@"Watching ""{path}"" with filter pattern ""{filterPattern}""...");
                 _watchers.Add(path, watch);
 
                 return true;
+            }
+        }
+
+        private void Renamed(object sender, RenamedEventArgs e)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace($@"Notifying {_observers.Count} observers that ""{e.OldFullPath}"" has been renamed to ""{e.FullPath}""...");
+                _observers.ForEach(o => o.OnRenamed(e.OldFullPath, e.FullPath));
+            }
+        }
+
+        private void Changed(object sender, FileSystemEventArgs e)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace($@"Notifying {_observers.Count} observers of ""{e.FullPath}""...");
+                _observers.ForEach(o => o.OnChanged(e.FullPath));
             }
         }
 
@@ -87,17 +108,17 @@ namespace Shared
         {
             using (var logger = _logger.Block())
             {
-                if (!(sender is Watch watch)) return;
-
-                logger.Trace($@"Checking if ""{e.FullPath}"" matches filter...");
-                if (!watch.Match(e.FullPath))
-                {
-                    logger.Trace($@"""{e.FullPath}"" does not match filter.  Exiting...");
-                    return;
-                }
-
                 logger.Trace($@"Notifying {_observers.Count} observers of ""{e.FullPath}""...");
                 _observers.ForEach(o => o.OnCreated(e.FullPath));
+            }
+        }
+
+        private void Deleted(object sender, FileSystemEventArgs e)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace($@"Notifying {_observers.Count} observers that ""{e.FullPath}"" has been deleted...");
+                _observers.ForEach(o => o.OnDeleted(e.FullPath));
             }
         }
 
@@ -107,7 +128,11 @@ namespace Shared
 
             if (disposing)
             {
+                // dispose of all of the watchers
                 foreach (var watch in _watchers) watch.Value.Dispose();
+
+                // clear the list of watchers
+                _watchers.Clear();
             }
 
             _disposedValue = true;
@@ -140,12 +165,23 @@ namespace Shared
             }
         }
 
-        private class Watch : IDisposable
+        #region IDisposable
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+        }
+        #endregion
+
+        private sealed class Watch : IDisposable
         {
             #region events
 
+            public FileSystemEventHandler Changed;
             public FileSystemEventHandler Created;
+            public FileSystemEventHandler Deleted;
             public ErrorEventHandler Error;
+            public RenamedEventHandler Renamed;
             #endregion
 
             #region variables
@@ -166,15 +202,36 @@ namespace Shared
                     EnableRaisingEvents = true,
                     IncludeSubdirectories = false
                 };
+                _fileSystemWatcher.Changed += FileSystemWatcher_Changed;
                 _fileSystemWatcher.Error += FileSystemWatcher_Error;
                 _fileSystemWatcher.Created += FileSystemWatcher_Created;
-
+                _fileSystemWatcher.Deleted += FileSystemWatcher_Deleted;
+                _fileSystemWatcher.Renamed += FileSystemWatcher_Renamed;
                 _filterRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            }
+
+            private void FileSystemWatcher_Renamed(object sender, RenamedEventArgs e)
+            {
+                if (_filterRegex.IsMatch(e.OldFullPath))
+                    Renamed?.Invoke(this, e);
+            }
+
+            private void FileSystemWatcher_Changed(object sender, FileSystemEventArgs e)
+            {
+                if (_filterRegex.IsMatch(e.FullPath))
+                    Changed?.Invoke(this, e);
+            }
+
+            private void FileSystemWatcher_Deleted(object sender, FileSystemEventArgs e)
+            {
+                if (_filterRegex.IsMatch(e.FullPath))
+                    Deleted?.Invoke(this, e);
             }
 
             private void FileSystemWatcher_Created(object sender, FileSystemEventArgs e)
             {
-                Created?.Invoke(this, e);
+                if (_filterRegex.IsMatch(e.FullPath))
+                    Created?.Invoke(this, e);
             }
 
             private void FileSystemWatcher_Error(object sender, ErrorEventArgs e)
@@ -183,7 +240,7 @@ namespace Shared
                 Error?.Invoke(this, e);
             }
 
-            protected virtual void Dispose(bool disposing)
+            private void Dispose(bool disposing)
             {
                 if (_disposedValue) return;
 
@@ -195,13 +252,7 @@ namespace Shared
                 _disposedValue = true;
             }
 
-            public bool Match(string path)
-            {
-                return _filterRegex.IsMatch(path);
-            }
-
             #region IDisposable
-            // This code added to correctly implement the disposable pattern.
             public void Dispose()
             {
                 // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
@@ -209,13 +260,5 @@ namespace Shared
             }
             #endregion
         }
-
-        #region IDisposable
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-        }
-        #endregion
     }
 }
