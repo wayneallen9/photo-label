@@ -277,14 +277,34 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Bitmap Caption(Bitmap original, string caption, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
+        public Bitmap Caption(Bitmap original, string caption, Rotations rotation, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
         {
             using (var logger = _logger.Block()) {
+                logger.Trace($"Rotating to {rotation}...");
+                switch (rotation)
+                {
+                    case Rotations.Ninety:
+                        original.RotateFlip(RotateFlipType.Rotate90FlipNone);
+
+                        break;
+                    case Rotations.OneEighty:
+                        original.RotateFlip(RotateFlipType.Rotate180FlipNone);
+
+                        break;
+                    case Rotations.TwoSeventy:
+                        original.RotateFlip(RotateFlipType.Rotate270FlipNone);
+
+                        break;
+                }
+
+                logger.Trace("Creating a duplicate of the original image...");
+                var duplicate = new Bitmap(original);
+
                 logger.Trace("Checking if there is a caption to render...");
                 if (string.IsNullOrWhiteSpace(caption))
                 {
                     logger.Trace("There is not caption to render.  Returning...");
-                    return original;
+                    return duplicate;
                 }
 
                 // work out the style of the font
@@ -293,13 +313,13 @@ namespace PhotoLabel.Services
 
                 if (cancellationToken.IsCancellationRequested) return null;
                 logger.Trace("Getting graphics manager for new image...");
-                using (var graphics = Graphics.FromImage(original))
+                using (var graphics = Graphics.FromImage(duplicate))
                 {
                     logger.Trace("Setting up graphics manager...");
                     graphics.SmoothingMode = SmoothingMode.HighQuality;
                     graphics.CompositingQuality = CompositingQuality.HighQuality;
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
+                    
                     // how is the caption sized?
                     float fontSizeInPoints;
                     if (fontType == "pts")
@@ -310,7 +330,7 @@ namespace PhotoLabel.Services
                     else
                     {
                         // work out the logical height of the image (allowing for padding)
-                        var height = original.Height - 8;
+                        var height = duplicate.Height - 8;
 
                         // work out the maximum height for the caption
                         var captionHeight = height * fontSize / 100;
@@ -328,48 +348,48 @@ namespace PhotoLabel.Services
                         switch (captionAlignment)
                         {
                             case CaptionAlignments.BottomCentre:
-                                CaptionBottomCentre(graphics, original.Size, caption, font, brush,
+                                CaptionBottomCentre(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.BottomLeft:
                                 // draw them on the image
-                                CaptionBottomLeft(graphics, original.Size, caption, font, brush,
+                                CaptionBottomLeft(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.BottomRight:
-                                CaptionBottomRight(graphics, original.Size, caption, font, brush,
+                                CaptionBottomRight(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleCentre:
-                                CaptionMiddleCentre(graphics, original.Size, caption, font, brush,
+                                CaptionMiddleCentre(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleLeft:
-                                CaptionMiddleLeft(graphics, original.Size, caption, font, brush,
+                                CaptionMiddleLeft(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleRight:
-                                CaptionMiddleRight(graphics, original.Size, caption, font, brush,
+                                CaptionMiddleRight(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopCentre:
-                                CaptionTopCentre(graphics, original.Size, caption, font, brush,
+                                CaptionTopCentre(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopLeft:
-                                CaptionTopLeft(graphics, original.Size, caption, font, brush,
+                                CaptionTopLeft(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopRight:
-                                CaptionTopRight(graphics, original.Size, caption, font, brush,
+                                CaptionTopRight(graphics, duplicate.Size, caption, font, brush,
                                     backgroundColour);
 
                                 break;
@@ -381,8 +401,7 @@ namespace PhotoLabel.Services
                     }
                 }
 
-                return original;
-            
+                return duplicate;
             }
         }
 

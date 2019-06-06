@@ -1276,59 +1276,39 @@ namespace PhotoLabel.Wpf
                         logService.Trace($@"Checking if metadata for ""{Filename}"" has already been loaded...");
                         LoadMetadataThread(cancellationToken);
 
+                        // get the variables
+                        var brightness = Brightness;
+
                         if (cancellationToken.IsCancellationRequested) return;
-                        logService.Trace($@"Rotating ""{Filename}""...");
-                        switch (Rotation)
+                        logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
+                        var brightenedImage =
+                            brightness == 0 ? originalImage : imageService.Brightness(originalImage, brightness);
+                        try
                         {
-                            case Rotations.Ninety:
-                                originalImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
-
-                                break;
-                            case Rotations.OneEighty:
-                                originalImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
-
-                                break;
-                            case Rotations.TwoSeventy:
-                                originalImage.RotateFlip(RotateFlipType.Rotate270FlipNone);
-
-                                break;
-                        }
-
-                        // duplicate the image
-                        using (var duplicateImage = new Bitmap(originalImage))
-                        {
-                            // get the variables
-                            var brightness = Brightness;
+                            if (cancellationToken.IsCancellationRequested) return;
+                            logService.Trace("Building caption...");
+                            var captionBuilder = new StringBuilder(Caption);
+                            if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
+                            {
+                                if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
+                                captionBuilder.Append(DateTaken);
+                            }
 
                             if (cancellationToken.IsCancellationRequested) return;
-                            logService.Trace($@"Adjusting brightness of ""{Filename}"" to {brightness}...");
-                            var brightenedImage =
-                                brightness == 0 ? duplicateImage : imageService.Brightness(duplicateImage, brightness);
-                            try
+                            var brush = new SolidBrush(ForeColor.ToDrawingColor());
+                            logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
+                            using (var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
+                                Rotation,
+                                CaptionAlignment, FontFamily.Source, FontSize, FontType,
+                                FontBold, brush, BackColor.ToDrawingColor(), cancellationToken))
                             {
-                                if (cancellationToken.IsCancellationRequested) return;
-                                logService.Trace("Building caption...");
-                                var captionBuilder = new StringBuilder(Caption);
-                                if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
-                                {
-                                    if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
-                                    captionBuilder.Append(DateTaken);
-                                }
-
-                                if (cancellationToken.IsCancellationRequested) return;
-                                var brush = new SolidBrush(ForeColor.ToDrawingColor());
-                                logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
-                                var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
-                                    CaptionAlignment, FontFamily.Source, FontSize, FontType,
-                                    FontBold, brush, BackColor.ToDrawingColor(), cancellationToken);
-
                                 if (cancellationToken.IsCancellationRequested) return;
                                 UpdateImage(captionedImage);
                             }
-                            finally
-                            {
-                                if (brightness != 0) brightenedImage?.Dispose();
-                            }
+                        }
+                        finally
+                        {
+                            if (brightness != 0) brightenedImage?.Dispose();
                         }
                     }
                 }
@@ -1776,19 +1756,15 @@ namespace PhotoLabel.Wpf
                         logService.Trace($@"Captioning ""{Filename}"" with ""{captionBuilder}""...");
                         var backgroundColour = System.Drawing.Color.FromArgb(metadata.BackgroundColour ?? 0);
                         var brush = new SolidBrush(System.Drawing.Color.FromArgb(metadata.Colour ?? 0));
-                        var captionedImage = imageService.Caption(originalImage, captionBuilder.ToString(),
+                        using (var captionedImage = imageService.Caption(originalImage, captionBuilder.ToString(),
+                            Rotation,
                             metadata.CaptionAlignment ?? CaptionAlignments.BottomRight, metadata.FontFamily,
                             metadata.FontSize ?? 10, metadata.FontType,
-                            metadata.FontBold ?? false, brush, backgroundColour, new CancellationToken());
-                        try
+                            metadata.FontBold ?? false, brush, backgroundColour, new CancellationToken()))
                         {
                             logService.Trace("Saving captioned image...");
                             imageService.Save(captionedImage, metadata.OutputFilename,
                                 metadata.ImageFormat ?? ImageFormat.Jpeg);
-                        }
-                        finally
-                        {
-                            captionedImage.Dispose();
                         }
                     }
 

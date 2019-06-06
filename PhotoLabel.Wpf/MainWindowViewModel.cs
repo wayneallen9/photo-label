@@ -1,16 +1,10 @@
-﻿using Ninject.Parameters;
-using PhotoLabel.Services;
-using PhotoLabel.Wpf.Properties;
-using Shared;
-using Shared.Observers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows;
@@ -18,9 +12,14 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Ninject.Parameters;
+using PhotoLabel.Services;
+using PhotoLabel.Services.Models;
+using PhotoLabel.Wpf.Properties;
+using Shared;
+using Shared.Observers;
 using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
-using Folder = PhotoLabel.Services.Models.Folder;
 using MessageBox = System.Windows.MessageBox;
 using WindowState = System.Windows.WindowState;
 
@@ -512,7 +511,7 @@ namespace PhotoLabel.Wpf
                     var folderParameter = new ConstructorArgument("folder", folder);
                     var openFolderViewModel = Injector.Get<OpenFolderViewModel>(folderParameter);
 
-                    logger.Trace($@"Prompting for subfolders to include...");
+                    logger.Trace(@"Prompting for subfolders to include...");
                     if (_navigationService.ShowDialog<OpenFolderWindow>(openFolderViewModel) != true)
                     {
                         logger.Trace("User cancelled dialog.  Exiting...");
@@ -682,7 +681,7 @@ namespace PhotoLabel.Wpf
                             Images[_indexToRemove].UnloadImage();
                         }
 
-                        logger.Trace($"Updating index to remove...");
+                        logger.Trace("Updating index to remove...");
                         _indexToRemove = _nextIndexToRemove;
                         _nextIndexToRemove = value;
 
@@ -938,7 +937,7 @@ namespace PhotoLabel.Wpf
 
                     if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace($@"Finding image files in ""{folderViewModel.Path}""...");
-                    var imageFilenames = (List<string>)imageService.Find(folderViewModel.Path);
+                    var imageFilenames = imageService.Find(folderViewModel.Path);
 
                     if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace("Searching subfolders for images...");
@@ -1138,7 +1137,7 @@ namespace PhotoLabel.Wpf
                 {
                     logger.Trace("Checking if output path exists...");
                     if (string.IsNullOrWhiteSpace(_configurationService.OutputPath) ||
-                        !System.IO.Directory.Exists(_configurationService.OutputPath))
+                        !Directory.Exists(_configurationService.OutputPath))
                     {
                         logger.Trace("Prompting user for output path...");
                         SaveAs();
@@ -1428,7 +1427,7 @@ namespace PhotoLabel.Wpf
                 logger.Trace($@"Removing ""{path}"" from the list of images...");
                 Images.Remove(image);
 
-                logger.Trace($"Checking if there are still images left...");
+                logger.Trace("Checking if there are still images left...");
                 if (!Images.Any())
                 {
                     logger.Trace("There are no images left.  Exiting...");
@@ -1525,7 +1524,7 @@ namespace PhotoLabel.Wpf
                     logger.Trace("Logging error...");
                     logger.Error(error);
 
-                    logger.Trace($"Notifying user of error...");
+                    logger.Trace("Notifying user of error...");
                     _dialogService.Error(Resources.ErrorText);
                 }
                 catch (Exception)
