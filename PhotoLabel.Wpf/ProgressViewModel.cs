@@ -35,24 +35,24 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public string Directory
+        public string Caption
         {
-            get => _directory;
+            get => _caption;
             set
             {
                 using (var logger = _logger.Block())
                 {
                     try
                     {
-                        logger.Trace($"Checking if value of {nameof(Directory)} has changed...");
-                        if (_directory == value)
+                        logger.Trace($"Checking if value of {nameof(Caption)} has changed...");
+                        if (_caption == value)
                         {
-                            logger.Trace($"Value of {nameof(Directory)} has not changed.  Exiting...");
+                            logger.Trace($"Value of {nameof(Caption)} has not changed.  Exiting...");
                             return;
                         }
 
-                        logger.Trace($@"Setting value of {nameof(Directory)} to ""{value}""...");
-                        _directory = value;
+                        logger.Trace($@"Setting value of {nameof(Caption)} to ""{value}""...");
+                        _caption = value;
 
                         OnPropertyChanged();
                     }
@@ -181,7 +181,7 @@ namespace PhotoLabel.Wpf
         private readonly IDialogService _dialogService;
         private readonly ILogger _logger;
         private int _maximum;
-        private string _directory;
+        private string _caption;
         private int _value;
         #endregion
 

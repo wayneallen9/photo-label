@@ -91,7 +91,6 @@
     <Compile Include="Models\Folder.cs" />
     <Compile Include="Models\ExifData.cs" />
     <Compile Include="Models\Metadata.cs" />
-    <Compile Include="Models\SubFolder.cs" />
     <Compile Include="NavigationService.cs" />
     <Compile Include="OpacityService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

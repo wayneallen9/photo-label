@@ -49,21 +49,8 @@ namespace PhotoLabel.Services
                 var folder = new Folder
                 {
                     Caption = GetCaption(path),
-                    Path = path,
-                    SubFolders = new List<SubFolder>()
+                    Path = path
                 };
-
-                logger.Trace($@"Getting subfolders of ""{path}""...");
-                var subfolders = Directory.EnumerateDirectories(path);
-
-                foreach (var subfolder in subfolders)
-                {
-                    logger.Trace($@"Adding ""{subfolder}"" to list of subfolders...");
-                    folder.SubFolders.Add(new SubFolder
-                    {
-                        Path = subfolder.Substring(path.Length + 1)
-                    });
-                }
 
                 return folder;
             

@@ -5,6 +5,7 @@ namespace PhotoLabel.Services
     {
         bool Delete(string filename);
         Metadata Load(string filename);
+        Metadata Populate(Metadata metadata);
         void Rename(string oldFilename, string newFilename);
         void Save(Metadata metadata, string filename);
     }

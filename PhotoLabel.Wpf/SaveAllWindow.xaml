@@ -1,0 +1,72 @@
+﻿<Window x:Class="PhotoLabel.Wpf.SaveAllWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PhotoLabel.Wpf"
+        mc:Ignorable="d"
+        Title="{Binding Path=Title}" Icon="camera.ico" ShowInTaskbar="False" WindowStartupLocation="CenterOwner" SizeToContent="WidthAndHeight">
+    <Window.Resources>
+        <Style TargetType="{x:Type DockPanel}">
+            <Setter Property="Margin" Value="5"></Setter>
+
+            <Style.Resources>
+                <Style TargetType="{x:Type CheckBox}">
+                    <Setter Property="Margin" Value="0,0,0,5"></Setter>
+                </Style>
+                <Style TargetType="{x:Type ComboBox}">
+                    <Style.Resources>
+                        <Style TargetType="{x:Type TextBlock}">
+                            <Setter Property="Height" Value="32"></Setter>
+                        </Style>
+                    </Style.Resources>
+                    <Setter Property="Margin" Value="0,0,0,5"></Setter>
+                </Style>
+                <Style TargetType="{x:Type DockPanel}">
+                    <Setter Property="Margin" Value="0"></Setter>
+                </Style>
+                <Style TargetType="{x:Type TreeView}">
+                    <Setter Property="Margin" Value="0,0,0,5"></Setter>
+                    <Setter Property="MinHeight" Value="240"></Setter>
+                    <Setter Property="MinWidth" Value="300"></Setter>
+                </Style>
+            </Style.Resources>
+        </Style>
+        <CollectionViewSource Source="{Binding Source={x:Static Fonts.SystemFontFamilies}}" x:Key="Fonts"></CollectionViewSource>
+    </Window.Resources>
+    <DockPanel>
+        <CheckBox DockPanel.Dock="Top" IsChecked="{Binding Path=ChangeFont}" Content="Change the font?" />
+        <ComboBox DockPanel.Dock="Top"  IsEnabled="{Binding Path=ChangeFont}" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" ToolTip="Font">
+            <ComboBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel></VirtualizingStackPanel>
+                </ItemsPanelTemplate>
+            </ComboBox.ItemsPanel>
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontFamily="{Binding}"></TextBlock>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Label DockPanel.Dock="Top" Content="Which folders?"></Label>
+        <DockPanel DockPanel.Dock="Bottom" LastChildFill="False">
+            <Button DockPanel.Dock="Right" Content="Cancel" IsCancel="True" Style="{StaticResource ButtonDialog}" />
+            <Button DockPanel.Dock="Right" Command="{Binding Path=OkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_OK" IsDefault="True" Style="{StaticResource ButtonDialog}" />
+        </DockPanel>
+        <TreeView ItemsSource="{Binding Path=SubFolders}">
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="{x:Type TreeViewItem}">
+                    <Setter Property="IsExpanded" Value="True"></Setter>
+                </Style>
+            </TreeView.ItemContainerStyle>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate DataType="{x:Type local:FolderViewModel}" ItemsSource="{Binding SubFolders}">
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox IsChecked="{Binding IsSelected}"></CheckBox>
+                        <TextBlock Text="{Binding Caption}"></TextBlock>
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </DockPanel>
+</Window>

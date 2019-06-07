@@ -74,6 +74,25 @@ namespace PhotoLabel.Services
             }
         }
 
+        public Models.Metadata Populate(Models.Metadata metadata)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace("Populating any incomplete metadata values with defaults...");
+                metadata.AppendDateTakenToCaption = metadata.AppendDateTakenToCaption ?? false;
+                metadata.BackgroundColour = metadata.BackgroundColour ?? System.Drawing.Color.Transparent.ToArgb();
+                metadata.CaptionAlignment = metadata.CaptionAlignment ?? CaptionAlignments.BottomRight;
+                metadata.Colour = metadata.Colour ?? System.Drawing.Color.White.ToArgb();
+                metadata.FontBold = metadata.FontBold ?? false;
+                metadata.FontFamily = metadata.FontFamily ?? System.Drawing.SystemFonts.DefaultFont.SystemFontName;
+                metadata.FontSize = metadata.FontSize ?? 10;
+                metadata.FontType = metadata.FontType ?? "pts";
+                metadata.ImageFormat = metadata.ImageFormat ?? ImageFormat.Jpeg;
+                metadata.Rotation = metadata.Rotation ?? Rotations.Zero;
+
+                return metadata;
+            }
+        }
         public void Rename(string oldFilename, string newFilename)
         {
             using (var logger = _logger.Block())

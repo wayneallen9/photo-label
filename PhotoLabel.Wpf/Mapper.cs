@@ -14,9 +14,9 @@ namespace PhotoLabel.Wpf
             // create the mapper
             AutoMapper = new MapperConfiguration(config =>
             {
-                config.CreateMap<FolderViewModel, Folder>();
-                config.CreateMap<SubFolderViewModel, SubFolder>()
-                    .ReverseMap();
+                config.CreateMap<FolderViewModel, Folder>()
+                    .ReverseMap()
+                    .ForMember(d => d.IsHidden, o => o.Ignore());
             }).CreateMapper();
         }
 

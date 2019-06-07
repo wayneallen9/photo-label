@@ -14,7 +14,7 @@
                 <Style TargetType="{x:Type CheckBox}">
                     <Setter Property="Margin" Value="0,0,0,5"></Setter>
                 </Style>
-                <Style TargetType="{x:Type ListView}">
+                <Style TargetType="{x:Type TreeView}">
                     <Setter Property="Margin" Value="0,5"></Setter>
                 </Style>
                 <Style TargetType="DockPanel">
@@ -42,27 +42,24 @@
         </Style>
     </Window.Resources>
     <DockPanel>
-        <CheckBox DockPanel.Dock="Top" Content="_Also include subfolders?" IsChecked="{Binding Path=IncludeSubFolders}"></CheckBox>
-        <DockPanel DockPanel.Dock="Top" LastChildFill="False">
-            <Button DockPanel.Dock="Right" Command="{Binding Path=DeselectCommand}" ToolTip="Deselect All">
-                <Image Source="pack://application:,,,/Resources/deselect.png" Style="{StaticResource ImageButton}"></Image>
-            </Button>
-            <Button DockPanel.Dock="Right" Command="{Binding Path=SelectCommand}" ToolTip="Select All">
-                <Image Source="pack://application:,,,/Resources/select.png" Style="{StaticResource ImageButton}"></Image>
-            </Button>
-        </DockPanel>
         <DockPanel DockPanel.Dock="Bottom" LastChildFill="False">
             <Button DockPanel.Dock="Right" Content="_Cancel" IsCancel="True" Style="{StaticResource ButtonDialog}"></Button>
             <Button DockPanel.Dock="Right" Command="{Binding Path=OkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_OK" IsDefault="True" Style="{StaticResource ButtonDialog}"></Button>
         </DockPanel>
-        <ListView IsEnabled="{Binding Path=IncludeSubFolders}" ItemsSource="{Binding Path=SubFolders}">
-            <ListView.ItemTemplate>
-                <DataTemplate>
+        <TreeView IsEnabled="{Binding Path=IncludeSubFolders}" ItemsSource="{Binding Path=SubFolders}">
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="{x:Type TreeViewItem}">
+                    <Setter Property="IsExpanded" Value="True"></Setter>
+                </Style>
+            </TreeView.ItemContainerStyle>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate DataType="{x:Type local:FolderViewModel}" ItemsSource="{Binding SubFolders}">
                     <StackPanel Orientation="Horizontal">
-                        <CheckBox Content="{Binding Path=Path}" IsChecked="{Binding Path=IsSelected}"></CheckBox>
+                        <CheckBox IsChecked="{Binding IsSelected}"></CheckBox>
+                        <TextBlock Text="{Binding Caption}"></TextBlock>
                     </StackPanel>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
     </DockPanel>
 </Window>

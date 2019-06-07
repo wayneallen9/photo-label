@@ -1,12 +1,15 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -15,11 +18,13 @@ using System.Windows.Threading;
 using Ninject.Parameters;
 using PhotoLabel.Services;
 using PhotoLabel.Services.Models;
+using PhotoLabel.Wpf.Extensions;
 using PhotoLabel.Wpf.Properties;
 using Shared;
 using Shared.Observers;
 using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
+using Color = System.Drawing.Color;
 using MessageBox = System.Windows.MessageBox;
 using WindowState = System.Windows.WindowState;
 
@@ -502,32 +507,25 @@ namespace PhotoLabel.Wpf
                 }
 
                 logger.Trace($@"Loading folder ""{selectedPath}""...");
-                var folder = _folderService.Open(selectedPath);
+                var folderViewModel = Injector.Get<FolderViewModel>();
+                folderViewModel.Path = selectedPath;
+                folderViewModel.LoadSubFolders();
+                folderViewModel.IsSelected = true;
 
                 logger.Trace($@"Checking if ""{selectedPath}"" has any subfolders...");
-                if (folder.SubFolders.Any())
+                if (folderViewModel.SubFolders.Any())
                 {
-                    logger.Trace("Creating view model...");
-                    var folderParameter = new ConstructorArgument("folder", folder);
-                    var openFolderViewModel = Injector.Get<OpenFolderViewModel>(folderParameter);
-
                     logger.Trace(@"Prompting for subfolders to include...");
+                    var folderViewModelParameter = new ConstructorArgument("folderViewModel", folderViewModel);
+                    var openFolderViewModel = Injector.Get<OpenFolderViewModel>(folderViewModelParameter);
                     if (_navigationService.ShowDialog<OpenFolderWindow>(openFolderViewModel) != true)
                     {
                         logger.Trace("User cancelled dialog.  Exiting...");
                         return;
                     }
-
-                    logger.Trace("Updating subfolder selections...");
-                    foreach (var subFolderViewModel in openFolderViewModel.SubFolders)
-                    {
-                        folder.SubFolders.First(f => f.Path == subFolderViewModel.Path).IsSelected =
-                            subFolderViewModel.IsSelected;
-                    }
                 }
 
                 logger.Trace($@"Calling view model method with directory ""{selectedPath}""...");
-                var folderViewModel = Mapper.Map<FolderViewModel>(folder);
                 OpenDirectory(folderViewModel);
             }
         }
@@ -902,7 +900,7 @@ namespace PhotoLabel.Wpf
             {
                 logger.Trace("Creating view model for progress window...");
                 var progressViewModel = Injector.Get<ProgressViewModel>();
-                progressViewModel.Directory = folder.Path;
+                progressViewModel.Caption = $"Opening {folder.Path}...";
 
                 logger.Trace($@"Opening ""{folder.Path}"" on background thread...");
                 _openCancellationTokenSource?.Cancel();
@@ -936,56 +934,26 @@ namespace PhotoLabel.Wpf
                     _taskScheduler.Clear();
 
                     if (cancellationToken.IsCancellationRequested) return;
-                    logger.Trace($@"Finding image files in ""{folderViewModel.Path}""...");
-                    var imageFilenames = imageService.Find(folderViewModel.Path);
+                    logger.Trace("Clearing any folders being watched...");
+                    _folderWatcher.Clear();
 
                     if (cancellationToken.IsCancellationRequested) return;
-                    logger.Trace("Searching subfolders for images...");
-                    imageFilenames.AddRange(folderViewModel.SubFolders.Where(sf => sf.IsSelected)
-                        .SelectMany(sf => imageService.Find(Path.Combine(folderViewModel.Path, sf.Path))));
+                    logger.Trace("Opening selected folders...");
+                    var images = OpenFolder(folderViewModel, progressViewModel, cancellationToken);
 
-                    // set the progress bar
                     if (cancellationToken.IsCancellationRequested) return;
-                    logger.Trace($"Setting progress bar maximum to {imageFilenames.Count}");
-                    progressViewModel.Maximum = imageFilenames.Count;
-
-                    var images = new List<ImageViewModel>();
-
-                    // load the images backwards to queue the last image first
-                    for (var p = 0; p < imageFilenames.Count; p++)
+                    if (!images.Any())
                     {
-                        if (cancellationToken.IsCancellationRequested) return;
-                        logger.Trace($"Updating progress for image at position {p}...");
-                        progressViewModel.Value = p + 1;
-
-                        if (cancellationToken.IsCancellationRequested) return;
-                        var imageFilename = imageFilenames[p];
-                        logger.Trace($@"Creating image view model for ""{imageFilename}""...");
-                        images.Add(new ImageViewModel(imageFilename));
+                        return;
                     }
 
                     if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace($"Adding {images.Count} images to list...");
-                    UpdateImages(images);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logger.Trace($@"Watching ""{folderViewModel.Path}"" for file changes...");
-                    _folderWatcher.Clear();
-                    _folderWatcher.Add(folderViewModel.Path, ImageFilenameRegex);
-                    foreach (var subFolder in folderViewModel.SubFolders.Where(s => s.IsSelected))
-                        _folderWatcher.Add(Path.Combine(folderViewModel.Path, subFolder.Path), ImageFilenameRegex);
+                    UpdateImages(images.OrderBy(i => i.DateTaken).ToList());
 
                     logger.Trace($@"Adding ""{folderViewModel.Path}"" to recently used directories...");
                     var folder = Mapper.Map<Folder>(folderViewModel);
                     recentlyUsedFoldersService.Add(folder);
-
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logger.Trace($@"Checking if there are any images in ""{folderViewModel.Path}""...");
-                    if (Images.Count == 0)
-                    {
-                        logger.Trace($@"No images were found in ""{folderViewModel.Path}"".  Exiting...");
-                        return;
-                    }
 
                     if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace("Getting most recently used image...");
@@ -1024,6 +992,61 @@ namespace PhotoLabel.Wpf
                     // hide the progress bar
                     progressViewModel.Close = true;
                 }
+            }
+        }
+
+        private List<ImageViewModel> OpenFolder(FolderViewModel folderViewModel,
+            ProgressViewModel progressViewModel, CancellationToken cancellationToken)
+        {
+            using (var logger = _logger.Block())
+            {
+                var images = new List<ImageViewModel>();
+
+                if (cancellationToken.IsCancellationRequested) return null;
+                logger.Trace($@"Checking if ""{folderViewModel.Path}"" is selected...");
+                if (!folderViewModel.IsHidden && folderViewModel.IsSelected)
+                {
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    logger.Trace($@"Finding image files in ""{folderViewModel.Path}""...");
+                    var imageFilenames = _imageService.Find(folderViewModel.Path);
+
+                    // set the progress bar
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    logger.Trace($"Setting progress bar maximum to {imageFilenames.Count}");
+                    progressViewModel.Caption = $"Opening {folderViewModel.Path}...";
+                    progressViewModel.Value = 0;
+                    progressViewModel.Maximum = imageFilenames.Count;
+
+                    // load the images backwards to queue the last image first
+                    for (var p = 0; p < imageFilenames.Count; p++)
+                    {
+                        if (cancellationToken.IsCancellationRequested) return null;
+                        logger.Trace($"Updating progress for image at position {p}...");
+                        progressViewModel.Value = p + 1;
+
+                        if (cancellationToken.IsCancellationRequested) return null;
+                        var imageFilename = imageFilenames[p];
+                        logger.Trace($@"Creating image view model for ""{imageFilename}""...");
+                        images.Add(new ImageViewModel(imageFilename));
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    logger.Trace($@"Watching ""{folderViewModel.Path}"" for file changes...");
+                    _folderWatcher.Add(folderViewModel.Path, ImageFilenameRegex);
+                }
+
+                if (cancellationToken.IsCancellationRequested) return null;
+                logger.Trace($@"Opening selected subfolders of ""{folderViewModel.Path}""...");
+                foreach (var subFolderViewModel in folderViewModel.SubFolders)
+                {
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    var subFolderImages = OpenFolder(subFolderViewModel, progressViewModel, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    images.AddRange(subFolderImages);
+                }
+
+                return images;
             }
         }
 
@@ -1207,6 +1230,143 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        private void SaveAll()
+        {
+            using (var logger = _logger.Block())
+            {
+                try
+                {
+                    logger.Trace("Getting path to pictures folder...");
+                    var picturesPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures);
+
+                    logger.Trace("Prompting for directory...");
+                    var imagePath = _dialogService.Browse("Where are your photos?", picturesPath);
+                    if (imagePath == null)
+                    {
+                        logger.Trace("The user cancelled the dialog.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace("Opening save all window...");
+                    var directoryPathParameter = new ConstructorArgument("directoryPath", imagePath);
+                    var saveAllViewModel = Injector.Get<SaveAllViewModel>(directoryPathParameter);
+                    if (_navigationService.ShowDialog<SaveAllWindow>(saveAllViewModel) != true)
+                    {
+                        logger.Trace("User has cancelled.  Returning...");
+                        return;
+                    }
+
+                    logger.Trace("Creating progress view model...");
+                    var progressViewModel = Injector.Get<ProgressViewModel>();
+
+                    logger.Trace("Starting save all on background thread...");
+                    Task.Factory.StartNew(SaveAllThread, new object[] {saveAllViewModel, progressViewModel},
+                        new CancellationToken(), TaskCreationOptions.LongRunning, TaskScheduler.Current);
+
+                    logger.Trace("Showing progress window...");
+                    _navigationService.ShowDialog<ProgressWindow>(progressViewModel);
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
+        }
+
+        public ICommand SaveAllCommand => _saveAllCommand ?? (_saveAllCommand = new CommandHandler(SaveAll, true));
+
+        private void SaveAllThread(object state)
+        {
+            var stateArray = (object[]) state;
+            var saveAllViewModel = (SaveAllViewModel) stateArray[0];
+            var progressViewModel = (ProgressViewModel) stateArray[1];
+
+            using (var logger = _logger.Block())
+            {
+                try
+                {
+                    SaveAllImagesInSubFolders(saveAllViewModel.ChangeFont, saveAllViewModel.FontFamily, saveAllViewModel.SubFolders, progressViewModel);
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+                finally { 
+                    logger.Trace("Closing progress window...");
+                    progressViewModel.Close = true;
+                }
+            }
+        }
+
+        private void SaveAllImagesInSubFolders(bool changeFont, string fontFamily, ObservableCollection<FolderViewModel> subFolders, ProgressViewModel progressViewModel)
+        {
+            using (var logger = _logger.Block())
+            {
+                foreach (var folderViewModel in subFolders)
+                {
+                    logger.Trace($@"Checking if ""{folderViewModel.Path}"" is selected...");
+                    if (folderViewModel.IsSelected)
+                    {
+                        logger.Trace($@"Setting progress caption to ""{folderViewModel.Path}""...");
+                        progressViewModel.Caption = folderViewModel.Path;
+                        progressViewModel.Value = 0;
+
+                        logger.Trace($@"Finding all images in ""{folderViewModel.Path}""...");
+                        var imagePaths = _imageService.Find(folderViewModel.Path);
+
+                        logger.Trace($@"{imagePaths.Count} images found in ""{folderViewModel.Path}""...");
+                        progressViewModel.Maximum = imagePaths.Count;
+
+                        for (var p=0; p < imagePaths.Count; p++)
+                        {
+                            var imagePath = imagePaths[p];
+
+                            logger.Trace("Updating progress...");
+                            progressViewModel.Value = p + 1;
+
+                            logger.Trace($@"Checking if ""{imagePath}"" has a metadata file...");
+                            var metadata = _imageMetadataService.Load(imagePath);
+                            if (metadata == null)
+                            {
+                                logger.Trace($@"Metadata does not exist for ""{imagePath}"".  Skipping...");
+                                continue;
+                            }
+
+                            logger.Trace($@"Checking if output filename is specified for ""{imagePath}""...");
+                            if (string.IsNullOrWhiteSpace(metadata.OutputFilename))
+                            {
+                                logger.Trace($@"Output filename is not specified for ""{imagePath}"". Skipping...");
+                                continue;
+                            }
+
+                            logger.Trace($@"Setting default values for ""{imagePath}""...");
+                            _imageMetadataService.Populate(metadata);
+
+                            logger.Trace($@"Loading original image for ""{imagePath}""...");
+                            using (var fileStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            using (var originalImage = (Bitmap)Image.FromStream(fileStream))
+                            {
+                                logger.Trace($@"Captioning ""{imagePath}""...");
+                                using (var brush = new SolidBrush(Color.FromArgb(metadata.Colour.Value)))
+                                using (var captionedImage = _imageService.Caption(originalImage, metadata.Caption,
+                                    metadata.Rotation.Value, metadata.CaptionAlignment.Value,
+                                    changeFont ? fontFamily : metadata.FontFamily, metadata.FontSize.Value,
+                                    metadata.FontType, metadata.FontBold.Value, brush,
+                                    Color.FromArgb(metadata.BackgroundColour.Value), new CancellationToken()))
+                                {
+                                    logger.Trace($@"Saving ""{imagePath}""...");
+                                    _imageService.Save(captionedImage, metadata.OutputFilename, metadata.ImageFormat.Value);
+                                }
+                            }
+                        }
+                    }
+
+                    logger.Trace($@"Saving all subfolders of ""{folderViewModel.Path}""...");
+                    SaveAllImagesInSubFolders(changeFont, fontFamily, folderViewModel.SubFolders, progressViewModel);
+                }
+            }
+        }
+
         private void SaveAs()
         {
             using (var logger = _logger.Block())
@@ -1310,6 +1470,7 @@ namespace PhotoLabel.Wpf
         private ICommand _rotateLeftCommand;
         private ICommand _rotateRightCommand;
         private ICommand _saveCommand;
+        private ICommand _saveAllCommand;
         private ICommand _saveAsCommand;
         private ICommand _settingsCommand;
         private ICommand _whereCommand;
