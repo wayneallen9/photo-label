@@ -1,9 +1,4 @@
-﻿using PhotoLabel.Services;
-using PhotoLabel.Services.Models;
-using PhotoLabel.Wpf.Extensions;
-using PhotoLabel.Wpf.Properties;
-using Shared;
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
@@ -17,6 +12,11 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using PhotoLabel.Services;
+using PhotoLabel.Services.Models;
+using PhotoLabel.Wpf.Extensions;
+using PhotoLabel.Wpf.Properties;
+using Shared;
 using Color = System.Windows.Media.Color;
 using FontFamily = System.Windows.Media.FontFamily;
 
@@ -1417,36 +1417,6 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void LoadOriginalThread(object state)
-        {
-            var cancellationToken = (CancellationToken)state;
-
-            using (var logService = _logger.Block())
-            {
-                try
-                {
-                    if (cancellationToken.IsCancellationRequested) return;
-                    logService.Trace($@"Loading original image for ""{Filename}"" from disk...");
-                    using (var fileStream = new FileStream(Filename, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        // there is no need to lock the original image because it is locked on the thread that spawned this thread until this
-                        // thread finishes
-                        if (cancellationToken.IsCancellationRequested) return;
-                        _originalImage = System.Drawing.Image.FromStream(fileStream);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    OnError(ex);
-                }
-                finally
-                {
-                    logService.Trace($@"Flagging that original image has been loaded for ""{Filename}""...");
-                    _originalImageManualResetEvent.Set();
-                }
-            }
-        }
-
         private void LoadMetadataThread(object state)
         {
             var cancellationToken = (CancellationToken)state;
@@ -1647,7 +1617,7 @@ namespace PhotoLabel.Wpf
                     logService.Trace("Logging error...");
                     logService.Error(ex);
 
-                    logService.Trace($"Notifying user of error...");
+                    logService.Trace("Notifying user of error...");
                     _dialogService.Error(Resources.ErrorText);
                 }
                 catch (Exception)

@@ -1,5 +1,10 @@
-﻿using System;
-using System.CodeDom;
+﻿using Ninject.Parameters;
+using PhotoLabel.Services;
+using PhotoLabel.Services.Models;
+using PhotoLabel.Wpf.Properties;
+using Shared;
+using Shared.Observers;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -15,13 +20,6 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Ninject.Parameters;
-using PhotoLabel.Services;
-using PhotoLabel.Services.Models;
-using PhotoLabel.Wpf.Extensions;
-using PhotoLabel.Wpf.Properties;
-using Shared;
-using Shared.Observers;
 using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
 using Color = System.Drawing.Color;
@@ -56,7 +54,6 @@ namespace PhotoLabel.Wpf
         public MainWindowViewModel(
             IDialogService dialogService,
             IConfigurationService configurationService,
-            IFolderService folderService,
             IFolderWatcher folderWatcher,
             IImageMetadataService imageMetadataService,
             IImageService imageService,
@@ -70,7 +67,6 @@ namespace PhotoLabel.Wpf
             // save dependencies
             _dialogService = dialogService;
             _configurationService = configurationService;
-            _folderService = folderService;
             _folderWatcher = folderWatcher;
             _imageMetadataService = imageMetadataService;
             _imageService = imageService;
@@ -83,7 +79,6 @@ namespace PhotoLabel.Wpf
 
             // initialise variables
             Images = new ObservableCollection<ImageViewModel>();
-            _observers = new List<IObserver>();
             _recentlyUsedBackColors = LoadRecentlyUsedBackColors();
             RecentlyUsedFolders = new ObservableCollection<FolderViewModel>();
             _selectedIndex = -1;
@@ -125,6 +120,35 @@ namespace PhotoLabel.Wpf
                     {
                         OnError(ex);
                     }
+                }
+            }
+        }
+
+        public int Brightness
+        {
+            get => _selectedImageViewModel?.Brightness ?? 0;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel == null)
+                    {
+                        logger.Trace("There is no selected image.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($"Checking if value of {nameof(Brightness)} has changed...");
+                    if (_selectedImageViewModel.Brightness == value)
+                    {
+                        logger.Trace($"Value of {nameof(Brightness)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($"Setting value of {nameof(Brightness)} to {value}...");
+                    _selectedImageViewModel.Brightness = value;
+
+                    OnPropertyChanged();
                 }
             }
         }
@@ -509,7 +533,6 @@ namespace PhotoLabel.Wpf
                 logger.Trace($@"Loading folder ""{selectedPath}""...");
                 var folderViewModel = Injector.Get<FolderViewModel>();
                 folderViewModel.Path = selectedPath;
-                folderViewModel.LoadSubFolders();
                 folderViewModel.IsSelected = true;
 
                 logger.Trace($@"Checking if ""{selectedPath}"" has any subfolders...");
@@ -526,13 +549,13 @@ namespace PhotoLabel.Wpf
                 }
 
                 logger.Trace($@"Calling view model method with directory ""{selectedPath}""...");
-                OpenDirectory(folderViewModel);
+                OpenFolder(folderViewModel);
             }
         }
 
         public ICommand OpenRecentlyUsedDirectoryCommand => _openRecentlyUsedDirectoryCommand ??
                                                             (_openRecentlyUsedDirectoryCommand =
-                                                                new CommandHandler<FolderViewModel>(OpenDirectory, true));
+                                                                new CommandHandler<FolderViewModel>(OpenFolder, true));
 
         public string OutputPath
         {
@@ -635,6 +658,7 @@ namespace PhotoLabel.Wpf
 
                         OnPropertyChanged();
                         OnPropertyChanged(nameof(BackColorOpacity));
+                        OnPropertyChanged(nameof(Brightness));
                         OnPropertyChanged(nameof(HasDateTaken));
                         OnPropertyChanged(nameof(HasStatus));
                         OnPropertyChanged(nameof(ImageFormat));
@@ -890,11 +914,11 @@ namespace PhotoLabel.Wpf
 
                 logger.Trace($@"Opening ""{mostRecentlyUsedFolder}"" on background thread...");
                 var folderViewModel = Mapper.Map<FolderViewModel>(mostRecentlyUsedFolder);
-                OpenDirectory(folderViewModel);
+                OpenFolder(folderViewModel);
             }
         }
 
-        private void OpenDirectory(FolderViewModel folder)
+        private void OpenFolder(FolderViewModel folder)
         {
             using (var logger = _logger.Block())
             {
@@ -921,7 +945,6 @@ namespace PhotoLabel.Wpf
             var cancellationToken = (CancellationToken)stateArray[2];
 
             // create dependencies
-            var imageService = Injector.Get<IImageService>();
             var recentlyUsedFoldersService = Injector.Get<IRecentlyUsedFoldersService>();
 
             using (var logger = _logger.Block())
@@ -995,7 +1018,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private List<ImageViewModel> OpenFolder(FolderViewModel folderViewModel,
+        private List<ImageViewModel> OpenFolder(IFolderViewModel folderViewModel,
             ProgressViewModel progressViewModel, CancellationToken cancellationToken)
         {
             using (var logger = _logger.Block())
@@ -1230,7 +1253,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void SaveAll()
+        private void SaveAgain()
         {
             using (var logger = _logger.Block())
             {
@@ -1248,9 +1271,9 @@ namespace PhotoLabel.Wpf
                     }
 
                     logger.Trace("Opening save all window...");
-                    var directoryPathParameter = new ConstructorArgument("directoryPath", imagePath);
-                    var saveAllViewModel = Injector.Get<SaveAllViewModel>(directoryPathParameter);
-                    if (_navigationService.ShowDialog<SaveAllWindow>(saveAllViewModel) != true)
+                    var folderPathParameter = new ConstructorArgument("folderPath", imagePath);
+                    var saveAllViewModel = Injector.Get<SaveAgainViewModel>(folderPathParameter);
+                    if (_navigationService.ShowDialog<SaveAgainWindow>(saveAllViewModel) != true)
                     {
                         logger.Trace("User has cancelled.  Returning...");
                         return;
@@ -1273,12 +1296,12 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ICommand SaveAllCommand => _saveAllCommand ?? (_saveAllCommand = new CommandHandler(SaveAll, true));
+        public ICommand SaveAllCommand => _saveAllCommand ?? (_saveAllCommand = new CommandHandler(SaveAgain, true));
 
         private void SaveAllThread(object state)
         {
             var stateArray = (object[]) state;
-            var saveAllViewModel = (SaveAllViewModel) stateArray[0];
+            var saveAllViewModel = (SaveAgainViewModel) stateArray[0];
             var progressViewModel = (ProgressViewModel) stateArray[1];
 
             using (var logger = _logger.Block())
@@ -1298,7 +1321,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void SaveAllImagesInSubFolders(bool changeFont, string fontFamily, ObservableCollection<FolderViewModel> subFolders, ProgressViewModel progressViewModel)
+        private void SaveAllImagesInSubFolders(bool changeFont, string fontFamily, ObservableCollection<IFolderViewModel> subFolders, ProgressViewModel progressViewModel)
         {
             using (var logger = _logger.Block())
             {
@@ -1354,6 +1377,14 @@ namespace PhotoLabel.Wpf
                                     metadata.FontType, metadata.FontBold.Value, brush,
                                     Color.FromArgb(metadata.BackgroundColour.Value), new CancellationToken()))
                                 {
+                                    logger.Trace($@"Getting parent directory for ""{metadata.OutputFilename}""...");
+                                    var parentDirectoryPath = Path.GetDirectoryName(metadata.OutputFilename);
+                                    if (parentDirectoryPath != null)
+                                    {
+                                        logger.Trace($@"Ensuring that the directory ""{parentDirectoryPath}"" exists...");
+                                        Directory.CreateDirectory(parentDirectoryPath);
+                                    }
+
                                     logger.Trace($@"Saving ""{imagePath}""...");
                                     _imageService.Save(captionedImage, metadata.OutputFilename, metadata.ImageFormat.Value);
                                 }
@@ -1444,7 +1475,6 @@ namespace PhotoLabel.Wpf
         private readonly IConfigurationService _configurationService;
         private ICommand _deleteCommand;
         private ICommand _exitCommand;
-        private readonly IFolderService _folderService;
         private readonly IFolderWatcher _folderWatcher;
         private readonly IImageMetadataService _imageMetadataService;
         private readonly IImageService _imageService;
@@ -1453,13 +1483,12 @@ namespace PhotoLabel.Wpf
         private readonly INavigationService _navigationService;
         private ICommand _nextCommand;
         private int _nextIndexToRemove;
-        private readonly IList<IObserver> _observers;
         private ICommand _openRecentlyUsedDirectoryCommand;
         private string _outputPath;
         private readonly IRecentlyUsedFoldersService _recentlyUsedDirectoriesService;
         private ImageViewModel _selectedImageViewModel;
         private int _selectedIndex;
-        private IOpacityService _opacityService;
+        private readonly IOpacityService _opacityService;
         private CancellationTokenSource _openCancellationTokenSource;
         private ICommand _openCommand;
         private readonly SingleTaskScheduler _taskScheduler;
@@ -1695,7 +1724,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public void OnNext(Folder directory)
+        public void OnNext(Folder folder)
         {
             using (var logger = _logger.Block())
             {
@@ -1704,16 +1733,16 @@ namespace PhotoLabel.Wpf
                 if (Application.Current?.Dispatcher.CheckAccess() == false)
                 {
                     logger.Trace("Not running on UI thread.  Delegating to UI thread...");
-                    Application.Current.Dispatcher.Invoke(new OnNextDelegate(OnNext), directory);
+                    Application.Current.Dispatcher.Invoke(new OnNextDelegate(OnNext), folder);
 
                     return;
                 }
 
-                logger.Trace($@"Copying ""{directory.Path}"" to view model...");
-                var viewModel = Mapper.Map<FolderViewModel>(directory);
+                logger.Trace($@"Copying ""{folder.Path}"" to view model...");
+                var folderViewModel = Mapper.Map<FolderViewModel>(folder);
 
-                logger.Trace($@"Adding ""{directory.Path}"" to recently used directories...");
-                RecentlyUsedFolders.Add(viewModel);
+                logger.Trace($@"Adding ""{folder.Path}"" to recently used directories...");
+                RecentlyUsedFolders.Add(folderViewModel);
 
                 OnPropertyChanged(nameof(HasRecentlyUsedDirectories));
             }

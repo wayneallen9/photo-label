@@ -1,5 +1,4 @@
 ﻿using PhotoLabel.Services;
-using PhotoLabel.Services.Models;
 using PhotoLabel.Wpf.Properties;
 using Shared;
 using System;
@@ -46,12 +45,12 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private ObservableCollection<FolderViewModel> CreateSubFolders(FolderViewModel folder)
+        private ObservableCollection<IFolderViewModel> CreateSubFolders(FolderViewModel folder)
         {
             using (var logger = _logger.Block())
             {
                 logger.Trace("Creating observable collection...");
-                var observableCollection = new ObservableCollection<FolderViewModel>();
+                var observableCollection = new ObservableCollection<IFolderViewModel>();
 
                 logger.Trace($@"Adding ""{folder.Path}"" to observable collection...");
                 observableCollection.Add(folder);
@@ -60,7 +59,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private bool IsAFolderSelected(ObservableCollection<FolderViewModel> folderViewModels)
+        private bool IsAFolderSelected(ObservableCollection<IFolderViewModel> folderViewModels)
         {
             using (var logger = _logger.Block())
             {
@@ -170,7 +169,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ObservableCollection<FolderViewModel> SubFolders { get; }
+        public ObservableCollection<IFolderViewModel> SubFolders { get; }
 
         public string Title => $"{Resources.ApplicationName} - [Open]";
 

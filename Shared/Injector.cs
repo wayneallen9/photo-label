@@ -4,7 +4,6 @@ using Ninject.Parameters;
 using Shared.Attributes;
 using System;
 using System.Reflection;
-using Ninject.Activation;
 using Ninject.Infrastructure.Language;
 
 namespace Shared

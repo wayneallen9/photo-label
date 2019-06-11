@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using Ninject.Parameters;
-using PhotoLabel.Services;
 using Shared.Attributes;
 
 namespace Shared

@@ -12,7 +12,7 @@ using SystemFonts = System.Drawing.SystemFonts;
 
 namespace PhotoLabel.Wpf
 {
-    public class SaveAllViewModel : INotifyPropertyChanged
+    public class SaveAgainViewModel : INotifyPropertyChanged
     {
         #region delegates
         private delegate void OnErrorDelegate(Exception ex);
@@ -31,8 +31,8 @@ namespace PhotoLabel.Wpf
         private ICommand _okCommand;
         #endregion
 
-        public SaveAllViewModel(
-            string directoryPath,
+        public SaveAgainViewModel(
+            string folderPath,
             IDialogService dialogService,
             ILogger logger)
         {
@@ -41,7 +41,7 @@ namespace PhotoLabel.Wpf
             _logger = logger;
 
             // initialise the subfolders
-            SubFolders = LoadSubFolders(directoryPath);
+            SubFolders = LoadSubFolders(folderPath);
         }
 
         public bool ChangeFont
@@ -88,7 +88,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private bool IsAFolderSelected(FolderViewModel folderViewModel)
+        private bool IsAFolderSelected(IFolderViewModel folderViewModel)
         {
             using (var logger = _logger.Block())
             {
@@ -109,18 +109,17 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private ObservableCollection<FolderViewModel> LoadSubFolders(string directoryPath)
+        private ObservableCollection<IFolderViewModel> LoadSubFolders(string directoryPath)
         {
             using (var logger = _logger.Block())
             {
                 logger.Trace("Creating list to return...");
-                var treeViewItems = new ObservableCollection<FolderViewModel>();
+                var treeViewItems = new ObservableCollection<IFolderViewModel>();
 
                 logger.Trace($@"Adding ""{directoryPath}"" to list of folders...");
                 var folderViewModel = Injector.Get<FolderViewModel>();
-                folderViewModel.Path = directoryPath;
                 folderViewModel.IsSelected = true;
-                folderViewModel.LoadSubFolders();
+                folderViewModel.Path = directoryPath;
                 treeViewItems.Add(folderViewModel);
 
                 logger.Trace("Watching for changes to folder...");
@@ -225,7 +224,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ObservableCollection<FolderViewModel> SubFolders { get; }
+        public ObservableCollection<IFolderViewModel> SubFolders { get; }
 
         public string Title => $"{Properties.Resources.ApplicationName} - [Save Again]";
 

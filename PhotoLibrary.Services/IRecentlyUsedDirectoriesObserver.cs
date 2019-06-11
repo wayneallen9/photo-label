@@ -6,6 +6,6 @@ namespace PhotoLabel.Services
     {
         void OnClear();
         void OnError(Exception error);
-        void OnNext(Models.Folder directory);
+        void OnNext(Models.Folder folder);
     }
 }

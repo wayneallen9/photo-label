@@ -1,11 +1,11 @@
-﻿using PhotoLabel.Services;
-using PhotoLabel.Wpf.Properties;
-using Shared;
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
+using PhotoLabel.Services;
+using PhotoLabel.Wpf.Properties;
+using Shared;
 
 namespace PhotoLabel.Wpf
 {
@@ -110,7 +110,7 @@ namespace PhotoLabel.Wpf
                     logger.Trace("Logging error...");
                     logger.Error(error);
 
-                    logger.Trace($"Notifying user of error...");
+                    logger.Trace("Notifying user of error...");
                     _dialogService.Error(Resources.ErrorText);
                 }
                 catch (Exception)

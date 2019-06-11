@@ -8,6 +8,7 @@
         xmlns:ei="http://schemas.microsoft.com/expression/2010/interactions"
         xmlns:local="clr-namespace:PhotoLabel.Wpf"
         mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance local:MainWindowViewModel}"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
         Title="{Binding Path=Title}" Height="450" Width="800" Icon="pack://application:,,,/Resources/camera.png">
     <wi:Interaction.Triggers>
@@ -75,7 +76,6 @@
                     <Setter Property="Height" Value="32"></Setter>
                 </Style>
             </Style.Resources>
-            <Setter Property="Height" Value="20"></Setter>
             <Setter Property="MinWidth" Value="150"></Setter>
         </Style>
         <Style x:Key="ComboBoxFontSize" BasedOn="{StaticResource ComboBoxToolbar}" TargetType="{x:Type ComboBox}">
@@ -418,8 +418,8 @@
                 <Grid Grid.Column="0" Grid.Row="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridImage}">
                     <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
                 </Grid>
-                <DockPanel Grid.Column="0" Grid.Row="1" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource DockPanelBrightness}">
-                    <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ResetBrightnessCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                <DockPanel Grid.Column="0" Grid.Row="1" Style="{StaticResource DockPanelBrightness}">
+                    <Button DockPanel.Dock="Right" Command="{Binding Path=ResetBrightnessCommand}">
                         <Image Source="pack://application:,,,/Resources/brightness.png"></Image>
                     </Button>
                     <Slider />

@@ -7,11 +7,12 @@ using System.Runtime.CompilerServices;
 
 namespace PhotoLabel.Wpf
 {
-    public class FolderViewModel : INotifyPropertyChanged
+    public class FolderViewModel : INotifyPropertyChanged, IFolderViewModel
     {
         #region variables
 
         private DirectoryInfo _directoryInfo;
+        private string _filename;
         private bool _isSelected;
         private readonly ILogger _logger;
         private string _path;
@@ -23,9 +24,31 @@ namespace PhotoLabel.Wpf
             _logger = Injector.Get<ILogger>();
         }
 
-        public string Caption => _directoryInfo?.Name;
+        public string Name => _directoryInfo?.Name;
 
         public bool Exists => _directoryInfo?.Exists ?? false;
+
+        public string Filename
+        {
+            get => _filename;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(Filename)} has changed...");
+                    if (_filename == value)
+                    {
+                        logger.Trace($"Value of {nameof(Filename)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($@"Setting value of {nameof(Filename)} to ""{value}""...");
+                    _filename = value;
+
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public bool IsHidden => _directoryInfo?.Attributes.HasFlag(FileAttributes.Hidden) ?? false;
 
@@ -54,17 +77,18 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public void LoadSubFolders()
+        private void LoadSubFolders()
         {
             using (var logger = _logger.Block())
             {
                 logger.Trace("Creating the collection to return...");
-                var observableCollection = new ObservableCollection<FolderViewModel>();
+                var observableCollection = new ObservableCollection<IFolderViewModel>();
 
                 foreach (var subFolderPath in _directoryInfo.EnumerateDirectories())
                 {
                     logger.Trace($@"Checking if ""{subFolderPath}"" is hidden...");
-                    var subFolderViewModel = Injector.Get<FolderViewModel>();
+                    var subFolderViewModel = Injector.Get<IFolderViewModel>();
+                    subFolderViewModel.IsSelected = IsSelected;
                     subFolderViewModel.Path = subFolderPath.FullName;
                     if (!subFolderViewModel.Exists)
                     {
@@ -78,14 +102,11 @@ namespace PhotoLabel.Wpf
                         continue;
                     }
 
-                    logger.Trace($@"Loading subfolders of ""{subFolderViewModel.Path}""...");
-                    subFolderViewModel.LoadSubFolders();
-
                     logger.Trace($@"Adding ""{subFolderPath}"" to subfolders...");
                     observableCollection.Add(subFolderViewModel);
 
                     logger.Trace("Watching for property changes to subfolders...");
-                    subFolderViewModel.PropertyChanged += SubFolderViewModel_PropertyChanged;
+                    ((INotifyPropertyChanged)subFolderViewModel).PropertyChanged += SubFolderViewModel_PropertyChanged;
                 }
 
                 SubFolders = observableCollection;
@@ -104,7 +125,11 @@ namespace PhotoLabel.Wpf
         [NotifyPropertyChangedInvocator]
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            using (var logger = _logger.Block())
+            {
+                logger.Trace("Invoking event handlers...");
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
         }
 
         public string Path
@@ -127,13 +152,18 @@ namespace PhotoLabel.Wpf
                     logger.Trace("Updating related details...");
                     _directoryInfo = new DirectoryInfo(value);
 
-                    OnPropertyChanged(nameof(Caption));
+                    logger.Trace("Loading subfolders...");
+                    LoadSubFolders();
+
+                    OnPropertyChanged(nameof(Name));
+                    OnPropertyChanged(nameof(Exists));
+                    OnPropertyChanged(nameof(IsHidden));
                     OnPropertyChanged();
                 }
             }
         }
 
-        public ObservableCollection<FolderViewModel> SubFolders { get; set; }
+        public ObservableCollection<IFolderViewModel> SubFolders { get; set; } = new ObservableCollection<IFolderViewModel>();
 
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;

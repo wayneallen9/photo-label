@@ -35,7 +35,7 @@ namespace PhotoLabel.Services
         }
 
 
-        public Folder Open(string path)
+        /*public Folder Open(string path)
         {
             using (var logger = _logger.Block()) {
                 logger.Trace($@"Checking if ""{path}"" exists...");
@@ -48,14 +48,13 @@ namespace PhotoLabel.Services
                 logger.Trace($@"Creating path for ""{path}""...");
                 var folder = new Folder
                 {
-                    Caption = GetCaption(path),
                     Path = path
                 };
 
                 return folder;
             
             }
-        }
+        }*/
 
         #region variables
 

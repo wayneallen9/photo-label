@@ -22,7 +22,7 @@
         </Style>
     </Window.Resources>
     <StackPanel Orientation="Vertical">
-        <Label Content="{Binding Path=Caption}" ContentStringFormat="Opening {0}..."></Label>
+        <Label Content="{Binding Path=Caption}"></Label>
         <ProgressBar Maximum="{Binding Path=Maximum}" Minimum="0" Value="{Binding Path=Value}" />
     </StackPanel>
 </Window>

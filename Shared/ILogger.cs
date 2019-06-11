@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace Shared
+﻿namespace Shared
 {
     public interface ILogger
     {

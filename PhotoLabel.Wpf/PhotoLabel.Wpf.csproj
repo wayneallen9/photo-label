@@ -41,8 +41,8 @@
     <ApplicationIcon>camera.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AutoMapper, Version=8.1.0.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
-      <HintPath>..\packages\AutoMapper.8.1.0\lib\net461\AutoMapper.dll</HintPath>
+    <Reference Include="AutoMapper, Version=8.1.1.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
+      <HintPath>..\packages\AutoMapper.8.1.1\lib\net461\AutoMapper.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Expression.Interactions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Windows.Interactivity.WPF.2.0.20525\lib\net40\Microsoft.Expression.Interactions.dll</HintPath>
@@ -94,9 +94,10 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="AttachedProperties.cs" />
+    <Compile Include="IFolderViewModel.cs" />
+    <Compile Include="Mapper.cs" />
     <Compile Include="IObservable.cs" />
     <Compile Include="IObserver.cs" />
-    <Compile Include="Mapper.cs" />
     <Compile Include="OpenFolderViewModel.cs" />
     <Compile Include="OpenFolderWindow.xaml.cs">
       <DependentUpon>OpenFolderWindow.xaml</DependentUpon>
@@ -108,9 +109,9 @@
     </Compile>
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="FolderViewModel.cs" />
-    <Compile Include="SaveAllViewModel.cs" />
-    <Compile Include="SaveAllWindow.xaml.cs">
-      <DependentUpon>SaveAllWindow.xaml</DependentUpon>
+    <Compile Include="SaveAgainViewModel.cs" />
+    <Compile Include="SaveAgainWindow.xaml.cs">
+      <DependentUpon>SaveAgainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="SettingsViewModel.cs" />
     <Compile Include="SettingsWindow.xaml.cs">
@@ -142,7 +143,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="SaveAllWindow.xaml">
+    <Page Include="SaveAgainWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

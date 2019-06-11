@@ -1,4 +1,4 @@
-﻿namespace PhotoLabel.Services
+﻿namespace Shared
 {
     public interface IIndentation
     {

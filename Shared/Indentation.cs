@@ -1,5 +1,4 @@
-﻿using PhotoLabel.Services;
-using Shared.Attributes;
+﻿using Shared.Attributes;
 
 namespace Shared
 {

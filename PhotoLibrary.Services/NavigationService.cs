@@ -1,7 +1,6 @@
-﻿using System;
-using System.Windows;
-using Shared;
+﻿using Shared;
 using Shared.Attributes;
+using System.Windows;
 
 namespace PhotoLabel.Services
 {

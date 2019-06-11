@@ -67,10 +67,8 @@
     <Compile Include="CaptionAlignments.cs" />
     <Compile Include="ConfigurationService.cs" />
     <Compile Include="DefaultImageReducer.cs" />
-    <Compile Include="FolderService.cs" />
     <Compile Include="IDialogService.cs" />
     <Compile Include="IConfigurationService.cs" />
-    <Compile Include="IFolderService.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageReducer.cs" />
     <Compile Include="IImageService.cs" />

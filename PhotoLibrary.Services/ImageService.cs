@@ -1,5 +1,4 @@
-﻿using Shared;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -10,6 +9,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Media.Imaging;
+using PhotoLabel.Services.Models;
+using Shared;
 using Shared.Attributes;
 
 namespace PhotoLabel.Services
@@ -126,7 +127,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Models.ExifData GetExifData(string filename)
+        public ExifData GetExifData(string filename)
         {
             using (var logger = _logger.Block()) {
                 while (true)
@@ -134,7 +135,7 @@ namespace PhotoLabel.Services
                     try
                     {
                         // create the object to return
-                        var exifData = new Models.ExifData();
+                        var exifData = new ExifData();
 
                         logger.Trace($@"Opening ""{filename}""...");
                         using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -177,12 +178,15 @@ namespace PhotoLabel.Services
             }
         }
 
-        public string GetFilename(string outputDirectory, string imageFilename, ImageFormat imageFormat)
+        public string GetFilename(string outputDirectory, string imagePath, ImageFormat imageFormat)
         {
             using (var logger = _logger.Block()) {
                 logger.Trace("Getting output file name...");
-                return $"{Path.Combine(outputDirectory, Path.GetFileName(imageFilename))}.{imageFormat.ToString().ToLower()}";
-            
+                var imageFilename = Path.GetFileName(imagePath) ??
+                                    throw new NullReferenceException(
+                                        $@"The path of the file ""{imagePath}"" is null.");
+
+                return $"{Path.Combine(outputDirectory, imageFilename)}.{imageFormat.ToString().ToLower()}";
             }
         }
 
@@ -193,7 +197,7 @@ namespace PhotoLabel.Services
             using (var logger = _logger.Block()) {
                 for (var i = 1F; ; i += 0.5F)
                 {
-                    // create a test font
+                    logger.Trace($@"Creating a new font instance for ""{fontName}""...");
                     var font = new Font(fontName, i, fontStyle);
 
                     // now measure the string
@@ -753,7 +757,7 @@ namespace PhotoLabel.Services
                                   throw new InvalidOperationException("Cannot find Jpeg image decoder codec");
 
                 logger.Trace("Creating encoder quality parameter...");
-                var qualityEncoder = System.Drawing.Imaging.Encoder.Quality;
+                var qualityEncoder = Encoder.Quality;
                 var encoderParameters = new EncoderParameters(1)
                 {
                     Param = {[0] = new EncoderParameter(qualityEncoder, quality)}
@@ -806,10 +810,11 @@ namespace PhotoLabel.Services
             }
         }
 
-        public List<string> Find(string directory)
+        public List<string> Find(string folderPath)
         {
             using (var logger = _logger.Block()) {
-                return Directory.EnumerateFiles(directory, "*.*", SearchOption.TopDirectoryOnly)
+                logger.Trace($@"Getting the image files in ""{folderPath}""...");
+                return Directory.EnumerateFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly)
                     .Where(s =>
                         (
                             s.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) ||
@@ -820,9 +825,7 @@ namespace PhotoLabel.Services
                             s.EndsWith(".tif", StringComparison.CurrentCultureIgnoreCase)
                         ) &&
                         (File.GetAttributes(s) & FileAttributes.Hidden) == 0)
-                    .OrderBy(File.GetCreationTime)
                     .ToList();
-            
             }
         }
 

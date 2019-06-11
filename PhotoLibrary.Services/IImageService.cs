@@ -10,10 +10,10 @@ namespace PhotoLabel.Services
     {
         Bitmap Brightness(Image image, int brightness);
         Bitmap Caption(Bitmap image, string caption, Rotations rotation, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColor, CancellationToken cancellationToken);
-        List<string> Find(string directory);
+        List<string> Find(string folderPath);
         Bitmap Get(string filename, int width, int height);
         ExifData GetExifData(string filename);
-        string GetFilename(string outputPath, string filename, ImageFormat imageFormat);
+        string GetFilename(string outputPath, string imagePath, ImageFormat imageFormat);
         Bitmap Overlay(Bitmap image, Image overlay, int x, int y);
         Stream ReduceQuality(Bitmap image, long quality);
         Bitmap Resize(Bitmap image, int width, int height);

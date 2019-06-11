@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Shared;
+using System;
 using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Shared;
 
 namespace PhotoLabel.Services
 {
@@ -35,7 +31,7 @@ namespace PhotoLabel.Services
         private Stream Reduce(Bitmap image, byte currentQuality, byte minQuality, int maxQuality)
         {
             using (var logger = _logger.Block()) {
-                // reduce the size of the image
+                logger.Trace($"Reducing image quality to {currentQuality}...");
                 var memoryStream = _imageService.ReduceQuality(image, currentQuality);
 
                 // is it a perfect match?

@@ -7,12 +7,11 @@
         mc:Ignorable="d"
         Title="{Binding Title}" Height="320" Width="240" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="VisibilityConverter"></BooleanToVisibilityConverter>
         <Style TargetType="DockPanel">
             <Setter Property="Margin" Value="5"></Setter>
             <Style.Resources>
                 <Style TargetType="{x:Type CheckBox}">
-                    <Setter Property="Margin" Value="0,0,0,5"></Setter>
+                    <Setter Property="Margin" Value="0,0,5,0"></Setter>
                 </Style>
                 <Style TargetType="{x:Type TreeView}">
                     <Setter Property="Margin" Value="0,5"></Setter>
@@ -42,6 +41,7 @@
         </Style>
     </Window.Resources>
     <DockPanel>
+        <Label DockPanel.Dock="Top" Content="Which folders do you wish to include?"></Label>
         <DockPanel DockPanel.Dock="Bottom" LastChildFill="False">
             <Button DockPanel.Dock="Right" Content="_Cancel" IsCancel="True" Style="{StaticResource ButtonDialog}"></Button>
             <Button DockPanel.Dock="Right" Command="{Binding Path=OkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Content="_OK" IsDefault="True" Style="{StaticResource ButtonDialog}"></Button>
@@ -56,7 +56,7 @@
                 <HierarchicalDataTemplate DataType="{x:Type local:FolderViewModel}" ItemsSource="{Binding SubFolders}">
                     <StackPanel Orientation="Horizontal">
                         <CheckBox IsChecked="{Binding IsSelected}"></CheckBox>
-                        <TextBlock Text="{Binding Caption}"></TextBlock>
+                        <TextBlock Text="{Binding Name}"></TextBlock>
                     </StackPanel>
                 </HierarchicalDataTemplate>
             </TreeView.ItemTemplate>

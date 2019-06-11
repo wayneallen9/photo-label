@@ -23,7 +23,7 @@ namespace PhotoLabel.Services
         {
             using (var logger = _logger.Block()) {
                 logger.Trace($"Converting {color.A} to a percentage...");
-                var percentage = Math.Round((double) color.A / 255d * 100d, 0);
+                var percentage = Math.Round(color.A / 255d * 100d, 0);
 
                 return Math.Abs(percentage - 0) <= double.Epsilon ? "Off":$"{percentage}%";
             
@@ -51,7 +51,7 @@ namespace PhotoLabel.Services
                 else
                 {
                     logger.Trace("Calculating transparency...");
-                    a = (byte)Math.Floor((double)value / 100d * 255d);
+                    a = (byte)Math.Floor(value / 100d * 255d);
                 }
 
                 return new Color()
