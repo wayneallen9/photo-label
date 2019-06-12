@@ -7,6 +7,7 @@
         xmlns:wi="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
         xmlns:ei="http://schemas.microsoft.com/expression/2010/interactions"
         xmlns:local="clr-namespace:PhotoLabel.Wpf"
+        xmlns:sharedConverters="clr-namespace:Shared.Converters;assembly=Shared"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance local:MainWindowViewModel}"
         WindowState="{Binding Path=WindowState, Mode=TwoWay}"
@@ -45,6 +46,7 @@
         <BitmapImage x:Key="TopRightImageSource" UriSource="pack://application:,,,/Resources/topright.png"></BitmapImage>
         <BitmapImage x:Key="WorldImageSource" UriSource="pack://application:,,,/Resources/world.png"></BitmapImage>
         <BooleanToVisibilityConverter x:Key="VisibilityConverter"></BooleanToVisibilityConverter>
+        <sharedConverters:PathEllipsisConverter x:Key="PathEllipsisConverter" FontFamily="{x:Static SystemFonts.MenuFontFamily}" FontSize="{x:Static SystemFonts.MenuFontSize}" Width="200"></sharedConverters:PathEllipsisConverter>
         <CollectionViewSource Source="{Binding Source={x:Static Fonts.SystemFontFamilies}}" x:Key="Fonts"></CollectionViewSource>
         <ControlTemplate x:Key="SizeValidation">
             <Grid>
@@ -285,7 +287,7 @@
                         <Style>
                             <Setter Property="MenuItem.Command" Value="{Binding Path=DataContext.OpenRecentlyUsedDirectoryCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"></Setter>
                             <Setter Property="MenuItem.CommandParameter" Value="{Binding}"></Setter>
-                            <Setter Property="MenuItem.Header" Value="{Binding Path=Caption}"></Setter>
+                            <Setter Property="MenuItem.Header" Value="{Binding Path=Path, Converter={StaticResource PathEllipsisConverter}}"></Setter>
                         </Style>
                     </MenuItem.ItemContainerStyle>
                 </MenuItem>
