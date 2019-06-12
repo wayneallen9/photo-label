@@ -407,6 +407,8 @@ namespace PhotoLabel.Wpf
                         case "Brightness":
                             (_resetBrightnessCommand as ICommandHandler)?.Notify();
 
+                            OnPropertyChanged(nameof(Brightness));
+
                             break;
                         case "DateTaken":
                             OnPropertyChanged(nameof(QuickCaptions));
