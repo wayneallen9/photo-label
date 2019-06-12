@@ -7,6 +7,11 @@ namespace PhotoLabel.Services
     [Singleton]
     public class NavigationService : INavigationService
     {
+        #region delegates
+
+        private delegate bool? ShowDialogDelegate<T>(object dataContext);
+        #endregion
+
         public NavigationService(
             ILogger logger)
         {
@@ -17,6 +22,13 @@ namespace PhotoLabel.Services
         public bool? ShowDialog<T>(object dataContext) where T : Window, new()
         {
             using (var logger = _logger.Block()) {
+                logger.Trace("Checking if running on UI thread...");
+                if (Application.Current?.Dispatcher.CheckAccess() == false)
+                {
+                    logger.Trace("Not running on UI thread.  Delegating to UI thread...");
+                    return (bool?)Application.Current.Dispatcher.Invoke(new ShowDialogDelegate<T>(ShowDialog<T>), dataContext);
+                }
+
                 logger.Trace("Saving current parent window...");
                 var parentWindow = _parentWindow ?? Application.Current?.MainWindow;
 

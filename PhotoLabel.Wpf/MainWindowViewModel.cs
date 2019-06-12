@@ -1282,9 +1282,13 @@ namespace PhotoLabel.Wpf
                     logger.Trace("Creating progress view model...");
                     var progressViewModel = Injector.Get<ProgressViewModel>();
 
+                    logger.Trace("Creating cancellation token...");
+                    _saveAgainCancellationTokenSource?.Cancel();
+                    _saveAgainCancellationTokenSource = new CancellationTokenSource();
+
                     logger.Trace("Starting save all on background thread...");
-                    Task.Factory.StartNew(SaveAllThread, new object[] {saveAllViewModel, progressViewModel},
-                        new CancellationToken(), TaskCreationOptions.LongRunning, TaskScheduler.Current);
+                    Task.Factory.StartNew(SaveAgainThread, new object[] {saveAllViewModel, progressViewModel, _saveAgainCancellationTokenSource.Token},
+                        _saveAgainCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current);
 
                     logger.Trace("Showing progress window...");
                     _navigationService.ShowDialog<ProgressWindow>(progressViewModel);
@@ -1296,19 +1300,23 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ICommand SaveAllCommand => _saveAllCommand ?? (_saveAllCommand = new CommandHandler(SaveAgain, true));
+        public ICommand SaveAgainCommand => _saveAgainCommand ?? (_saveAgainCommand = new CommandHandler(SaveAgain, true));
 
-        private void SaveAllThread(object state)
+        private void SaveAgainThread(object state)
         {
             var stateArray = (object[]) state;
-            var saveAllViewModel = (SaveAgainViewModel) stateArray[0];
+            var saveAgainViewModel = (SaveAgainViewModel) stateArray[0];
             var progressViewModel = (ProgressViewModel) stateArray[1];
+            var cancellationToken = (CancellationToken) stateArray[2];
 
             using (var logger = _logger.Block())
             {
                 try
                 {
-                    SaveAllImagesInSubFolders(saveAllViewModel.ChangeFont, saveAllViewModel.FontFamily, saveAllViewModel.SubFolders, progressViewModel);
+                    logger.Trace("Creating overwrite view model...");
+                    var overwriteViewModel = Injector.Get<OverwriteViewModel>();
+
+                    SaveAllImagesInSubFolders(saveAgainViewModel.ChangeFont, saveAgainViewModel.FontFamily, saveAgainViewModel.SubFolders, progressViewModel, overwriteViewModel, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -1321,12 +1329,13 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        private void SaveAllImagesInSubFolders(bool changeFont, string fontFamily, ObservableCollection<IFolderViewModel> subFolders, ProgressViewModel progressViewModel)
+        private void SaveAllImagesInSubFolders(bool changeFont, string fontFamily, IEnumerable<IFolderViewModel> subFolders, ProgressViewModel progressViewModel, OverwriteViewModel overwriteViewModel, CancellationToken cancellationToken)
         {
             using (var logger = _logger.Block())
             {
                 foreach (var folderViewModel in subFolders)
                 {
+                    if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace($@"Checking if ""{folderViewModel.Path}"" is selected...");
                     if (folderViewModel.IsSelected)
                     {
@@ -1362,6 +1371,45 @@ namespace PhotoLabel.Wpf
                                 continue;
                             }
 
+
+                            logger.Trace($@"Checking if ""{metadata.OutputFilename}"" already exists...");
+                            if (File.Exists(metadata.OutputFilename))
+                            {
+                                logger.Trace("Checking if user action has already been selected...");
+                                if (overwriteViewModel.Remember)
+                                {
+                                    logger.Trace("Checking if user has previously chosen to skip...");
+                                    if (overwriteViewModel.Action == OverwriteViewModel.Actions.Skip)
+                                    {
+                                        logger.Trace($@"Skipping ""{metadata.OutputFilename}""...");
+                                        continue;
+                                    }
+                                }
+                                else
+                                {
+                                    logger.Trace(
+                                        $@"""{metadata.OutputFilename}"" already exists.  Prompting user...");
+                                    overwriteViewModel.Filename = metadata.OutputFilename;
+                                    if (_navigationService.ShowDialog<OverwriteWindow>(overwriteViewModel) ==
+                                        true)
+                                    {
+                                        logger.Trace("Checking if user has chosen to skip...");
+                                        if (overwriteViewModel.Action == OverwriteViewModel.Actions.Skip)
+                                        {
+                                            logger.Trace($@"Skipping ""{metadata.OutputFilename}""...");
+                                            continue;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        logger.Trace("User has cancelled.  Exiting...");
+                                        _saveAgainCancellationTokenSource.Cancel();
+
+                                        return;
+                                    }
+                                }
+                            }
+
                             logger.Trace($@"Setting default values for ""{imagePath}""...");
                             _imageMetadataService.Populate(metadata);
 
@@ -1393,7 +1441,7 @@ namespace PhotoLabel.Wpf
                     }
 
                     logger.Trace($@"Saving all subfolders of ""{folderViewModel.Path}""...");
-                    SaveAllImagesInSubFolders(changeFont, fontFamily, folderViewModel.SubFolders, progressViewModel);
+                    SaveAllImagesInSubFolders(changeFont, fontFamily, folderViewModel.SubFolders, progressViewModel, overwriteViewModel, cancellationToken);
                 }
             }
         }
@@ -1499,7 +1547,8 @@ namespace PhotoLabel.Wpf
         private ICommand _rotateLeftCommand;
         private ICommand _rotateRightCommand;
         private ICommand _saveCommand;
-        private ICommand _saveAllCommand;
+        private CancellationTokenSource _saveAgainCancellationTokenSource;
+        private ICommand _saveAgainCommand;
         private ICommand _saveAsCommand;
         private ICommand _settingsCommand;
         private ICommand _whereCommand;

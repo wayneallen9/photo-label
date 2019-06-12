@@ -102,6 +102,10 @@
     <Compile Include="OpenFolderWindow.xaml.cs">
       <DependentUpon>OpenFolderWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="OverwriteViewModel.cs" />
+    <Compile Include="OverwriteWindow.xaml.cs">
+      <DependentUpon>OverwriteWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="PercentageValidationRule.cs" />
     <Compile Include="ProgressViewModel.cs" />
     <Compile Include="ProgressWindow.xaml.cs">
@@ -136,6 +140,10 @@
       <SubType>Code</SubType>
     </Compile>
     <Page Include="OpenFolderWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OverwriteWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

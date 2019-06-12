@@ -274,7 +274,7 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator></Separator>
-                <MenuItem Command="{Binding Path=SaveAllCommand}" Header="Save A_gain..." ToolTip="Resave Images">
+                <MenuItem Command="{Binding Path=SaveAgainCommand}" Header="Save A_gain..." ToolTip="Resave Images">
                     <MenuItem.Icon>
                         <Image Source="pack://application:,,,/Resources/saveall.png"></Image>
                     </MenuItem.Icon>
