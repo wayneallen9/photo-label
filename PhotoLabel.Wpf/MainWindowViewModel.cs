@@ -396,6 +396,13 @@ namespace PhotoLabel.Wpf
                             logger.Trace($@"Checking if ""{imageViewModel.BackColor.ToString()}"" is already in list of recently used back colors...");
                             if (!RecentlyUsedBackColors.Contains(colorItem))
                             {
+                                logger.Trace("Checking if a colour needs to be removed...");
+                                if (RecentlyUsedBackColors.Count > 10)
+                                {
+                                    logger.Trace("Recently used colour needs to be removed...");
+                                    RecentlyUsedBackColors.RemoveAt(0);
+                                }
+
                                 logger.Trace(
                                     $@"""{imageViewModel.BackColor.ToString()}"" is not in list of recently used back colors.  Adding...");
                                 RecentlyUsedBackColors.Add(colorItem);
@@ -1421,8 +1428,8 @@ namespace PhotoLabel.Wpf
                             {
                                 logger.Trace($@"Captioning ""{imagePath}""...");
                                 using (var brush = new SolidBrush(Color.FromArgb(metadata.Colour.Value)))
-                                using (var captionedImage = _imageService.Caption(originalImage, metadata.Caption,
-                                    metadata.Rotation.Value, metadata.CaptionAlignment.Value,
+                                using (var captionedImage = _imageService.Caption(originalImage, metadata.Caption, metadata.AppendDateTakenToCaption, metadata.DateTaken,
+                                    metadata.Rotation, metadata.CaptionAlignment,
                                     changeFont ? fontFamily : metadata.FontFamily, metadata.FontSize.Value,
                                     metadata.FontType, metadata.FontBold.Value, brush,
                                     Color.FromArgb(metadata.BackgroundColour.Value), new CancellationToken()))

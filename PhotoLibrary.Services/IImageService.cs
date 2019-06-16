@@ -9,7 +9,7 @@ namespace PhotoLabel.Services
     public interface IImageService
     {
         Bitmap Brightness(Image image, int brightness);
-        Bitmap Caption(Bitmap image, string caption, Rotations rotation, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColor, CancellationToken cancellationToken);
+        Bitmap Caption(Bitmap image, string caption, bool? appendDateTakenToCaption, string dateTaken, Rotations? rotation, CaptionAlignments? captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColor, CancellationToken cancellationToken);
         List<string> Find(string folderPath);
         Bitmap Get(string filename, int width, int height);
         ExifData GetExifData(string filename);

@@ -6,12 +6,14 @@ using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Media.Imaging;
 using PhotoLabel.Services.Models;
 using Shared;
 using Shared.Attributes;
+using Encoder = System.Drawing.Imaging.Encoder;
 
 namespace PhotoLabel.Services
 {
@@ -281,11 +283,28 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Bitmap Caption(Bitmap original, string caption, Rotations rotation, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType, bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
-        {
+        public Bitmap Caption(Bitmap original, string caption, bool? appendDateTakenToCaption, string dateTaken,
+            Rotations? rotation, CaptionAlignments? captionAlignment, string fontName, float fontSize, string fontType,
+            bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
+        { 
             using (var logger = _logger.Block()) {
-                logger.Trace($"Rotating to {rotation}...");
-                switch (rotation)
+                logger.Trace("Populating defaults...");
+                var populatedAppendDateTakenToCaption = appendDateTakenToCaption ?? false;
+                var populatedCaptionAlignment = captionAlignment ?? CaptionAlignments.BottomRight;
+                var populatedRotation = rotation ?? Rotations.Zero;
+
+                if (cancellationToken.IsCancellationRequested) return null;
+                logger.Trace("Building caption...");
+                var captionBuilder = new StringBuilder(caption);
+                if (populatedAppendDateTakenToCaption && !string.IsNullOrWhiteSpace(dateTaken))
+                {
+                    if (!string.IsNullOrWhiteSpace(caption)) captionBuilder.Append(" - ");
+                    captionBuilder.Append(dateTaken);
+                }
+                var captionWithDate = captionBuilder.ToString();
+
+                logger.Trace($"Rotating to {populatedRotation}...");
+                switch (populatedRotation)
                 {
                     case Rotations.Ninety:
                         original.RotateFlip(RotateFlipType.Rotate90FlipNone);
@@ -305,7 +324,7 @@ namespace PhotoLabel.Services
                 var duplicate = new Bitmap(original);
 
                 logger.Trace("Checking if there is a caption to render...");
-                if (string.IsNullOrWhiteSpace(caption))
+                if (string.IsNullOrWhiteSpace(captionWithDate))
                 {
                     logger.Trace("There is not caption to render.  Returning...");
                     return duplicate;
@@ -340,7 +359,7 @@ namespace PhotoLabel.Services
                         var captionHeight = height * fontSize / 100;
 
                         // calculate the font size
-                        fontSizeInPoints = GetFontSize(graphics, fontName, fontStyle, caption, captionHeight);
+                        fontSizeInPoints = GetFontSize(graphics, fontName, fontStyle, captionWithDate, captionHeight);
                     }
 
                     if (cancellationToken.IsCancellationRequested) return null;
@@ -349,51 +368,51 @@ namespace PhotoLabel.Services
                     {
                         if (cancellationToken.IsCancellationRequested) return null;
                         logger.Trace("Determining location for caption...");
-                        switch (captionAlignment)
+                        switch (populatedCaptionAlignment)
                         {
                             case CaptionAlignments.BottomCentre:
-                                CaptionBottomCentre(graphics, duplicate.Size, caption, font, brush,
+                                CaptionBottomCentre(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.BottomLeft:
                                 // draw them on the image
-                                CaptionBottomLeft(graphics, duplicate.Size, caption, font, brush,
+                                CaptionBottomLeft(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.BottomRight:
-                                CaptionBottomRight(graphics, duplicate.Size, caption, font, brush,
+                                CaptionBottomRight(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleCentre:
-                                CaptionMiddleCentre(graphics, duplicate.Size, caption, font, brush,
+                                CaptionMiddleCentre(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleLeft:
-                                CaptionMiddleLeft(graphics, duplicate.Size, caption, font, brush,
+                                CaptionMiddleLeft(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.MiddleRight:
-                                CaptionMiddleRight(graphics, duplicate.Size, caption, font, brush,
+                                CaptionMiddleRight(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopCentre:
-                                CaptionTopCentre(graphics, duplicate.Size, caption, font, brush,
+                                CaptionTopCentre(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopLeft:
-                                CaptionTopLeft(graphics, duplicate.Size, caption, font, brush,
+                                CaptionTopLeft(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;
                             case CaptionAlignments.TopRight:
-                                CaptionTopRight(graphics, duplicate.Size, caption, font, brush,
+                                CaptionTopRight(graphics, duplicate.Size, captionWithDate, font, brush,
                                     backgroundColour);
 
                                 break;

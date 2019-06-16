@@ -1286,19 +1286,10 @@ namespace PhotoLabel.Wpf
                         try
                         {
                             if (cancellationToken.IsCancellationRequested) return;
-                            logService.Trace("Building caption...");
-                            var captionBuilder = new StringBuilder(Caption);
-                            if (AppendDateTakenToCaption && !string.IsNullOrWhiteSpace(DateTaken))
-                            {
-                                if (!string.IsNullOrWhiteSpace(Caption)) captionBuilder.Append(" - ");
-                                captionBuilder.Append(DateTaken);
-                            }
-
-                            if (cancellationToken.IsCancellationRequested) return;
                             var brush = new SolidBrush(ForeColor.ToDrawingColor());
                             logService.Trace($@"Captioning ""{Filename}"" with ""{Caption}""...");
-                            using (var captionedImage = imageService.Caption(brightenedImage, captionBuilder.ToString(),
-                                Rotation,
+                            using (var captionedImage = imageService.Caption(brightenedImage, Caption,
+                                AppendDateTakenToCaption, DateTaken, Rotation,
                                 CaptionAlignment, FontFamily.Source, FontSize, FontType,
                                 FontBold, brush, BackColor.ToDrawingColor(), cancellationToken))
                             {
@@ -1714,20 +1705,11 @@ namespace PhotoLabel.Wpf
                 {
                     using (originalImage)
                     {
-                        logService.Trace("Building caption...");
-                        var captionBuilder = new StringBuilder(metadata.Caption);
-                        if (metadata.AppendDateTakenToCaption.HasValue && metadata.AppendDateTakenToCaption.Value &&
-                            !string.IsNullOrWhiteSpace(metadata.DateTaken))
-                        {
-                            if (!string.IsNullOrWhiteSpace(metadata.Caption)) captionBuilder.Append(" - ");
-                            captionBuilder.Append(metadata.DateTaken);
-                        }
-
-                        logService.Trace($@"Captioning ""{Filename}"" with ""{captionBuilder}""...");
+                        logService.Trace($@"Captioning ""{Filename}"" with ""{metadata.Caption}""...");
                         var backgroundColour = System.Drawing.Color.FromArgb(metadata.BackgroundColour ?? 0);
                         var brush = new SolidBrush(System.Drawing.Color.FromArgb(metadata.Colour ?? 0));
-                        using (var captionedImage = imageService.Caption(originalImage, captionBuilder.ToString(),
-                            Rotation,
+                        using (var captionedImage = imageService.Caption(originalImage, metadata.Caption,
+                            metadata.AppendDateTakenToCaption, metadata.DateTaken, Rotation,
                             metadata.CaptionAlignment ?? CaptionAlignments.BottomRight, metadata.FontFamily,
                             metadata.FontSize ?? 10, metadata.FontType,
                             metadata.FontBold ?? false, brush, backgroundColour, new CancellationToken()))
