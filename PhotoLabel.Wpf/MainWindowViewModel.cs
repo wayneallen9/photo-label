@@ -153,6 +153,64 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public int CanvasHeight
+        {
+            get => _selectedImageViewModel?.CanvasHeight ?? 0;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    try
+                    {
+                        logger.Trace("Checking if there is a selected image...");
+                        if (_selectedImageViewModel == null)
+                        {
+                            logger.Trace("There is not selected image.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting canvas height for ""{_selectedImageViewModel.Filename}"" to {value}...");
+                        _selectedImageViewModel.CanvasHeight = value;
+
+                        OnPropertyChanged();
+                    }
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
+                }
+            }
+        }
+
+        public int CanvasWidth
+        {
+            get => _selectedImageViewModel?.CanvasWidth ?? 0;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    try
+                    {
+                        logger.Trace("Checking if there is a selected image...");
+                        if (_selectedImageViewModel == null)
+                        {
+                            logger.Trace("There is not selected image.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting canvas Width for ""{_selectedImageViewModel.Filename}"" to {value}...");
+                        _selectedImageViewModel.CanvasWidth = value;
+
+                        OnPropertyChanged();
+                    }
+                    catch (Exception ex)
+                    {
+                        OnError(ex);
+                    }
+                }
+            }
+        }
+
         public double CaptionSize
         {
             get => _configurationService.CaptionSize;
@@ -417,6 +475,14 @@ namespace PhotoLabel.Wpf
                             OnPropertyChanged(nameof(Brightness));
 
                             break;
+                        case "CanvasHeight":
+                            OnPropertyChanged(nameof(CanvasHeight));
+
+                            break;
+                        case "CanvasWidth":
+                            OnPropertyChanged(nameof(CanvasWidth));
+
+                            break;
                         case "DateTaken":
                             OnPropertyChanged(nameof(QuickCaptions));
 
@@ -432,6 +498,10 @@ namespace PhotoLabel.Wpf
                         case "Latitude":
                         case "Longitude":
                             (_whereCommand as ICommandHandler)?.Notify();
+
+                            break;
+                        case "UseCanvas":
+                            OnPropertyChanged(nameof(UseCanvas));
 
                             break;
                     }
@@ -759,6 +829,45 @@ namespace PhotoLabel.Wpf
 
         public string Title => Resources.ApplicationName;
 
+        public bool UseCanvas
+        {
+            get
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel == null)
+                    {
+                        logger.Trace("There is no selected image.  Returning...");
+                        return false;
+                    }
+
+                    logger.Trace($@"Returning value for ""{_selectedImageViewModel.Filename}""...");
+                    return _selectedImageViewModel.UseCanvas ?? false;
+                }
+            }
+            set
+            {
+                try
+                {
+                    using (var logger = _logger.Block())
+                    {
+                        logger.Trace("Checking if there is a selected image...");
+                        if (_selectedImageViewModel != null)
+                        {
+                            logger.Trace($@"Setting value of UseCanvas for ""{_selectedImageViewModel}"" to {value}...");
+                            _selectedImageViewModel.UseCanvas = value;
+                        }
+
+                        OnPropertyChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
+        }
 
         private void Where()
         {

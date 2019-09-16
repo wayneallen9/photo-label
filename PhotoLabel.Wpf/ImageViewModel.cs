@@ -208,6 +208,78 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public int? CanvasHeight
+        {
+            get => _canvasHeight;
+            set
+            {
+                try
+                {
+                    using (var logger = _logger.Block())
+                    {
+                        logger.Trace($"Checking if value of {nameof(CanvasHeight)} has changed...");
+                        if (_canvasHeight == value)
+                        {
+                            logger.Trace($"Value of {nameof(CanvasHeight)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(CanvasHeight)} to ""{value}""...");
+                        _canvasHeight = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isCanvasHeightEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
+        }
+
+        public int? CanvasWidth
+        {
+            get => _canvasWidth;
+            set
+            {
+                try
+                {
+                    using (var logger = _logger.Block())
+                    {
+                        logger.Trace($"Checking if value of {nameof(CanvasWidth)} has changed...");
+                        if (_canvasWidth == value)
+                        {
+                            logger.Trace($"Value of {nameof(CanvasWidth)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(CanvasWidth)} to ""{value}""...");
+                        _canvasWidth = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isCanvasWidthEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
+        }
+
         public string Caption
         {
             get => _caption;
@@ -1907,6 +1979,22 @@ namespace PhotoLabel.Wpf
                         OnPropertyChanged(nameof(Brightness));
                     }
 
+                    if (!_isCanvasHeightEdited)
+                    {
+                        logger.Trace($@"Setting canvas height for ""{Filename}"" to {_canvasHeight}...");
+                        _canvasHeight = metadata.CanvasHeight;
+
+                        OnPropertyChanged(nameof(CanvasHeight));
+                    }
+
+                    if (!_isCanvasWidthEdited)
+                    {
+                        logger.Trace($@"Setting canvas Width for ""{Filename}"" to {_canvasWidth}...");
+                        _canvasWidth = metadata.CanvasWidth;
+
+                        OnPropertyChanged(nameof(CanvasWidth));
+                    }
+
                     if (!_isCaptionEdited)
                     {
                         logger.Trace($@"Setting caption for ""{Filename}"" to ""{metadata.Caption}""...");
@@ -1993,6 +2081,14 @@ namespace PhotoLabel.Wpf
                         logger.Trace($@"Setting rotation for ""{Filename}"" from metadata...");
                         _rotation = metadata.Rotation.Value;
                     }
+
+                    if (!_isUseCanvasEdited)
+                    {
+                        logger.Trace($@"Setting {nameof(UseCanvas)} for ""{Filename}"" to {metadata.UseCanvas}...");
+                        _useCanvas = metadata.UseCanvas;
+
+                        OnPropertyChanged(nameof(UseCanvas));
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -2033,6 +2129,42 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public bool? UseCanvas
+        {
+            get => _useCanvas;
+            set
+            {
+                try
+                {
+                    using (var logger = _logger.Block())
+                    {
+                        logger.Trace($"Checking if value of {nameof(UseCanvas)} has changed...");
+                        if (_useCanvas == value)
+                        {
+                            logger.Trace($"Value of {nameof(UseCanvas)} has not changed.  Exiting...");
+                            return;
+                        }
+
+                        logger.Trace($@"Setting value of {nameof(UseCanvas)} to ""{value}""...");
+                        _useCanvas = value;
+
+                        logger.Trace($@"Flagging that ""{Filename}"" has been edited...");
+                        _isUseCanvasEdited = true;
+                        IsEdited = true;
+
+                        logger.Trace($@"Loading image for ""{Filename}""...");
+                        LoadImage();
+
+                        OnPropertyChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OnError(ex);
+                }
+            }
+        }
+
         #region constants
 
         private const double Tolerance = double.Epsilon;
@@ -2063,6 +2195,8 @@ namespace PhotoLabel.Wpf
 
         private bool? _appendDateTakenToCaption;
         private Color? _backColor;
+        private int? _canvasHeight;
+        private int? _canvasWidth;
         private string _caption;
         private int? _brightness;
         private CaptionAlignments? _captionAlignment;
@@ -2084,6 +2218,8 @@ namespace PhotoLabel.Wpf
         private bool _isAppendDateTakenToCaptionEdited;
         private bool _isBackColorEdited;
         private bool _isBrightnessEdited;
+        private bool _isCanvasHeightEdited;
+        private bool _isCanvasWidthEdited;
         private bool _isCaptionAlignmentEdited;
         private bool _isCaptionEdited;
         private bool _isEdited;
@@ -2092,6 +2228,7 @@ namespace PhotoLabel.Wpf
         private bool _isFontSizeEdited;
         private bool _isFontTypeEdited;
         private bool _isSaved;
+        private bool _isUseCanvasEdited;
         private readonly ILogger _logger;
         private CancellationTokenSource _loadImageCancellationTokenSource;
         private CancellationTokenSource _loadPreviewCancellationTokenSource;
@@ -2106,6 +2243,7 @@ namespace PhotoLabel.Wpf
         private readonly ManualResetEvent _saveFinishManualResetEvent;
         private ICommand _setCaptionCommand;
         private readonly TaskScheduler _taskScheduler;
+        private bool? _useCanvas;
         private bool _isForeColorEdited;
         private bool _isImageFormatEdited;
         private bool _isMetadataChecked;

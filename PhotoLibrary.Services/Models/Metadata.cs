@@ -8,6 +8,8 @@ namespace PhotoLabel.Services.Models
         public bool? AppendDateTakenToCaption { get; set; }
         public int? BackgroundColour { get; set; }
         public int Brightness { get; set; }
+        public int? CanvasHeight { get; set; }
+        public int? CanvasWidth { get; set; }
         public string Caption { get; set; }
         public CaptionAlignments? CaptionAlignment { get; set; }
         public int? Colour { get; set; }
@@ -21,5 +23,6 @@ namespace PhotoLabel.Services.Models
         public float? Longitude { get; set; }
         public string OutputFilename { get; set; }
         public Rotations? Rotation { get; set; }
+        public bool? UseCanvas { get; set; }
     }
 }
