@@ -429,7 +429,7 @@
                     <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="Auto"></RowDefinition>
                 </Grid.RowDefinitions>
-                <Grid Grid.Column="0" Grid.Row="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridImage}">
+                <Grid Grid.Column="0" Grid.Row="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridImage}" Background="{DynamicResource {x:Static SystemColors.ControlLightLightBrushKey}}">
                     <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
                 </Grid>
                 <DockPanel Grid.Column="0" Grid.Row="1" Style="{StaticResource DockPanelBrightness}">

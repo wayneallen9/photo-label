@@ -738,10 +738,13 @@ namespace PhotoLabel.Wpf
                         OnPropertyChanged();
                         OnPropertyChanged(nameof(BackColorOpacity));
                         OnPropertyChanged(nameof(Brightness));
+                        OnPropertyChanged(nameof(CanvasHeight));
+                        OnPropertyChanged(nameof(CanvasWidth));
                         OnPropertyChanged(nameof(HasDateTaken));
                         OnPropertyChanged(nameof(HasStatus));
                         OnPropertyChanged(nameof(ImageFormat));
                         OnPropertyChanged(nameof(QuickCaptions));
+                        OnPropertyChanged(nameof(UseCanvas));
 
                         logger.Trace("Checking which commands are enabled...");
                         CheckCommandsEnabled();
@@ -1541,7 +1544,7 @@ namespace PhotoLabel.Wpf
                                     metadata.Rotation, metadata.CaptionAlignment,
                                     changeFont ? fontFamily : metadata.FontFamily, metadata.FontSize.Value,
                                     metadata.FontType, metadata.FontBold.Value, brush,
-                                    Color.FromArgb(metadata.BackgroundColour.Value), new CancellationToken()))
+                                    Color.FromArgb(metadata.BackgroundColour.Value), metadata.UseCanvas??false, metadata.CanvasHeight, metadata.CanvasWidth, new CancellationToken()))
                                 {
                                     logger.Trace($@"Getting parent directory for ""{metadata.OutputFilename}""...");
                                     var parentDirectoryPath = Path.GetDirectoryName(metadata.OutputFilename);

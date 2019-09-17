@@ -29,6 +29,7 @@ namespace PhotoLabel.Services
         #region variables
 
         private readonly IConfigurationService _configurationService;
+        private readonly IImageCaptionServiceFactory _imageCaptionServiceFactory;
         private readonly ILineWrapService _lineWrapService;
         private readonly ILogger _logger;
         private readonly string _shortDateFormat;
@@ -36,11 +37,13 @@ namespace PhotoLabel.Services
 
         public ImageService(
             IConfigurationService configurationService,
+            IImageCaptionServiceFactory imageCaptionServiceFactory,
             ILineWrapService lineWrapService,
             ILogger logger)
         {
             // save the dependency injections
             _configurationService = configurationService;
+            _imageCaptionServiceFactory = imageCaptionServiceFactory;
             _lineWrapService = lineWrapService;
             _logger = logger;
 
@@ -285,146 +288,14 @@ namespace PhotoLabel.Services
 
         public Bitmap Caption(Bitmap original, string caption, bool? appendDateTakenToCaption, string dateTaken,
             Rotations? rotation, CaptionAlignments? captionAlignment, string fontName, float fontSize, string fontType,
-            bool fontBold, Brush brush, Color backgroundColour, CancellationToken cancellationToken)
-        { 
+            bool fontBold, Brush brush, Color backgroundColour, bool useCanvas, int? canvasWidth, int? canvasHeight, CancellationToken cancellationToken)
+        {
             using (var logger = _logger.Block()) {
-                logger.Trace("Populating defaults...");
-                var populatedAppendDateTakenToCaption = appendDateTakenToCaption ?? false;
-                var populatedCaptionAlignment = captionAlignment ?? CaptionAlignments.BottomRight;
-                var populatedRotation = rotation ?? Rotations.Zero;
+                logger.Trace("Checking if image has a canvas...");
+                var imageCaptionService = _imageCaptionServiceFactory.Create(useCanvas, canvasWidth, canvasHeight);
 
-                if (cancellationToken.IsCancellationRequested) return null;
-                logger.Trace("Building caption...");
-                var captionBuilder = new StringBuilder(caption);
-                if (populatedAppendDateTakenToCaption && !string.IsNullOrWhiteSpace(dateTaken))
-                {
-                    if (!string.IsNullOrWhiteSpace(caption)) captionBuilder.Append(" - ");
-                    captionBuilder.Append(dateTaken);
-                }
-                var captionWithDate = captionBuilder.ToString();
-
-                logger.Trace($"Rotating to {populatedRotation}...");
-                switch (populatedRotation)
-                {
-                    case Rotations.Ninety:
-                        original.RotateFlip(RotateFlipType.Rotate90FlipNone);
-
-                        break;
-                    case Rotations.OneEighty:
-                        original.RotateFlip(RotateFlipType.Rotate180FlipNone);
-
-                        break;
-                    case Rotations.TwoSeventy:
-                        original.RotateFlip(RotateFlipType.Rotate270FlipNone);
-
-                        break;
-                }
-
-                logger.Trace("Creating a duplicate of the original image...");
-                var duplicate = new Bitmap(original);
-
-                logger.Trace("Checking if there is a caption to render...");
-                if (string.IsNullOrWhiteSpace(captionWithDate))
-                {
-                    logger.Trace("There is not caption to render.  Returning...");
-                    return duplicate;
-                }
-
-                // work out the style of the font
-                if (cancellationToken.IsCancellationRequested) return null;
-                var fontStyle = fontBold ? FontStyle.Bold : FontStyle.Regular;
-
-                if (cancellationToken.IsCancellationRequested) return null;
-                logger.Trace("Getting graphics manager for new image...");
-                using (var graphics = Graphics.FromImage(duplicate))
-                {
-                    logger.Trace("Setting up graphics manager...");
-                    graphics.SmoothingMode = SmoothingMode.HighQuality;
-                    graphics.CompositingQuality = CompositingQuality.HighQuality;
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    
-                    // how is the caption sized?
-                    float fontSizeInPoints;
-                    if (fontType == "pts")
-                    {
-                        // use the value provided by the user
-                        fontSizeInPoints = fontSize;
-                    }
-                    else
-                    {
-                        // work out the logical height of the image (allowing for padding)
-                        var height = duplicate.Height - 8;
-
-                        // work out the maximum height for the caption
-                        var captionHeight = height * fontSize / 100;
-
-                        // calculate the font size
-                        fontSizeInPoints = GetFontSize(graphics, fontName, fontStyle, captionWithDate, captionHeight);
-                    }
-
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    logger.Trace("Creating font...");
-                    using (var font = new Font(fontName, fontSizeInPoints, fontStyle))
-                    {
-                        if (cancellationToken.IsCancellationRequested) return null;
-                        logger.Trace("Determining location for caption...");
-                        switch (populatedCaptionAlignment)
-                        {
-                            case CaptionAlignments.BottomCentre:
-                                CaptionBottomCentre(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.BottomLeft:
-                                // draw them on the image
-                                CaptionBottomLeft(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.BottomRight:
-                                CaptionBottomRight(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.MiddleCentre:
-                                CaptionMiddleCentre(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.MiddleLeft:
-                                CaptionMiddleLeft(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.MiddleRight:
-                                CaptionMiddleRight(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.TopCentre:
-                                CaptionTopCentre(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.TopLeft:
-                                CaptionTopLeft(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            case CaptionAlignments.TopRight:
-                                CaptionTopRight(graphics, duplicate.Size, captionWithDate, font, brush,
-                                    backgroundColour);
-
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException(nameof(captionAlignment),
-                                    captionAlignment,
-                                    null);
-                        }
-                    }
-                }
-
-                return duplicate;
+                logger.Trace($@"Adding the caption ""{caption}""...");
+                return imageCaptionService.Caption(original, caption, appendDateTakenToCaption, dateTaken, rotation, captionAlignment, fontName, fontSize, fontType, fontBold, brush, backgroundColour, cancellationToken);
             }
         }
 
