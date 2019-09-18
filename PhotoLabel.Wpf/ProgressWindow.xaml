@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PhotoLabel.Wpf"
+        xmlns:dependencyProperties="clr-namespace:PhotoLabel.Wpf.DependencyProperties"
         mc:Ignorable="d"
-        local:AttachedProperties.Close="{Binding Path=Close}"
+        dependencyProperties:Close.Close="{Binding Path=Close}"
         ShowInTaskbar="False" WindowStartupLocation="CenterOwner" WindowStyle="None" SizeToContent="WidthAndHeight">
     <Window.Resources>
         <Style TargetType="{x:Type StackPanel}">

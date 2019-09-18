@@ -1,12 +1,12 @@
 ﻿using System.Windows;
 
-namespace PhotoLabel.Wpf
+namespace PhotoLabel.Wpf.DependencyProperties
 {
-    public static class AttachedProperties
+    public static class Close
     {
         public static DependencyProperty CloseProperty =
             DependencyProperty.RegisterAttached("Close",
-                typeof(bool), typeof(AttachedProperties), new UIPropertyMetadata(false, (d, e) =>
+                typeof(bool), typeof(Close), new UIPropertyMetadata(false, (d, e) =>
                 {
                     // must be a boolean property attached to a window
                     if (!(d is Window w) || !(e.NewValue is bool newValue)) return;

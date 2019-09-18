@@ -93,7 +93,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="AttachedProperties.cs" />
+    <Compile Include="DependencyProperties\Close.cs" />
     <Compile Include="IFolderViewModel.cs" />
     <Compile Include="Mapper.cs" />
     <Compile Include="IObservable.cs" />
@@ -122,6 +122,7 @@
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="SingleTaskScheduler.cs" />
+    <Compile Include="DependencyProperties\HasError.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

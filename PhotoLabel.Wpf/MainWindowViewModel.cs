@@ -182,6 +182,31 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public bool CanvasHeightHasError
+        {
+            get => _canvasHeightHasError;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($@"Checking if value of {nameof(CanvasHeightHasError)} has changed...");
+                    if (_canvasHeightHasError == value)
+                    {
+                        logger.Trace($@"Value of {nameof(CanvasHeightHasError)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($@"Setting value of {nameof(CanvasHeightHasError)} to {value}...");
+                    _canvasHeightHasError = value;
+
+                    logger.Trace($"Checking which commands should be enabled...");
+                    CheckCommandsEnabled();
+
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public int CanvasWidth
         {
             get => _selectedImageViewModel?.CanvasWidth ?? 0;
@@ -207,6 +232,31 @@ namespace PhotoLabel.Wpf
                     {
                         OnError(ex);
                     }
+                }
+            }
+        }
+
+        public bool CanvasWidthHasError
+        {
+            get => _canvasWidthHasError;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($@"Checking if value of {nameof(CanvasWidthHasError)} has changed...");
+                    if (_canvasWidthHasError == value)
+                    {
+                        logger.Trace($@"Value of {nameof(CanvasWidthHasError)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($@"Setting value of {nameof(CanvasWidthHasError)} to {value}...");
+                    _canvasWidthHasError = value;
+
+                    logger.Trace($"Checking which commands should be enabled...");
+                    CheckCommandsEnabled();
+
+                    OnPropertyChanged();
                 }
             }
         }
@@ -1408,7 +1458,7 @@ namespace PhotoLabel.Wpf
                     _saveAgainCancellationTokenSource = new CancellationTokenSource();
 
                     logger.Trace("Starting save all on background thread...");
-                    Task.Factory.StartNew(SaveAgainThread, new object[] {saveAllViewModel, progressViewModel, _saveAgainCancellationTokenSource.Token},
+                    Task.Factory.StartNew(SaveAgainThread, new object[] { saveAllViewModel, progressViewModel, _saveAgainCancellationTokenSource.Token },
                         _saveAgainCancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current);
 
                     logger.Trace("Showing progress window...");
@@ -1425,10 +1475,10 @@ namespace PhotoLabel.Wpf
 
         private void SaveAgainThread(object state)
         {
-            var stateArray = (object[]) state;
-            var saveAgainViewModel = (SaveAgainViewModel) stateArray[0];
-            var progressViewModel = (ProgressViewModel) stateArray[1];
-            var cancellationToken = (CancellationToken) stateArray[2];
+            var stateArray = (object[])state;
+            var saveAgainViewModel = (SaveAgainViewModel)stateArray[0];
+            var progressViewModel = (ProgressViewModel)stateArray[1];
+            var cancellationToken = (CancellationToken)stateArray[2];
 
             using (var logger = _logger.Block())
             {
@@ -1443,7 +1493,8 @@ namespace PhotoLabel.Wpf
                 {
                     OnError(ex);
                 }
-                finally { 
+                finally
+                {
                     logger.Trace("Closing progress window...");
                     progressViewModel.Close = true;
                 }
@@ -1470,7 +1521,7 @@ namespace PhotoLabel.Wpf
                         logger.Trace($@"{imagePaths.Count} images found in ""{folderViewModel.Path}""...");
                         progressViewModel.Maximum = imagePaths.Count;
 
-                        for (var p=0; p < imagePaths.Count; p++)
+                        for (var p = 0; p < imagePaths.Count; p++)
                         {
                             var imagePath = imagePaths[p];
 
@@ -1544,7 +1595,7 @@ namespace PhotoLabel.Wpf
                                     metadata.Rotation, metadata.CaptionAlignment,
                                     changeFont ? fontFamily : metadata.FontFamily, metadata.FontSize.Value,
                                     metadata.FontType, metadata.FontBold.Value, brush,
-                                    Color.FromArgb(metadata.BackgroundColour.Value), metadata.UseCanvas??false, metadata.CanvasHeight, metadata.CanvasWidth, new CancellationToken()))
+                                    Color.FromArgb(metadata.BackgroundColour.Value), metadata.UseCanvas ?? false, metadata.CanvasHeight, metadata.CanvasWidth, new CancellationToken()))
                                 {
                                     logger.Trace($@"Getting parent directory for ""{metadata.OutputFilename}""...");
                                     var parentDirectoryPath = Path.GetDirectoryName(metadata.OutputFilename);
@@ -1595,7 +1646,9 @@ namespace PhotoLabel.Wpf
                 try
                 {
                     logger.Trace("Checking if there is a currently selected image...");
-                    return _selectedImageViewModel != null;
+                    if (_selectedImageViewModel == null) return false;
+
+                    return !CanvasHeightHasError && !CanvasWidthHasError;
                 }
                 catch (Exception ex)
                 {
@@ -1676,6 +1729,8 @@ namespace PhotoLabel.Wpf
         private readonly IWhereService _whereService;
         private ICommand _zoomInCommand;
         private ICommand _zoomOutCommand;
+        private bool _canvasHeightHasError;
+        private bool _canvasWidthHasError;
 
         #endregion
 
