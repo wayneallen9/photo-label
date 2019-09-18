@@ -1363,7 +1363,7 @@ namespace PhotoLabel.Wpf
                             using (var captionedImage = imageService.Caption(brightenedImage, Caption,
                                 AppendDateTakenToCaption, DateTaken, Rotation,
                                 CaptionAlignment, FontFamily.Source, FontSize, FontType,
-                                FontBold, brush, BackColor.ToDrawingColor(), UseCanvas??false, CanvasWidth, CanvasHeight, cancellationToken))
+                                FontBold, brush, BackColor.ToDrawingColor(), UseCanvas??_configurationService.UseCanvas, CanvasWidth ?? _configurationService.CanvasWidth, CanvasHeight ?? _configurationService.CanvasHeight, cancellationToken))
                             {
                                 if (cancellationToken.IsCancellationRequested) return;
                                 UpdateImage(captionedImage);
@@ -1787,7 +1787,7 @@ namespace PhotoLabel.Wpf
                             metadata.AppendDateTakenToCaption, metadata.DateTaken, Rotation,
                             metadata.CaptionAlignment ?? CaptionAlignments.BottomRight, metadata.FontFamily,
                             metadata.FontSize ?? 10, metadata.FontType,
-                            metadata.FontBold ?? false, brush, backgroundColour, metadata.UseCanvas??false, metadata.CanvasWidth, metadata.CanvasHeight, new CancellationToken()))
+                            metadata.FontBold ?? false, brush, backgroundColour, metadata.UseCanvas??_configurationService.UseCanvas, metadata.CanvasWidth ?? _configurationService.CanvasWidth, metadata.CanvasHeight ?? _configurationService.CanvasHeight, new CancellationToken()))
                         {
                             logService.Trace("Saving captioned image...");
                             imageService.Save(captionedImage, metadata.OutputFilename,

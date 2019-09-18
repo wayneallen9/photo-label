@@ -72,6 +72,52 @@ namespace PhotoLabel.Services
             }
         }
 
+        public int CanvasHeight
+        {
+            get => _configurationModel.CanvasHeight ?? 600;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(CanvasHeight)} has changed...");
+                    if (_configurationModel.CanvasHeight == value)
+                    {
+                        logger.Trace($"Value of {nameof(CanvasHeight)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    // update the value
+                    _configurationModel.CanvasHeight = value;
+
+                    // save the change
+                    Save();
+                }
+            }
+        }
+
+        public int CanvasWidth
+        {
+            get => _configurationModel.CanvasWidth ?? 800;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(CanvasWidth)} has changed...");
+                    if (_configurationModel.CanvasWidth == value)
+                    {
+                        logger.Trace($"Value of {nameof(CanvasWidth)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    // update the value
+                    _configurationModel.CanvasWidth = value;
+
+                    // save the change
+                    Save();
+                }
+            }
+        }
+
         public CaptionAlignments CaptionAlignment
         {
             get => _configurationModel.CaptionAlignment;
@@ -340,6 +386,29 @@ namespace PhotoLabel.Services
                 logger.Trace($"Saving configuration to \"{filename}\"...");
                 _xmlFileSerialiser.Serialise(_configurationModel, filename);
             
+            }
+        }
+
+        public bool UseCanvas
+        {
+            get => _configurationModel.UseCanvas;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Checking if value of {nameof(UseCanvas)} has changed...");
+                    if (_configurationModel.UseCanvas == value)
+                    {
+                        logger.Trace($"Value of {nameof(UseCanvas)} has not changed.  Exiting...");
+                        return;
+                    }
+
+                    logger.Trace($"Setting new value of {nameof(UseCanvas)}...");
+                    _configurationModel.UseCanvas = value;
+
+                    logger.Trace($"Persisting new value of {nameof(UseCanvas)}...");
+                    Save();
+                }
             }
         }
 

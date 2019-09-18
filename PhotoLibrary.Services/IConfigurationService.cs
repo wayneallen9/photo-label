@@ -9,6 +9,8 @@ namespace PhotoLabel.Services
     {
         bool AppendDateTakenToCaption { get; set; }
         Color BackgroundColour { get; set; }
+        int CanvasHeight { get; set; }
+        int CanvasWidth { get; set; }
         CaptionAlignments CaptionAlignment { get; set; }
         double CaptionSize { get; set; }
         Color Colour { get; set; }
@@ -20,6 +22,7 @@ namespace PhotoLabel.Services
         ulong? MaxImageSize { get; set; }
         string OutputPath { get; set; }
         IList<Color> RecentlyUsedBackColors { get; set; }
+        bool UseCanvas { get; set; }
         string WhereUrl { get; }
 
         FormWindowState WindowState { get; set; }

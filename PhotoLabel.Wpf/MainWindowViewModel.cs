@@ -155,13 +155,16 @@ namespace PhotoLabel.Wpf
 
         public int CanvasHeight
         {
-            get => _selectedImageViewModel?.CanvasHeight ?? 0;
+            get => _selectedImageViewModel?.CanvasHeight ?? _configurationService.CanvasHeight;
             set
             {
                 using (var logger = _logger.Block())
                 {
                     try
                     {
+                        logger.Trace($"Persisting value of {nameof(CanvasHeight)}...");
+                        _configurationService.CanvasHeight = value;
+
                         logger.Trace("Checking if there is a selected image...");
                         if (_selectedImageViewModel == null)
                         {
@@ -209,13 +212,16 @@ namespace PhotoLabel.Wpf
 
         public int CanvasWidth
         {
-            get => _selectedImageViewModel?.CanvasWidth ?? 0;
+            get => _selectedImageViewModel?.CanvasWidth ?? _configurationService.CanvasWidth;
             set
             {
                 using (var logger = _logger.Block())
                 {
                     try
                     {
+                        logger.Trace($"Persisting value of {nameof(CanvasWidth)}...");
+                        _configurationService.CanvasWidth = value;
+
                         logger.Trace("Checking if there is a selected image...");
                         if (_selectedImageViewModel == null)
                         {
@@ -896,7 +902,7 @@ namespace PhotoLabel.Wpf
                     }
 
                     logger.Trace($@"Returning value for ""{_selectedImageViewModel.Filename}""...");
-                    return _selectedImageViewModel.UseCanvas ?? false;
+                    return _selectedImageViewModel.UseCanvas ?? _configurationService.UseCanvas;
                 }
             }
             set
@@ -905,6 +911,9 @@ namespace PhotoLabel.Wpf
                 {
                     using (var logger = _logger.Block())
                     {
+                        logger.Trace($"Persisting value of {nameof(UseCanvas)}...");
+                        _configurationService.UseCanvas = value;
+
                         logger.Trace("Checking if there is a selected image...");
                         if (_selectedImageViewModel != null)
                         {
@@ -939,7 +948,6 @@ namespace PhotoLabel.Wpf
         }
 
         public ICommand WhereCommand => _whereCommand ?? (_whereCommand = new CommandHandler(Where, WhereEnabled));
-
 
         private bool WhereEnabled()
         {
@@ -1067,7 +1075,6 @@ namespace PhotoLabel.Wpf
                 }
             }
         }
-
 
         public ICommand OpenCommand => _openCommand ?? (_openCommand = new CommandHandler(Open, true));
 
