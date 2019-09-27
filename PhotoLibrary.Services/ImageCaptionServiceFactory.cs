@@ -33,7 +33,7 @@ namespace PhotoLabel.Services
                     return Injector.Get<ImageWithCanvasCaptionService>(canvasHeightParameter, canvasWidthParameter);
                 }
                 else
-                    return Injector.Get<ImageCaptionService>();
+                    return Injector.Get<ImageWithoutCanvasCaptionService>();
             }
         }
     }

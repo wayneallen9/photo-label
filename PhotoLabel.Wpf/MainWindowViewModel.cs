@@ -1211,6 +1211,10 @@ namespace PhotoLabel.Wpf
                     logger.Trace($@"Finding image files in ""{folderViewModel.Path}""...");
                     var imageFilenames = _imageService.Find(folderViewModel.Path);
 
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    logger.Trace($"Sorting {imageFilenames.Count} files by creation date...");
+                    imageFilenames.Sort(new FileCreationDateComparer());
+
                     // set the progress bar
                     if (cancellationToken.IsCancellationRequested) return null;
                     logger.Trace($"Setting progress bar maximum to {imageFilenames.Count}");
@@ -1599,7 +1603,7 @@ namespace PhotoLabel.Wpf
                                 logger.Trace($@"Captioning ""{imagePath}""...");
                                 using (var brush = new SolidBrush(Color.FromArgb(metadata.Colour.Value)))
                                 using (var captionedImage = _imageService.Caption(originalImage, metadata.Caption, metadata.AppendDateTakenToCaption, metadata.DateTaken,
-                                    metadata.Rotation, metadata.CaptionAlignment,
+                                    metadata.Rotation ?? Rotations.Zero, metadata.CaptionAlignment,
                                     changeFont ? fontFamily : metadata.FontFamily, metadata.FontSize.Value,
                                     metadata.FontType, metadata.FontBold.Value, brush,
                                     Color.FromArgb(metadata.BackgroundColour.Value), metadata.UseCanvas ?? false, metadata.CanvasHeight, metadata.CanvasWidth, new CancellationToken()))

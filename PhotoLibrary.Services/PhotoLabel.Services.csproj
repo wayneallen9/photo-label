@@ -73,6 +73,7 @@
     <Compile Include="IImageCaptionServiceFactory.cs" />
     <Compile Include="IImageMetadataService.cs" />
     <Compile Include="IImageReducer.cs" />
+    <Compile Include="IImageRotationService.cs" />
     <Compile Include="IImageService.cs" />
     <Compile Include="ILineWrapService.cs" />
     <Compile Include="ImageCaptionService.cs" />
@@ -80,8 +81,10 @@
     <Compile Include="ImageFormat.cs" />
     <Compile Include="ImageMetadataService.cs" />
     <Compile Include="ImageReducerFactory.cs" />
+    <Compile Include="ImageRotationService.cs" />
     <Compile Include="ImageService.cs" />
     <Compile Include="ImageWithCanvasCaptionService.cs" />
+    <Compile Include="ImageWithoutCanvasCaptionService.cs" />
     <Compile Include="INavigationService.cs" />
     <Compile Include="IOpacityService.cs" />
     <Compile Include="IRecentlyUsedDirectoriesObserver.cs" />

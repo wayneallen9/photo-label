@@ -74,6 +74,7 @@
     <Compile Include="Attributes\SingletonAttribute.cs" />
     <Compile Include="Attributes\ThreadAttribute.cs" />
     <Compile Include="Converters\PathEllipsisConverter.cs" />
+    <Compile Include="FileCreationDateComparer.cs" />
     <Compile Include="FolderWatcher.cs" />
     <Compile Include="IFolderWatcher.cs" />
     <Compile Include="IIndentation.cs" />
