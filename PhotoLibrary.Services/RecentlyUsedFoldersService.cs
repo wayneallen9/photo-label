@@ -19,7 +19,7 @@ namespace PhotoLabel.Services
         #region variables
 
         private readonly ILogger _logger;
-        private readonly List<IRecentlyUsedDirectoriesObserver> _observers;
+        private readonly List<IRecentlyUsedFoldersObserver> _observers;
         private readonly List<Folder> _recentlyUsedDirectories;
         private readonly IXmlFileSerialiser _xmlFileSerialiser;
 
@@ -34,7 +34,7 @@ namespace PhotoLabel.Services
             _xmlFileSerialiser = xmlFileSerialiser;
 
             // initialise variables
-            _observers = new List<IRecentlyUsedDirectoriesObserver>();
+            _observers = new List<IRecentlyUsedFoldersObserver>();
             _recentlyUsedDirectories = new List<Folder>();
         }
 
@@ -176,24 +176,24 @@ namespace PhotoLabel.Services
             }
         }
 
-        public IDisposable Subscribe(IRecentlyUsedDirectoriesObserver observer)
+        public IDisposable Subscribe(IRecentlyUsedFoldersObserver observer)
         {
             using (var logger = _logger.Block()) {
                 logger.Trace("Checking if observer is already subscribed...");
                 if (_observers.Contains(observer))
-                    return new Unsubscriber<IRecentlyUsedDirectoriesObserver>(_observers, observer);
+                    return new Unsubscriber<IRecentlyUsedFoldersObserver>(_observers, observer);
 
                 logger.Trace("Observer is not subscribed.  Subscribing...");
                 _observers.Add(observer);
 
                 SendRecentlyUsedDirectories(observer);
 
-                return new Unsubscriber<IRecentlyUsedDirectoriesObserver>(_observers, observer);
+                return new Unsubscriber<IRecentlyUsedFoldersObserver>(_observers, observer);
             
             }
         }
 
-        private void SendRecentlyUsedDirectories(IRecentlyUsedDirectoriesObserver observer)
+        private void SendRecentlyUsedDirectories(IRecentlyUsedFoldersObserver observer)
         {
             using (var logger = _logger.Block()) {
                 logger.Trace("Notifying observer to clear list...");

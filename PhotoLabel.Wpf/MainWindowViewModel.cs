@@ -19,6 +19,7 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Xceed.Wpf.Toolkit;
 using Application = System.Windows.Application;
@@ -29,7 +30,7 @@ using WindowState = System.Windows.WindowState;
 namespace PhotoLabel.Wpf
 {
     public class MainWindowViewModel : IDisposable, IFolderWatcherObserver, INotifyPropertyChanged, IObserver,
-        IRecentlyUsedDirectoriesObserver
+        IRecentlyUsedFoldersObserver
     {
         #region constants
         private const string ImageFilenameRegex = @"\.(bmp|gif|jpeg|jpg|png|tif|tiff)$";
@@ -95,9 +96,65 @@ namespace PhotoLabel.Wpf
             OpenLastUsedDirectory();
         }
 
+        public bool AppendDateTakenToCaption
+        {
+            get => _selectedImageViewModel?.AppendDateTakenToCaption ?? _configurationService.AppendDateTakenToCaption;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Persisting value of {nameof(AppendDateTakenToCaption)}...");
+                    _configurationService.AppendDateTakenToCaption = value;
+
+                    logger.Trace($"Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($"Setting value on selected image...");
+                        _selectedImageViewModel.AppendDateTakenToCaption = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public System.Windows.Media.Color BackColor
+        {
+            get => _selectedImageViewModel?.BackColor ?? _configurationService.BackColor;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Persisting value of {nameof(BackColor)}...");
+                    _configurationService.BackColor = value;
+
+                    logger.Trace($@"Checking if recently used back colours contains {value}...");
+                    var colourItem = new ColorItem(value, value.ToString());
+                    if (!_recentlyUsedBackColors.Contains(colourItem))
+                    {
+                        logger.Trace($@"Adding {colourItem} to the list of recently used colours...");
+                        _recentlyUsedBackColors.Add(colourItem);
+
+                        logger.Trace($"Limiting number of recently used back colours to 10...");
+                        if (_recentlyUsedBackColors.Count > 10) _recentlyUsedBackColors.RemoveAt(0);
+                    }
+
+                    logger.Trace($"Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($"Setting value on selected image...");
+                        _selectedImageViewModel.BackColor = value;
+                    }
+
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(BackColorOpacity));
+                }
+            }
+        }
+
         public string BackColorOpacity
         {
-            get => _selectedImageViewModel?.BackColorOpacity ?? _opacityService.GetOpacity(_configurationService.BackgroundColour);
+            get => _selectedImageViewModel?.BackColorOpacity ?? _opacityService.GetOpacity(_configurationService.BackColor);
             set
             {
                 using (var logger = _logger.Block())
@@ -105,16 +162,26 @@ namespace PhotoLabel.Wpf
                     try
                     {
                         logger.Trace("Setting default opacity...");
-                        _configurationService.BackgroundColour = _opacityService.SetOpacity(_configurationService.BackgroundColour, value);
+                        _configurationService.BackColor = _opacityService.SetOpacity(_configurationService.BackColor, value);
+
+                        logger.Trace($@"Checking if recently used back colours contains {value}...");
+                        var recentlyUsedColor = _opacityService.SetOpacity(BackColor, value);
+                        var colourItem = new ColorItem(recentlyUsedColor, recentlyUsedColor.ToString());
+                        if (!_recentlyUsedBackColors.Contains(colourItem))
+                        {
+                            logger.Trace($@"Adding {colourItem} to the list of recently used colours...");
+                            _recentlyUsedBackColors.Add(colourItem);
+                        }
 
                         logger.Trace("Checking if there is a selected image view model...");
                         if (_selectedImageViewModel != null)
                         {
                             logger.Trace("Setting selected image opacity...");
-                            _selectedImageViewModel.BackColor = _opacityService.SetOpacity(_selectedImageViewModel.BackColor, value);
+                            _selectedImageViewModel.BackColorOpacity = value;
                         }
 
                         OnPropertyChanged();
+                        OnPropertyChanged(nameof(BackColor));
                     }
                     catch (Exception ex)
                     {
@@ -138,13 +205,6 @@ namespace PhotoLabel.Wpf
                         return;
                     }
 
-                    logger.Trace($"Checking if value of {nameof(Brightness)} has changed...");
-                    if (_selectedImageViewModel.Brightness == value)
-                    {
-                        logger.Trace($"Value of {nameof(Brightness)} has not changed.  Exiting...");
-                        return;
-                    }
-
                     logger.Trace($"Setting value of {nameof(Brightness)} to {value}...");
                     _selectedImageViewModel.Brightness = value;
 
@@ -160,27 +220,17 @@ namespace PhotoLabel.Wpf
             {
                 using (var logger = _logger.Block())
                 {
-                    try
+                    logger.Trace($"Persisting value of {nameof(CanvasHeight)}...");
+                    _configurationService.CanvasHeight = value;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
                     {
-                        logger.Trace($"Persisting value of {nameof(CanvasHeight)}...");
-                        _configurationService.CanvasHeight = value;
-
-                        logger.Trace("Checking if there is a selected image...");
-                        if (_selectedImageViewModel == null)
-                        {
-                            logger.Trace("There is not selected image.  Exiting...");
-                            return;
-                        }
-
                         logger.Trace($@"Setting canvas height for ""{_selectedImageViewModel.Filename}"" to {value}...");
                         _selectedImageViewModel.CanvasHeight = value;
+                    }
 
-                        OnPropertyChanged();
-                    }
-                    catch (Exception ex)
-                    {
-                        OnError(ex);
-                    }
+                    OnPropertyChanged();
                 }
             }
         }
@@ -217,27 +267,17 @@ namespace PhotoLabel.Wpf
             {
                 using (var logger = _logger.Block())
                 {
-                    try
+                    logger.Trace($"Persisting value of {nameof(CanvasWidth)}...");
+                    _configurationService.CanvasWidth = value;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
                     {
-                        logger.Trace($"Persisting value of {nameof(CanvasWidth)}...");
-                        _configurationService.CanvasWidth = value;
-
-                        logger.Trace("Checking if there is a selected image...");
-                        if (_selectedImageViewModel == null)
-                        {
-                            logger.Trace("There is not selected image.  Exiting...");
-                            return;
-                        }
-
                         logger.Trace($@"Setting canvas Width for ""{_selectedImageViewModel.Filename}"" to {value}...");
                         _selectedImageViewModel.CanvasWidth = value;
+                    }
 
-                        OnPropertyChanged();
-                    }
-                    catch (Exception ex)
-                    {
-                        OnError(ex);
-                    }
+                    OnPropertyChanged();
                 }
             }
         }
@@ -261,6 +301,25 @@ namespace PhotoLabel.Wpf
 
                     logger.Trace($"Checking which commands should be enabled...");
                     CheckCommandsEnabled();
+
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string Caption
+        {
+            get => _selectedImageViewModel?.Caption ?? string.Empty;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($@"Setting caption for ""{_selectedImageViewModel.Filename}"" to {value}...");
+                        _selectedImageViewModel.Caption = value;
+                    }
 
                     OnPropertyChanged();
                 }
@@ -378,6 +437,8 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public string DateTaken => _selectedImageViewModel?.DateTaken;
+
         private void Delete()
         {
             using (var logger = _logger.Block())
@@ -386,6 +447,12 @@ namespace PhotoLabel.Wpf
                 {
                     logger.Trace($@"Deleting metadata for ""{_selectedImageViewModel.Filename}""...");
                     _selectedImageViewModel?.Delete();
+
+                    logger.Trace($@"Setting defaults for ""{_selectedImageViewModel.Filename}""...");
+                    _selectedImageViewModel?.SetDefaults(_configurationService.AppendDateTakenToCaption, _configurationService.BackColor, _configurationService.CanvasHeight, _configurationService.CanvasWidth, _configurationService.CaptionAlignment, FontBold, _configurationService.FontName, _configurationService.FontSize, _configurationService.FontType, _configurationService.ForeColor, _configurationService.ImageFormat, _configurationService.UseCanvas);
+
+                    logger.Trace($@"Reloading image for ""{_selectedImageViewModel.Filename}""...");
+                    _selectedImageViewModel?.LoadImage(new CancellationToken());
                 }
                 catch (Exception ex)
                 {
@@ -440,12 +507,126 @@ namespace PhotoLabel.Wpf
 
         public ICommand ExitCommand => _exitCommand ?? (_exitCommand = new CommandHandler(Exit, true));
 
+        public string Filename => _selectedImageViewModel?.Filename;
+
+        public bool FontBold
+        {
+            get => _selectedImageViewModel?.FontBold ?? _configurationService.FontBold;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Persisting value of {nameof(FontBold)}...");
+                    _configurationService.FontBold = value;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($@"Setting canvas Width for ""{_selectedImageViewModel.Filename}"" to {value}...");
+                        _selectedImageViewModel.FontBold = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public System.Windows.Media.FontFamily FontFamily
+        {
+            get => _selectedImageViewModel?.FontFamily ?? new System.Windows.Media.FontFamily(_configurationService.FontName);
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($@"Saving ""{value}"" as default font...");
+                    _configurationService.FontName = value.Source;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($@"Setting canvas Width for ""{_selectedImageViewModel.Filename}"" to {value}...");
+                        _selectedImageViewModel.FontFamily = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+            }
+            }
+
+        public float FontSize
+        {
+            get => _selectedImageViewModel?.FontSize ?? _configurationService.FontSize;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($@"Saving ""{value}"" as default font...");
+                    _configurationService.FontSize = value;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($@"Setting font size for ""{_selectedImageViewModel.Filename}"" to {value}...");
+                        _selectedImageViewModel.FontSize = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string FontType
+        {
+            get => _selectedImageViewModel?.FontType ?? _configurationService.FontType;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($@"Saving ""{value}"" as default font type...");
+                    _configurationService.FontType = value;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($@"Setting font type for ""{_selectedImageViewModel.Filename}"" to ""{value}""...");
+                        _selectedImageViewModel.FontType = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public System.Windows.Media.Color ForeColor
+        {
+            get => _selectedImageViewModel?.ForeColor ?? _configurationService.ForeColor;
+            set
+            {
+                using (var logger = _logger.Block())
+                {
+                    logger.Trace($"Persisting value of {nameof(BackColor)}...");
+                    _configurationService.ForeColor = value;
+
+                    logger.Trace($"Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
+                    {
+                        logger.Trace($"Setting value on selected image...");
+                        _selectedImageViewModel.ForeColor = value;
+                    }
+
+                    OnPropertyChanged();
+                }
+
+            }
+        }
+
         public bool HasDateTaken => SelectedImageViewModel?.HasDateTaken ?? false;
 
-        public bool HasRecentlyUsedDirectories => RecentlyUsedFolders.Count > 0;
+        public bool HasRecentlyUsedFolders => RecentlyUsedFolders.Count > 0;
 
         public bool HasStatus => _selectedImageViewModel != null;
 
+        public BitmapSource Image => _selectedImageViewModel?.Image;
 
         public ImageFormat ImageFormat
         {
@@ -454,41 +635,27 @@ namespace PhotoLabel.Wpf
             {
                 using (var logger = _logger.Block())
                 {
-                    try
+                    logger.Trace("Persisting value of image format...");
+                    _configurationService.ImageFormat = value;
+
+                    logger.Trace("Checking if there is a selected image...");
+                    if (_selectedImageViewModel != null)
                     {
-                        logger.Trace("Checking if default image format has changed...");
-                        if (_configurationService.ImageFormat != value)
-                        {
-                            logger.Trace("Default image format has changed.  Updating...");
-                            _configurationService.ImageFormat = value;
-                        }
-
-                        logger.Trace("Checking if there is a selected image...");
-                        if (_selectedImageViewModel == null)
-                        {
-                            logger.Trace("There is no selected image.  Returning...");
-                            return;
-                        }
-
                         logger.Trace($@"Setting image format for ""{_selectedImageViewModel.Filename}""...");
                         _selectedImageViewModel.ImageFormat = value;
+                    }
 
-                        OnPropertyChanged();
-                    }
-                    catch (Exception ex)
-                    {
-                        OnError(ex);
-                    }
+                    OnPropertyChanged();
                 }
             }
         }
 
         public ObservableCollection<ImageViewModel> Images { get; }
 
+        public Stretch ImageStretch => _selectedImageViewModel?.ImageStretch ?? Stretch.None;
+
         private void ImageViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var imageViewModel = (ImageViewModel)sender;
-
             using (var logger = _logger.Block())
             {
                 try
@@ -496,35 +663,6 @@ namespace PhotoLabel.Wpf
                     logger.Trace($@"Changed property is ""{e.PropertyName}"".  Handling change...");
                     switch (e.PropertyName)
                     {
-                        case "BackColorOpacity":
-                            logger.Trace("Checking if opacity is activated...");
-                            if (imageViewModel.BackColorOpacity == "100%")
-                            {
-                                logger.Trace("Opacity is not activated.  Exiting...");
-                                break;
-                            }
-
-                            logger.Trace($@"Creating color item for ""{imageViewModel.BackColor.ToString()}""...");
-                            var colorItem = new ColorItem(imageViewModel.BackColor, imageViewModel.BackColor.ToString());
-
-                            logger.Trace($@"Checking if ""{imageViewModel.BackColor.ToString()}"" is already in list of recently used back colors...");
-                            if (!RecentlyUsedBackColors.Contains(colorItem))
-                            {
-                                logger.Trace("Checking if a colour needs to be removed...");
-                                if (RecentlyUsedBackColors.Count > 10)
-                                {
-                                    logger.Trace("Recently used colour needs to be removed...");
-                                    RecentlyUsedBackColors.RemoveAt(0);
-                                }
-
-                                logger.Trace(
-                                    $@"""{imageViewModel.BackColor.ToString()}"" is not in list of recently used back colors.  Adding...");
-                                RecentlyUsedBackColors.Add(colorItem);
-                            }
-
-                            OnPropertyChanged(nameof(BackColorOpacity));
-
-                            break;
                         case "Brightness":
                             (_resetBrightnessCommand as ICommandHandler)?.Notify();
 
@@ -532,11 +670,9 @@ namespace PhotoLabel.Wpf
 
                             break;
                         case "CanvasHeight":
-                            OnPropertyChanged(nameof(CanvasHeight));
-
-                            break;
                         case "CanvasWidth":
-                            OnPropertyChanged(nameof(CanvasWidth));
+                        case "Caption":
+                            OnPropertyChanged(e.PropertyName);
 
                             break;
                         case "DateTaken":
@@ -549,6 +685,12 @@ namespace PhotoLabel.Wpf
                             break;
                         case "HasMetadata":
                             (_deleteCommand as ICommandHandler)?.Notify();
+
+                            break;
+                        case "Image":
+                        case "ImageStretch":
+                        case "Preview":
+                            OnPropertyChanged(e.PropertyName);
 
                             break;
                         case "Latitude":
@@ -567,6 +709,63 @@ namespace PhotoLabel.Wpf
                     OnError(ex);
                 }
             }
+        }
+
+        public bool IsBottomCentreAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.BottomCentre;
+            set
+            {
+                SetCaptionAlignment(CaptionAlignments.BottomCentre, value);
+            }
+        }
+
+        public bool IsBottomLeftAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.BottomLeft;
+            set => SetCaptionAlignment(CaptionAlignments.BottomLeft, value);
+        }
+
+        public bool IsBottomRightAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.BottomRight;
+            set => SetCaptionAlignment(CaptionAlignments.BottomRight, value);
+        }
+
+        public bool IsMiddleCentreAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.MiddleCentre;
+            set => SetCaptionAlignment(CaptionAlignments.MiddleCentre, value);
+        }
+
+        public bool IsMiddleLeftAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.MiddleLeft;
+            set => SetCaptionAlignment(CaptionAlignments.MiddleLeft, value);
+        }
+
+        public bool IsMiddleRightAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.MiddleRight;
+            set => SetCaptionAlignment(CaptionAlignments.MiddleRight, value);
+        }
+
+        public bool IsTopCentreAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.TopCentre;
+            set => SetCaptionAlignment(CaptionAlignments.TopCentre, value);
+        }
+
+        public bool IsTopLeftAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.TopLeft;
+            set => SetCaptionAlignment(CaptionAlignments.TopLeft, value);
+        }
+
+        public bool IsTopRightAlignment
+        {
+            get => _selectedImageViewModel?.CaptionAlignment == CaptionAlignments.TopRight;
+            set => SetCaptionAlignment(CaptionAlignments.TopRight, value);
         }
 
         private ObservableCollection<ColorItem> LoadRecentlyUsedBackColors()
@@ -688,7 +887,7 @@ namespace PhotoLabel.Wpf
             }
         }
 
-        public ICommand OpenRecentlyUsedDirectoryCommand => _openRecentlyUsedDirectoryCommand ??
+        public ICommand OpenRecentlyUsedFolderCommand => _openRecentlyUsedDirectoryCommand ??
                                                             (_openRecentlyUsedDirectoryCommand =
                                                                 new CommandHandler<FolderViewModel>(OpenFolder, true));
 
@@ -717,11 +916,13 @@ namespace PhotoLabel.Wpf
             }
         }
 
+        public BitmapSource Preview => _selectedImageViewModel?.Preview;
+
         public IList<string> QuickCaptions => Images
-            .Where(i => !string.IsNullOrWhiteSpace(i.Caption) && !string.IsNullOrWhiteSpace(i.DateTaken) &&
-                        i.Caption != SelectedImageViewModel?.Caption &&
-                        i.DateTaken == SelectedImageViewModel?.DateTaken).OrderBy(i => i.Caption)
-            .Select(i => i.Caption.Replace("_", "__")).Distinct().ToList();
+            .Where(i => !string.IsNullOrWhiteSpace(i.GetCaption()) && !string.IsNullOrWhiteSpace(i.GetDateTaken()) &&
+                        i.GetCaption() != SelectedImageViewModel?.GetCaption() &&
+                        i.GetDateTaken() == SelectedImageViewModel?.GetDateTaken()).OrderBy(i => i.GetCaption())
+            .Select(i => i.GetCaption().Replace("_", "__")).Distinct().ToList();
 
         public ObservableCollection<ColorItem> RecentlyUsedBackColors
         {
@@ -780,9 +981,12 @@ namespace PhotoLabel.Wpf
 
                         if (value != null)
                         {
+                            logger.Trace($@"Setting default values on ""{value.Filename}""...");
+                            value.SetDefaults(_configurationService.AppendDateTakenToCaption, _configurationService.BackColor, _configurationService.CanvasHeight, _configurationService.CanvasWidth, _configurationService.CaptionAlignment, _configurationService.FontBold, _configurationService.FontName, _configurationService.FontSize, _configurationService.FontType, _configurationService.ForeColor, _configurationService.ImageFormat, _configurationService.UseCanvas);
+
                             logger.Trace($@"Loading ""{value.Filename}""...");
                             value.LoadImage(_openCancellationTokenSource.Token);
-                            value.LoadPreview(false, _openCancellationTokenSource.Token);
+                            value.LoadPreview(_openCancellationTokenSource.Token);
 
                             logger.Trace($@"Saving ""{value.Filename}"" as last selected image...");
                             _recentlyUsedDirectoriesService.SetLastSelectedFile(value.Filename);
@@ -792,13 +996,25 @@ namespace PhotoLabel.Wpf
                         }
 
                         OnPropertyChanged();
+                        OnPropertyChanged(nameof(AppendDateTakenToCaption));
+                        OnPropertyChanged(nameof(BackColor));
                         OnPropertyChanged(nameof(BackColorOpacity));
                         OnPropertyChanged(nameof(Brightness));
+                        OnPropertyChanged(nameof(Caption));
                         OnPropertyChanged(nameof(CanvasHeight));
                         OnPropertyChanged(nameof(CanvasWidth));
+                        NotifyCaptionAlignmentPropertyChange();
+                        OnPropertyChanged(nameof(DateTaken));
+                        OnPropertyChanged(nameof(FontBold));
+                        OnPropertyChanged(nameof(FontFamily));
+                        OnPropertyChanged(nameof(FontSize));
+                        OnPropertyChanged(nameof(FontType));
+                        OnPropertyChanged(nameof(ForeColor));
                         OnPropertyChanged(nameof(HasDateTaken));
                         OnPropertyChanged(nameof(HasStatus));
+                        OnPropertyChanged(nameof(Image));
                         OnPropertyChanged(nameof(ImageFormat));
+                        OnPropertyChanged(nameof(ImageStretch));
                         OnPropertyChanged(nameof(QuickCaptions));
                         OnPropertyChanged(nameof(UseCanvas));
 
@@ -861,6 +1077,62 @@ namespace PhotoLabel.Wpf
                     }
                 }
             }
+        }
+
+        public ICommand SetCaptionCommand => _setCaptionCommand ?? (_setCaptionCommand = new CommandHandler<string>(SetCaption, true));
+
+        private void SetCaption(string parameter)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace("Checking if there is a selected image...");
+                if (_selectedImageViewModel == null)
+                {
+                    logger.Trace("There is no selected image.  Exiting...");
+                    return;
+                }
+
+                logger.Trace($@"Setting caption for ""{_selectedImageViewModel.Filename}"" to ""{parameter}""...");
+                _selectedImageViewModel.Caption = parameter.Replace("__", "_");
+            }
+        }
+
+        private void SetCaptionAlignment(CaptionAlignments captionAlignment, bool value)
+        {
+            using (var logger = _logger.Block())
+            {
+                logger.Trace($@"Checking if caption alignment is {captionAlignment}...");
+                if (!value)
+                {
+                    logger.Trace($@"Caption alignment is not {captionAlignment}.  Exiting...");
+                    return;
+                }
+
+                logger.Trace($"Caption alignment is {captionAlignment}.  Persisting...");
+                _configurationService.CaptionAlignment = captionAlignment;
+
+                logger.Trace("Checking if there is a selected image...");
+                if (_selectedImageViewModel != null)
+                {
+                    logger.Trace($@"Setting caption alignment of ""{_selectedImageViewModel.Filename}"" to {captionAlignment}...");
+                    _selectedImageViewModel.CaptionAlignment = captionAlignment;
+                }
+
+                NotifyCaptionAlignmentPropertyChange();
+            }
+        }
+
+        private void NotifyCaptionAlignmentPropertyChange()
+        {
+            OnPropertyChanged(nameof(IsBottomCentreAlignment));
+            OnPropertyChanged(nameof(IsBottomLeftAlignment));
+            OnPropertyChanged(nameof(IsBottomRightAlignment));
+            OnPropertyChanged(nameof(IsMiddleLeftAlignment));
+            OnPropertyChanged(nameof(IsMiddleCentreAlignment));
+            OnPropertyChanged(nameof(IsMiddleRightAlignment));
+            OnPropertyChanged(nameof(IsTopCentreAlignment));
+            OnPropertyChanged(nameof(IsTopLeftAlignment));
+            OnPropertyChanged(nameof(IsTopRightAlignment));
         }
 
         private void Settings()
@@ -1150,7 +1422,7 @@ namespace PhotoLabel.Wpf
 
                     if (cancellationToken.IsCancellationRequested) return;
                     logger.Trace($"Adding {images.Count} images to list...");
-                    UpdateImages(images.OrderBy(i => i.DateTaken).ToList());
+                    UpdateImages(images);
 
                     logger.Trace($@"Adding ""{folderViewModel.Path}"" to recently used directories...");
                     var folder = Mapper.Map<Folder>(folderViewModel);
@@ -1211,10 +1483,6 @@ namespace PhotoLabel.Wpf
                     logger.Trace($@"Finding image files in ""{folderViewModel.Path}""...");
                     var imageFilenames = _imageService.Find(folderViewModel.Path);
 
-                    if (cancellationToken.IsCancellationRequested) return null;
-                    logger.Trace($"Sorting {imageFilenames.Count} files by creation date...");
-                    imageFilenames.Sort(new FileCreationDateComparer());
-
                     // set the progress bar
                     if (cancellationToken.IsCancellationRequested) return null;
                     logger.Trace($"Setting progress bar maximum to {imageFilenames.Count}");
@@ -1234,6 +1502,11 @@ namespace PhotoLabel.Wpf
                         logger.Trace($@"Creating image view model for ""{imageFilename}""...");
                         images.Add(new ImageViewModel(imageFilename));
                     }
+
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    logger.Trace($"Sorting {imageFilenames.Count} files by creation date...");
+                    var comparer = Injector.Get<DateTakenComparer>();
+                    images.Sort(comparer);
 
                     if (cancellationToken.IsCancellationRequested) return null;
                     logger.Trace($@"Watching ""{folderViewModel.Path}"" for file changes...");
@@ -1401,7 +1674,7 @@ namespace PhotoLabel.Wpf
 
                     logger.Trace($@"Getting output path for ""{_selectedImageViewModel.Filename}""...");
                     var pathToSaveTo = _imageService.GetFilename(outputPath, _selectedImageViewModel.Filename,
-                        _selectedImageViewModel.ImageFormat);
+                        _selectedImageViewModel.ImageFormat.Value);
 
                     logger.Trace($@"Checking if ""{pathToSaveTo}"" already exists...");
                     if (File.Exists(pathToSaveTo))
@@ -1598,12 +1871,12 @@ namespace PhotoLabel.Wpf
 
                             logger.Trace($@"Loading original image for ""{imagePath}""...");
                             using (var fileStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                            using (var originalImage = (Bitmap)Image.FromStream(fileStream))
+                            using (var originalImage = (Bitmap)System.Drawing.Image.FromStream(fileStream))
                             {
                                 logger.Trace($@"Captioning ""{imagePath}""...");
                                 using (var brush = new SolidBrush(Color.FromArgb(metadata.Colour.Value)))
-                                using (var captionedImage = _imageService.Caption(originalImage, metadata.Caption, metadata.AppendDateTakenToCaption, metadata.DateTaken,
-                                    metadata.Rotation ?? Rotations.Zero, metadata.CaptionAlignment,
+                                using (var captionedImage = _imageService.Caption(originalImage, metadata.Caption, metadata.AppendDateTakenToCaption ?? false, metadata.DateTaken,
+                                    metadata.Rotation ?? Rotations.Zero, metadata.CaptionAlignment ?? CaptionAlignments.BottomRight,
                                     changeFont ? fontFamily : metadata.FontFamily, metadata.FontSize.Value,
                                     metadata.FontType, metadata.FontBold.Value, brush,
                                     Color.FromArgb(metadata.BackgroundColour.Value), metadata.UseCanvas ?? false, metadata.CanvasHeight, metadata.CanvasWidth, new CancellationToken()))
@@ -1735,6 +2008,7 @@ namespace PhotoLabel.Wpf
         private CancellationTokenSource _saveAgainCancellationTokenSource;
         private ICommand _saveAgainCommand;
         private ICommand _saveAsCommand;
+        private ICommand _setCaptionCommand;
         private ICommand _settingsCommand;
         private ICommand _whereCommand;
         private readonly IWhereService _whereService;
@@ -1797,11 +2071,8 @@ namespace PhotoLabel.Wpf
                     return;
                 }
 
-                logger.Trace($@"Reloading preview of ""{path}""...");
-                image.LoadPreview(true, _openCancellationTokenSource.Token);
-
-                logger.Trace($@"Reloading Exif data for ""{path}""...");
-                image.LoadExifData(_openCancellationTokenSource.Token);
+                logger.Trace($@"Reloading metadata for ""{path}""...");
+                image.LoadMetadata(_openCancellationTokenSource.Token);
             }
         }
 
@@ -1980,7 +2251,7 @@ namespace PhotoLabel.Wpf
                 logger.Trace($@"Adding ""{folder.Path}"" to recently used directories...");
                 RecentlyUsedFolders.Add(folderViewModel);
 
-                OnPropertyChanged(nameof(HasRecentlyUsedDirectories));
+                OnPropertyChanged(nameof(HasRecentlyUsedFolders));
             }
         }
 

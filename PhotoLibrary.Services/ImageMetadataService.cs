@@ -24,7 +24,8 @@ namespace PhotoLabel.Services
 
         public bool Delete(string filename)
         {
-            using (var logger = _logger.Block()) {
+            using (var logger = _logger.Block())
+            {
                 // get the name of the metadata file
                 logger.Trace($"Getting metadata filename for image \"{filename}\"...");
                 var metadataFilename = GetMetadataFilename(filename);
@@ -42,25 +43,27 @@ namespace PhotoLabel.Services
                 File.Delete(metadataFilename);
 
                 return true;
-            
+
             }
         }
 
         private string GetMetadataFilename(string filename)
         {
-            using (var logger = _logger.Block()) {
+            using (var logger = _logger.Block())
+            {
                 logger.Trace($"Getting metadata filename for \"{filename}\"...");
                 var metadataFilename = $"{filename}.xml";
                 logger.Trace($"Metadata filename for \"{filename}\" is \"{metadataFilename}\"");
 
                 return metadataFilename;
-            
+
             }
         }
 
         public Models.Metadata Load(string filename)
         {
-            using (var logger = _logger.Block()) {
+            using (var logger = _logger.Block())
+            {
                 // get the name of the metadata file
                 logger.Trace($"Getting metadata filename for image \"{filename}\"...");
                 var metadataFilename = GetMetadataFilename(filename);
@@ -70,7 +73,7 @@ namespace PhotoLabel.Services
 
                 // return the metadata
                 return metadata;
-            
+
             }
         }
 
@@ -110,7 +113,8 @@ namespace PhotoLabel.Services
 
         public void Save(Models.Metadata metadata, string filename)
         {
-            using (var logger = _logger.Block()) {
+            using (var logger = _logger.Block())
+            {
                 // validate that all of the properties have a value
                 if (metadata.AppendDateTakenToCaption == null) throw new InvalidOperationException(@"""AppendDateTakenToCaption"" property value not specified");
                 if (metadata.BackgroundColour == null) throw new InvalidOperationException(@"""BackgroundColour"" property value not specified");
@@ -130,7 +134,22 @@ namespace PhotoLabel.Services
 
                 logger.Trace($@"Saving metadata to ""{metadataFilename}""...");
                 _xmlFileSerialiser.Serialise(metadata, metadataFilename);
-            
+
+            }
+        }
+
+        public bool Exists(string filename)
+        {
+            using (var logger = _logger.Block())
+            {
+                // get the name of the metadata file
+                logger.Trace($"Getting metadata filename for image \"{filename}\"...");
+                var metadataFilename = GetMetadataFilename(filename);
+                logger.Trace($"Metadata filename is \"{metadataFilename}\"");
+
+                // does the metadata exist?
+                logger.Trace($"Checking if file \"{metadataFilename}\" exists...");
+                return File.Exists(metadataFilename);
             }
         }
     }

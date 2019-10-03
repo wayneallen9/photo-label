@@ -30,7 +30,6 @@ namespace PhotoLabel.Services
 
         private readonly IConfigurationService _configurationService;
         private readonly IImageCaptionServiceFactory _imageCaptionServiceFactory;
-        private readonly ILineWrapService _lineWrapService;
         private readonly ILogger _logger;
         private readonly string _shortDateFormat;
         #endregion
@@ -38,13 +37,11 @@ namespace PhotoLabel.Services
         public ImageService(
             IConfigurationService configurationService,
             IImageCaptionServiceFactory imageCaptionServiceFactory,
-            ILineWrapService lineWrapService,
             ILogger logger)
         {
             // save the dependency injections
             _configurationService = configurationService;
             _imageCaptionServiceFactory = imageCaptionServiceFactory;
-            _lineWrapService = lineWrapService;
             _logger = logger;
 
             // create the format for the date
@@ -195,34 +192,6 @@ namespace PhotoLabel.Services
             }
         }
 
-        private float GetFontSize(Graphics graphics, string fontName, FontStyle fontStyle, string caption, float height)
-        {
-            var lastSize = 0F;
-
-            using (var logger = _logger.Block()) {
-                for (var i = 1F; ; i += 0.5F)
-                {
-                    logger.Trace($@"Creating a new font instance for ""{fontName}""...");
-                    var font = new Font(fontName, i, fontStyle);
-
-                    // now measure the string
-                    var size = graphics.MeasureString(caption, font);
-
-                    // if it is bigger than the desired height, we have found the correct size
-                    if (size.Height > height) break;
-
-                    // release the font memory
-                    font.Dispose();
-
-                    // save the last font size that fit
-                    lastSize = i;
-                }
-
-                return lastSize;
-            
-            }
-        }
-
         private float? GetLatitude(BitmapMetadata bitmapMetadata)
         {
             using (var logger = _logger.Block()) {
@@ -286,8 +255,8 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Bitmap Caption(Bitmap original, string caption, bool? appendDateTakenToCaption, string dateTaken,
-            Rotations rotation, CaptionAlignments? captionAlignment, string fontName, float fontSize, string fontType,
+        public Bitmap Caption(Bitmap original, string caption, bool appendDateTakenToCaption, string dateTaken,
+            Rotations rotation, CaptionAlignments captionAlignment, string fontName, float fontSize, string fontType,
             bool fontBold, Brush brush, Color backgroundColour, bool useCanvas, int? canvasWidth, int? canvasHeight, CancellationToken cancellationToken)
         {
             using (var logger = _logger.Block()) {

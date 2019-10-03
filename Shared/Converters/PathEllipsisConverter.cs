@@ -48,7 +48,9 @@ namespace Shared.Converters
                     TextFormatFlags.ModifyString | TextFormatFlags.PathEllipsis);
             }
 
-            return copy.Substring(0, copy.IndexOf('\0'));
+            // get the end position
+            var endPos = copy.IndexOf('\0') > -1 ? copy.IndexOf('\0') : copy.Length;
+            return copy.Substring(0, endPos);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

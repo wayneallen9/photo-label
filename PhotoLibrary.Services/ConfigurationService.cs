@@ -50,23 +50,23 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Color BackgroundColour
+        public Color BackColor
         {
             get => _configurationModel.BackgroundColour ?? Colors.Transparent;
             set
             {
                 using (var logger = _logger.Block()) {
-                    logger.Trace($"Checking if value of {nameof(BackgroundColour)} has changed...");
+                    logger.Trace($"Checking if value of {nameof(BackColor)} has changed...");
                     if (_configurationModel.BackgroundColour == value)
                     {
-                        logger.Trace($"Value of {nameof(BackgroundColour)} has not changed.  Exiting...");
+                        logger.Trace($"Value of {nameof(BackColor)} has not changed.  Exiting...");
                         return;
                     }
 
-                    logger.Trace($"Setting new value of {nameof(BackgroundColour)}...");
+                    logger.Trace($"Setting new value of {nameof(BackColor)}...");
                     _configurationModel.BackgroundColour = value;
 
-                    logger.Trace($"Persisting new value of {nameof(BackgroundColour)}...");
+                    logger.Trace($"Persisting new value of {nameof(BackColor)}...");
                     Save();
                 }
             }
@@ -163,7 +163,7 @@ namespace PhotoLabel.Services
             }
         }
 
-        public Color Colour
+        public Color ForeColor
         {
             get => _configurationModel.Colour ?? Colors.White;
             set

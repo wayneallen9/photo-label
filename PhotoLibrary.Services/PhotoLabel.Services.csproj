@@ -87,7 +87,7 @@
     <Compile Include="ImageWithoutCanvasCaptionService.cs" />
     <Compile Include="INavigationService.cs" />
     <Compile Include="IOpacityService.cs" />
-    <Compile Include="IRecentlyUsedDirectoriesObserver.cs" />
+    <Compile Include="IRecentlyUsedFoldersObserver.cs" />
     <Compile Include="IRecentlyUsedFoldersService.cs" />
     <Compile Include="IWhereService.cs" />
     <Compile Include="IXmlFileSerialiser.cs" />

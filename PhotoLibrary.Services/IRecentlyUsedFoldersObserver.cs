@@ -2,7 +2,7 @@
 
 namespace PhotoLabel.Services
 {
-    public interface IRecentlyUsedDirectoriesObserver
+    public interface IRecentlyUsedFoldersObserver
     {
         void OnClear();
         void OnError(Exception error);

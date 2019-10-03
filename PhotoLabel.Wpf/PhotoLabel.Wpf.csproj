@@ -93,6 +93,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="DateTakenComparer.cs" />
     <Compile Include="DependencyProperties\Close.cs" />
     <Compile Include="IFolderViewModel.cs" />
     <Compile Include="Mapper.cs" />

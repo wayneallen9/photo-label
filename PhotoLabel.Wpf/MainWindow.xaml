@@ -210,7 +210,7 @@
                                     <Trigger Property="IsSelected" Value="True"></Trigger>
                                     <Trigger Property="IsMouseOver" Value="True"></Trigger>
                                 </ControlTemplate.Triggers>
-                                <Button Command="{Binding Path=DataContext.SetCaptionCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Grid}}}" CommandParameter="{Binding}"  Content="{Binding}">
+                                <Button Command="{Binding Path=DataContext.SetCaptionCommand, RelativeSource={RelativeSource AncestorType=Window, Mode=FindAncestor}}" CommandParameter="{Binding}"  Content="{Binding}">
                                     <Button.Resources>
                                         <Style TargetType="{x:Type Button}">
                                             <Setter Property="Margin" Value="0,0,0,5"></Setter>
@@ -295,10 +295,10 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator></Separator>
-                <MenuItem Header="_Recently Used" IsEnabled="{Binding Path=HasRecentlyUsedDirectories}" ItemsSource="{Binding Path=RecentlyUsedFolders}">
+                <MenuItem Header="_Recently Used" IsEnabled="{Binding Path=HasRecentlyUsedFolders}" ItemsSource="{Binding Path=RecentlyUsedFolders}">
                     <MenuItem.ItemContainerStyle>
                         <Style>
-                            <Setter Property="MenuItem.Command" Value="{Binding Path=DataContext.OpenRecentlyUsedDirectoryCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"></Setter>
+                            <Setter Property="MenuItem.Command" Value="{Binding Path=DataContext.OpenRecentlyUsedFolderCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"></Setter>
                             <Setter Property="MenuItem.CommandParameter" Value="{Binding}"></Setter>
                             <Setter Property="MenuItem.Header" Value="{Binding Path=Path, Converter={StaticResource PathEllipsisConverter}}"></Setter>
                         </Style>
@@ -331,7 +331,7 @@
                     <Image Source="{StaticResource CloseImageSource}"></Image>
                 </Button>
             </ToolBar>
-            <ToolBar DataContext="{Binding SelectedImageViewModel}">
+            <ToolBar>
                 <ComboBox ToolBar.OverflowMode="Never" ItemsSource="{Binding Source={StaticResource Fonts}}" SelectedItem="{Binding Path=FontFamily}" Style="{StaticResource ComboBoxFont}" ToolTip="Font">
                     <ComboBox.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -360,10 +360,10 @@
                 </ToggleButton>
                 <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" ShowRecentColors="True" SelectedColor="{Binding Path=ForeColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Color"></wpfToolkit:ColorPicker>
                 <Separator></Separator>
-                <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" RecentColors="{Binding Path=DataContext.RecentlyUsedBackColors, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ShowRecentColors="True" SelectedColor="{Binding Path=BackColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Background Color"></wpfToolkit:ColorPicker>
+                <wpfToolkit:ColorPicker AvailableColorsSortingMode="HueSaturationBrightness" BorderThickness="0" DisplayColorTooltip="False" RecentColors="{Binding Path=RecentlyUsedBackColors}" ShowRecentColors="True" SelectedColor="{Binding Path=BackColor, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ColorPicker}" ToolTip="Background Color"></wpfToolkit:ColorPicker>
                 <ComboBox IsEditable="True" Style="{StaticResource TransparencyComboBox}" ToolTip="Background Opacity">
                     <ComboBox.Text>
-                        <Binding Path="DataContext.BackColorOpacity" RelativeSource="{RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}">
+                        <Binding Path="BackColorOpacity">
                             <Binding.ValidationRules>
                                 <local:PercentageValidationRule Maximum="100" Minimum="0"></local:PercentageValidationRule>
                             </Binding.ValidationRules>
@@ -376,32 +376,32 @@
                     <ComboBoxItem>100%</ComboBoxItem>
                 </ComboBox>
                 <Separator></Separator>
-                <Button Command="{Binding Path=DataContext.RotateLeftCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Rotate Left">
+                <Button Command="{Binding Path=RotateLeftCommand}" ToolTip="Rotate Left">
                     <Image Source="{StaticResource RotateLeftImageSource}"></Image>
                 </Button>
-                <Button Command="{Binding Path=DataContext.RotateRightCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Rotate Right">
+                <Button Command="{Binding Path=RotateRightCommand}" ToolTip="Rotate Right">
                     <Image Source="{StaticResource RotateRightImageSource}"></Image>
                 </Button>
                 <Separator></Separator>
-                <ComboBox IsEditable="False" Style="{StaticResource ComboBoxImageFormat}" Text="{Binding Path=DataContext.ImageFormat, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Image Format">
+                <ComboBox IsEditable="False" Style="{StaticResource ComboBoxImageFormat}" Text="{Binding Path=ImageFormat}" ToolTip="Image Format">
                     <ComboBoxItem>Bmp</ComboBoxItem>
                     <ComboBoxItem>Jpeg</ComboBoxItem>
                     <ComboBoxItem>Png</ComboBoxItem>
                 </ComboBox>
-                <Button  Command="{Binding Path=DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Save">
+                <Button  Command="{Binding Path=SaveCommand}" ToolTip="Save">
                     <Image Source="{StaticResource SaveImageSource}"></Image>
                 </Button>
-                <Button  Command="{Binding Path=DataContext.SaveAsCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Save As">
+                <Button  Command="{Binding Path=SaveAsCommand}" ToolTip="Save As">
                     <Image Source="{StaticResource SaveAsImageSource}"></Image>
                 </Button>
-                <Button Command="{Binding Path=DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Delete Caption">
+                <Button Command="{Binding Path=DeleteCommand}" ToolTip="Delete Caption">
                     <Image Source="{StaticResource DeleteImageSource}"></Image>
                 </Button>
-                <Button Command="{Binding Path=DataContext.NextCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Next">
+                <Button Command="{Binding Path=NextCommand}" ToolTip="Next">
                     <Image Source="{StaticResource NextImageSource}"></Image>
                 </Button>
                 <Separator></Separator>
-                <Button Command="{Binding Path=DataContext.WhereCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Where Is This?">
+                <Button Command="{Binding Path=WhereCommand}" ToolTip="Where Is This?">
                     <Image Source="{StaticResource WorldImageSource}"></Image>
                 </Button>
             </ToolBar>
@@ -430,7 +430,7 @@
                     <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="Auto"></RowDefinition>
                 </Grid.RowDefinitions>
-                <Grid Grid.Column="0" Grid.Row="0" DataContext="{Binding Path=SelectedImageViewModel}" Style="{StaticResource GridImage}" Background="{DynamicResource {x:Static SystemColors.ControlLightLightBrushKey}}">
+                <Grid Grid.Column="0" Grid.Row="0" Style="{StaticResource GridImage}" Background="{DynamicResource {x:Static SystemColors.ControlLightLightBrushKey}}">
                     <Image HorizontalAlignment="Center" Source="{Binding Path=Image}" Stretch="{Binding Path=ImageStretch}" VerticalAlignment="Center"></Image>
                 </Grid>
                 <DockPanel Grid.Column="0" Grid.Row="1" Style="{StaticResource DockPanelBrightness}">
@@ -448,7 +448,7 @@
                     </ListView.ItemsPanel>
                 </ListView>
             </Grid>
-            <Grid DataContext="{Binding Path=SelectedImageViewModel}" Row="1">
+            <Grid Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"></ColumnDefinition>
                     <ColumnDefinition Width="Auto"></ColumnDefinition>
@@ -461,7 +461,7 @@
                     <RowDefinition Height="*"></RowDefinition>
                 </Grid.RowDefinitions>
                 <Label Grid.Column="0" Grid.Row="0" Content="{Binding Path=Filename}" Style="{StaticResource LabelFilename}" ToolTip="{Binding Path=Filename}"></Label>
-                <TextBox Grid.Column="0" Grid.Row="1" AcceptsReturn="True" FontSize="{Binding Path=DataContext.CaptionSize, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Style="{StaticResource CaptionTextBox}" TextWrapping="Wrap">
+                <TextBox Grid.Column="0" Grid.Row="1" AcceptsReturn="True" FontSize="{Binding Path=CaptionSize}" Style="{StaticResource CaptionTextBox}" TextWrapping="Wrap">
                     <TextBox.Text>
                         <Binding Path="Caption" UpdateSourceTrigger="PropertyChanged"></Binding>
                     </TextBox.Text>
@@ -518,32 +518,32 @@
                         </Grid.RowDefinitions>
                         <CheckBox Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Content="Use canvas?">
                             <CheckBox.IsChecked>
-                                <Binding Path="DataContext.UseCanvas" RelativeSource="{RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}"></Binding>
+                                <Binding Path="UseCanvas"></Binding>
                             </CheckBox.IsChecked>
                         </CheckBox>
                         <Label Grid.Column="0" Grid.Row="1" Content="Width"></Label>
-                        <TextBox dependencyProperties:HasError.HasError="{Binding Path=DataContext.CanvasWidthHasError, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Grid.Column="1" Grid.Row="1">
+                        <TextBox dependencyProperties:HasError.HasError="{Binding Path=CanvasWidthHasError}" Grid.Column="1" Grid.Row="1">
                             <TextBox.IsEnabled>
-                                <Binding Path="DataContext.UseCanvas" RelativeSource="{RelativeSource AncestorType={x:Type Window},Mode=FindAncestor}"></Binding>
+                                <Binding Path="UseCanvas"></Binding>
                             </TextBox.IsEnabled>
                             <TextBox.Text>
-                                <Binding Path="DataContext.CanvasWidth" RelativeSource="{RelativeSource AncestorType={x:Type Window},Mode=FindAncestor}" UpdateSourceTrigger="PropertyChanged"></Binding>
+                                <Binding Path="CanvasWidth" UpdateSourceTrigger="PropertyChanged"></Binding>
                             </TextBox.Text>
                         </TextBox>
                         <Label Grid.Column="2" Grid.Row="1" Content="px"></Label>
                         <Label Grid.Column="0" Grid.Row="2" Content="Height"></Label>
-                        <TextBox dependencyProperties:HasError.HasError="{Binding Path=DataContext.CanvasHeightHasError, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Grid.Column="1" Grid.Row="2">
+                        <TextBox dependencyProperties:HasError.HasError="{Binding Path=CanvasHeightHasError}" Grid.Column="1" Grid.Row="2">
                             <TextBox.IsEnabled>
-                                <Binding Path="DataContext.UseCanvas" RelativeSource="{RelativeSource AncestorType={x:Type Window},Mode=FindAncestor}"></Binding>
+                                <Binding Path="UseCanvas"></Binding>
                             </TextBox.IsEnabled>
                             <TextBox.Text>
-                                <Binding Path="DataContext.CanvasHeight" RelativeSource="{RelativeSource AncestorType={x:Type Window},Mode=FindAncestor}" UpdateSourceTrigger="PropertyChanged"></Binding>
+                                <Binding Path="CanvasHeight" UpdateSourceTrigger="PropertyChanged"></Binding>
                             </TextBox.Text>
                         </TextBox>
                         <Label Grid.Column="2" Grid.Row="2" Content="px"></Label>
                     </Grid>
                 </GroupBox>
-                <ListView Grid.Column="3" Grid.Row="1" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Path=DataContext.QuickCaptions, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" Style="{StaticResource ListViewQuickCaptions}">
+                <ListView Grid.Column="3" Grid.Row="1" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Path=QuickCaptions}" Style="{StaticResource ListViewQuickCaptions}">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel></WrapPanel>
@@ -551,13 +551,13 @@
                     </ListView.ItemsPanel>
                 </ListView>
                 <DockPanel Grid.Column="0" Grid.Row="2" Style="{StaticResource DockPanelCaption}">
-                    <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ZoomInCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Zoom In">
+                    <Button DockPanel.Dock="Right" Command="{Binding Path=ZoomInCommand}" ToolTip="Zoom In">
                         <Image Source="pack://application:,,,/Resources/zoomin.png"></Image>
                     </Button>
-                    <Button DockPanel.Dock="Right" Command="{Binding Path=DataContext.ZoomOutCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}" ToolTip="Zoom Out">
+                    <Button DockPanel.Dock="Right" Command="{Binding Path=ZoomOutCommand}" ToolTip="Zoom Out">
                         <Image Source="pack://application:,,,/Resources/zoomout.png"></Image>
                     </Button>
-                    <CheckBox IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=DataContext.HasDateTaken, Converter={StaticResource VisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type Window}, Mode=FindAncestor}}">
+                    <CheckBox IsChecked="{Binding Path=AppendDateTakenToCaption}" Visibility="{Binding Path=HasDateTaken, Converter={StaticResource VisibilityConverter}}">
                         <TextBlock Text="{Binding Path=DateTaken, StringFormat={}Append {0}?}"></TextBlock>
                     </CheckBox>
                 </DockPanel>

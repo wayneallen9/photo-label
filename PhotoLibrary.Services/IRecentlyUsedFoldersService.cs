@@ -11,6 +11,6 @@ namespace PhotoLabel.Services
         Folder GetMostRecentlyUsedDirectory();
         string GetMostRecentlyUsedFile();
         void SetLastSelectedFile(string filename);
-        IDisposable Subscribe(IRecentlyUsedDirectoriesObserver observer);
+        IDisposable Subscribe(IRecentlyUsedFoldersObserver observer);
     }
 }
